@@ -266,7 +266,7 @@ export default function Landing() {
         <div className="text-center">
           <Button 
             size="lg" 
-            className="text-lg px-8 py-3" 
+            className="text-lg px-8 py-3 shadow-lg hover:shadow-xl hover:scale-105 hover:-translate-y-1 transition-all duration-300" 
             onClick={() => handleChoosePlan('trial', 'Free Trial', 0)}
             data-testid="button-start-free-trial"
           >

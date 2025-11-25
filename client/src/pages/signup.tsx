@@ -1,19 +1,34 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Eye, EyeOff } from "lucide-react";
+import { BookOpen, Eye, EyeOff, Check, X, Lock } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 
+const hasUpperCase = (password: string) => /[A-Z]/.test(password);
+const hasLowerCase = (password: string) => /[a-z]/.test(password);
+const hasNumberOrSymbol = (password: string) => /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+const hasMinLength = (password: string) => password.length >= 8;
+
 // Validation schema for signup form
 const signupSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Please enter a valid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .refine((password) => hasUpperCase(password), {
+      message: "Password must include at least one uppercase letter"
+    })
+    .refine((password) => hasLowerCase(password), {
+      message: "Password must include at least one lowercase letter"
+    })
+    .refine((password) => hasNumberOrSymbol(password), {
+      message: "Password must include at least one number or symbol"
+    }),
 });
 
 export default function Signup() {
@@ -28,6 +43,19 @@ export default function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
   const [showPassword, setShowPassword] = useState(false);
+
+  const passwordRequirements = useMemo(() => {
+    const password = formData.password;
+    return {
+      hasBothCases: hasUpperCase(password) && hasLowerCase(password),
+      hasNumberOrSymbol: hasNumberOrSymbol(password),
+      hasMinLength: hasMinLength(password),
+    };
+  }, [formData.password]);
+
+  const isPasswordValid = useMemo(() => {
+    return Object.values(passwordRequirements).every(req => req === true);
+  }, [passwordRequirements]);
 
   useEffect(() => {
     // Retrieve selected plan from localStorage
@@ -45,14 +73,29 @@ export default function Signup() {
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
+    const newFormData = {
       ...formData,
       [e.target.name]: e.target.value
-    });
+    };
+    setFormData(newFormData);
+    
+    if (e.target.name === 'password' && errors.password) {
+      setErrors({ ...errors, password: undefined });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isPasswordValid) {
+      setErrors({ ...errors, password: "Please meet all password requirements" });
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Validate form data
     const validation = signupSchema.safeParse(formData);
@@ -213,10 +256,8 @@ export default function Signup() {
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={handleInputChange}
-                  required
-                  minLength={8}
                   data-testid="input-signup-password"
-                  className={errors.password ? "border-red-500 pr-10" : "pr-10"}
+                  className={`pr-10 ${errors.password || (formData.password && !isPasswordValid) ? "border-red-500" : ""}`}
                 />
                 <button
                   type="button"
@@ -227,12 +268,52 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-              {errors.password ? (
+              
+              {formData.password && (
+                <div className={`mt-2 p-3 rounded-md border-2 ${errors.password || !isPasswordValid ? "border-red-500 bg-red-50 dark:bg-red-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}`}>
+                  <div className="flex items-start gap-2 mb-2">
+                    <Lock className={`h-4 w-4 mt-0.5 ${errors.password || !isPasswordValid ? "text-red-500" : "text-green-500"}`} />
+                    <p className={`text-sm font-medium ${errors.password || !isPasswordValid ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
+                      Your password needs to:
+                    </p>
+                  </div>
+                  <ul className="space-y-1.5">
+                    <li className="flex items-start gap-2">
+                      {passwordRequirements.hasBothCases ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <span className={`text-xs ${passwordRequirements.hasBothCases ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                        include both lower and upper case characters.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      {passwordRequirements.hasNumberOrSymbol ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <span className={`text-xs ${passwordRequirements.hasNumberOrSymbol ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                        include at least one number or symbol.
+                      </span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      {passwordRequirements.hasMinLength ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <span className={`text-xs ${passwordRequirements.hasMinLength ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                        be at least 8 characters long.
+                      </span>
+                    </li>
+                  </ul>
+                </div>
+              )}
+              
+              {errors.password && (
                 <p className="text-xs text-red-500 mt-1">{errors.password}</p>
-              ) : (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Must be at least 8 characters
-                </p>
               )}
             </div>
 

@@ -29,6 +29,10 @@ const signupSchema = z.object({
     .refine((password) => hasNumberOrSymbol(password), {
       message: "Password must include at least one number or symbol"
     }),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export default function Signup() {
@@ -39,10 +43,12 @@ export default function Signup() {
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
   });
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string }>({});
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const passwordRequirements = useMemo(() => {
     const password = formData.password;
@@ -50,8 +56,9 @@ export default function Signup() {
       hasBothCases: hasUpperCase(password) && hasLowerCase(password),
       hasNumberOrSymbol: hasNumberOrSymbol(password),
       hasMinLength: hasMinLength(password),
+      passwordsMatch: formData.password === formData.confirmPassword && formData.confirmPassword.length > 0,
     };
-  }, [formData.password]);
+  }, [formData.password, formData.confirmPassword]);
 
   const isPasswordValid = useMemo(() => {
     return Object.values(passwordRequirements).every(req => req === true);
@@ -82,7 +89,15 @@ export default function Signup() {
     if (e.target.name === 'password' && errors.password) {
       setErrors({ ...errors, password: undefined });
     }
+    if (e.target.name === 'confirmPassword' && errors.confirmPassword) {
+      setErrors({ ...errors, confirmPassword: undefined });
+    }
   };
+
+  const passwordsMatch = useMemo(() => {
+    if (!formData.confirmPassword) return true;
+    return formData.password === formData.confirmPassword;
+  }, [formData.password, formData.confirmPassword]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,12 +111,22 @@ export default function Signup() {
       });
       return;
     }
+
+    if (!passwordsMatch) {
+      setErrors({ ...errors, confirmPassword: "Passwords do not match" });
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors in the form",
+        variant: "destructive"
+      });
+      return;
+    }
     
     // Validate form data
     const validation = signupSchema.safeParse(formData);
     
     if (!validation.success) {
-      const fieldErrors: { name?: string; email?: string; password?: string } = {};
+      const fieldErrors: { name?: string; email?: string; password?: string; confirmPassword?: string } = {};
       validation.error.errors.forEach((err) => {
         if (err.path[0]) {
           fieldErrors[err.path[0] as keyof typeof fieldErrors] = err.message;
@@ -268,12 +293,42 @@ export default function Signup() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="text-xs text-red-500 mt-1">{errors.password}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  data-testid="input-signup-confirm-password"
+                  className={`pr-10 ${errors.confirmPassword || (formData.confirmPassword && !passwordsMatch) ? "border-red-500" : ""}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  data-testid="button-toggle-confirm-password-visibility"
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <p className="text-xs text-red-500 mt-1">{errors.confirmPassword}</p>
+              )}
               
-              {formData.password && (
-                <div className={`mt-2 p-3 rounded-md border-2 ${errors.password || !isPasswordValid ? "border-red-500 bg-red-50 dark:bg-red-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}`}>
+              {(formData.password || formData.confirmPassword) && (
+                <div className={`mt-2 p-3 rounded-md border-2 ${errors.password || errors.confirmPassword || !isPasswordValid ? "border-red-500 bg-red-50 dark:bg-red-950/20" : "border-green-500 bg-green-50 dark:bg-green-950/20"}`}>
                   <div className="flex items-start gap-2 mb-2">
-                    <Lock className={`h-4 w-4 mt-0.5 ${errors.password || !isPasswordValid ? "text-red-500" : "text-green-500"}`} />
-                    <p className={`text-sm font-medium ${errors.password || !isPasswordValid ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
+                    <Lock className={`h-4 w-4 mt-0.5 ${errors.password || errors.confirmPassword || !isPasswordValid ? "text-red-500" : "text-green-500"}`} />
+                    <p className={`text-sm font-medium ${errors.password || errors.confirmPassword || !isPasswordValid ? "text-red-700 dark:text-red-400" : "text-green-700 dark:text-green-400"}`}>
                       Your password needs to:
                     </p>
                   </div>
@@ -308,12 +363,18 @@ export default function Signup() {
                         be at least 8 characters long.
                       </span>
                     </li>
+                    <li className="flex items-start gap-2">
+                      {passwordRequirements.passwordsMatch ? (
+                        <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <X className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+                      )}
+                      <span className={`text-xs ${passwordRequirements.passwordsMatch ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
+                        match the password confirmation.
+                      </span>
+                    </li>
                   </ul>
                 </div>
-              )}
-              
-              {errors.password && (
-                <p className="text-xs text-red-500 mt-1">{errors.password}</p>
               )}
             </div>
 

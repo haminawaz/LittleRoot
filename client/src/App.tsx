@@ -10,6 +10,8 @@ import Home from "@/pages/home";
 import Landing from "@/pages/landing";
 import Signup from "@/pages/signup";
 import Signin from "@/pages/signin";
+import RecoverPassword from "@/pages/recover-password";
+import ResetPassword from "@/pages/reset-password";
 import Checkout from "@/pages/checkout";
 import Settings from "@/pages/settings";
 import Subscription from "@/pages/subscription";
@@ -77,6 +79,12 @@ function Router() {
       </Route>
       <Route path="/signin">
         {() => <Signin />}
+      </Route>
+      <Route path="/recover-password">
+        {() => <RecoverPassword />}
+      </Route>
+      <Route path="/reset-password">
+        {() => <ResetPassword />}
       </Route>
       <Route path="/checkout">
         {() => <Checkout />}

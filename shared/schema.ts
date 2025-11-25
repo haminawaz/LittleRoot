@@ -45,6 +45,8 @@ export const users = pgTable("users", {
   hasCommercialRights: boolean("has_commercial_rights").default(false),
   hasResellRights: boolean("has_resell_rights").default(false),
   hasAllFormattingOptions: boolean("has_all_formatting_options").default(false),
+  passwordResetToken: varchar("password_reset_token"),
+  passwordResetTokenExpires: timestamp("password_reset_token_expires"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

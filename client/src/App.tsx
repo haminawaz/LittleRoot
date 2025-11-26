@@ -20,6 +20,7 @@ import Settings from "@/pages/settings";
 import Subscription from "@/pages/subscription";
 import TemplateBooks from "@/pages/template-books";
 import Help from "@/pages/help";
+import FAQ from "@/pages/faq";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -112,6 +113,9 @@ function Router() {
       </Route>
       <Route path="/help">
         {() => <ProtectedRoute component={Help} />}
+      </Route>
+      <Route path="/faq">
+        {() => <ProtectedRoute component={FAQ} />}
       </Route>
       <Route>
         {() => <NotFound />}

@@ -242,6 +242,14 @@ export default function Home() {
                   Help
                 </button>
               </Link>
+              <Link href="/faq">
+                <button 
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
+                  data-testid="button-faq"
+                >
+                  FAQ
+                </button>
+              </Link>
             </nav>
             
             <div className="flex items-center space-x-3">

@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link, useLocation } from "wouter";
@@ -11,7 +10,6 @@ import { motion } from "framer-motion";
 
 export default function Help() {
   const [, setLocation] = useLocation();
-  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -156,28 +154,6 @@ export default function Help() {
     }
   ];
 
-  const faqs = [
-    {
-      question: "How many pages can my book have?",
-      answer: "Each book can have up to 24 pages with illustrations. This is perfect for children's books and provides enough space to tell engaging stories."
-    },
-    {
-      question: "Can I edit the text after generating illustrations?",
-      answer: "Yes! You can edit the text at any time. When you regenerate a page, it will use the updated text. This gives you complete flexibility to refine your story."
-    },
-    {
-      question: "What happens when I cancel my subscription?",
-      answer: "You'll retain access to all features until the end of your current billing period. After that, your subscription will not renew and you won't be charged again. You can resubscribe anytime."
-    },
-    {
-      question: "Can I use the books commercially?",
-      answer: "Hobbyist and Pro plans include commercial rights for publishing. Business plans also include full commercial rights for publishing & selling. Perfect for authors and entrepreneurs!"
-    },
-    {
-      question: "How does the 7-day trial work?",
-      answer: "Your trial starts when you sign up and lasts 7 days. You can create 1 book during this period. After 7 days, you'll need to upgrade to a paid plan to continue creating books."
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
@@ -211,6 +187,11 @@ export default function Help() {
               <button className="text-sm font-medium text-primary">
                 Help
               </button>
+              <Link href="/faq">
+                <button className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                  FAQ
+                </button>
+              </Link>
             </nav>
           </div>
         </div>
@@ -247,7 +228,7 @@ export default function Help() {
         </motion.div>
       </section>
 
-      <main className="max-w-6xl mx-auto px-6 pb-20">
+      <main className="max-w-6xl mx-auto px-6">
         {/* Getting Started */}
         <motion.section
           variants={containerVariants}
@@ -414,60 +395,6 @@ export default function Help() {
           </div>
         </motion.section>
 
-        {/* FAQ */}
-        <motion.section
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-        >
-          <motion.div variants={itemVariants} className="text-center mb-12">
-            <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-500/10 to-red-500/10 rounded-full px-4 py-2 mb-4">
-              <HelpCircle className="h-4 w-4 text-orange-600" />
-              <span className="text-sm font-medium text-orange-600">FAQ</span>
-            </div>
-            <h2 className="text-4xl font-serif font-bold mb-3">Frequently Asked Questions</h2>
-            <p className="text-lg text-muted-foreground">
-              Got questions? We've got answers
-            </p>
-          </motion.div>
-
-          <div className="max-w-3xl mx-auto space-y-4">
-            {faqs.map((faq, index) => (
-              <motion.div key={index} variants={itemVariants}>
-                <Card 
-                  className={`overflow-hidden cursor-pointer transition-all duration-300 ${
-                    expandedFaq === index ? 'border-primary shadow-lg shadow-primary/10' : 'hover:border-primary/50'
-                  }`}
-                  onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
-                >
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-semibold pr-4">{faq.question}</h3>
-                      <ChevronDown className={`h-5 w-5 text-primary flex-shrink-0 transition-transform duration-300 ${
-                        expandedFaq === index ? 'rotate-180' : ''
-                      }`} />
-                    </div>
-                    <motion.div
-                      initial={false}
-                      animate={{
-                        height: expandedFaq === index ? "auto" : 0,
-                        opacity: expandedFaq === index ? 1 : 0,
-                        marginTop: expandedFaq === index ? 16 : 0
-                      }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                      className="overflow-hidden"
-                    >
-                      <p className="text-muted-foreground leading-relaxed">
-                        {faq.answer}
-                      </p>
-                    </motion.div>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </motion.section>
       </main>
     </div>
   );

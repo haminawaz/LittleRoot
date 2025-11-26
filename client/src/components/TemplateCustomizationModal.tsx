@@ -32,7 +32,7 @@ export default function TemplateCustomizationModal({
   const [title, setTitle] = useState(template.title);
   const [content, setContent] = useState(template.content);
   const [artStyle, setArtStyle] = useState(template.artStyle);
-  const [pagesCount, setPagesCount] = useState("8");
+  const [pagesCount, setPagesCount] = useState("");
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
@@ -154,6 +154,15 @@ export default function TemplateCustomizationModal({
       toast({
         title: "Character Required",
         description: "Please provide either a character description or upload a character image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!pagesCount) {
+      toast({
+        title: "Pages Required",
+        description: "Please select the number of pages for your story.",
         variant: "destructive",
       });
       return;
@@ -359,10 +368,10 @@ export default function TemplateCustomizationModal({
 
             {/* Page Count */}
             <div>
-              <Label className="block text-sm font-medium mb-2">Pages per story</Label>
+              <Label className="block text-sm font-medium mb-2">Pages per story *</Label>
               <Select value={pagesCount} onValueChange={setPagesCount}>
                 <SelectTrigger data-testid="select-template-page-count">
-                  <SelectValue />
+                  <SelectValue placeholder="Select number of pages" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
                   {Array.from({ length: 17 }, (_, i) => i + 8).map(num => (

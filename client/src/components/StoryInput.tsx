@@ -19,7 +19,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [artStyle, setArtStyle] = useState("watercolor");
-  const [pagesCount, setPagesCount] = useState("12");
+  const [pagesCount, setPagesCount] = useState("");
   const [characterDescription, setCharacterDescription] = useState("");
   
   const { toast } = useToast();
@@ -147,6 +147,15 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
       return;
     }
 
+    if (!pagesCount) {
+      toast({
+        title: "Pages Required",
+        description: "Please select the number of pages for your story.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const targetPages = parseInt(pagesCount, 10);
 
     createStoryMutation.mutate({
@@ -227,11 +236,11 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
           <div className="space-y-3">
             <div>
               <Label className="block text-xs text-muted-foreground mb-1">
-                Pages per story
+                Pages per story *
               </Label>
               <Select value={pagesCount} onValueChange={setPagesCount} disabled={bookLimitReached}>
                 <SelectTrigger className={`w-full ${bookLimitReached ? "cursor-not-allowed" : ""}`} data-testid="select-pages-count">
-                  <SelectValue />
+                  <SelectValue placeholder="Select number of pages" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
                   {Array.from({ length: 17 }, (_, i) => i + 8).map(num => (

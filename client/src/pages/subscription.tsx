@@ -22,6 +22,7 @@ import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import { motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import Header from "@/components/Header";
 
 export default function Subscription() {
   const [, setLocation] = useLocation();
@@ -85,23 +86,15 @@ export default function Subscription() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
+      <Header />
+
+      <div className="bg-card border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/dashboard")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
             <h1 className="text-2xl font-bold">Manage Subscription</h1>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-6 py-8">

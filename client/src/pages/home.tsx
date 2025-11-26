@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocation, Link } from "wouter";
 import type { Story, StoryWithPages, UserWithSubscriptionInfo, Template } from "@shared/schema";
 import { SUBSCRIPTION_PLANS } from "@shared/schema";
+import Header from "@/components/Header";
 
 export default function Home() {
   const [location, setLocation] = useLocation();
@@ -26,10 +27,16 @@ export default function Home() {
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
 
-  // Read story ID from URL query params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const storyIdFromUrl = params.get('story');
+    const viewFromUrl = params.get('view');
+    
+    if (viewFromUrl === 'my-books') {
+      setViewMode("my-books");
+    } else if (viewFromUrl === 'create' || !viewFromUrl) {
+      setViewMode("create");
+    }
     
     if (storyIdFromUrl && storyIdFromUrl !== currentStoryId) {
       console.log('Story ID from URL:', storyIdFromUrl);
@@ -185,163 +192,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border">
-        <div className="max-w-screen-2xl mx-auto">
-          <div className="flex items-center justify-between h-16 px-6">
-            <button 
-              onClick={() => setViewMode("create")}
-              className="flex items-center space-x-4 hover:opacity-80 transition-opacity"
-              data-testid="button-home"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                <BookOpen size={20} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-serif font-bold">LittleRoot</h1>
-                <p className="text-xs text-muted-foreground">Children's Book Creator</p>
-              </div>
-            </button>
-            
-            <nav className="hidden md:flex items-center space-x-6">
-              <button 
-                onClick={() => setViewMode("create")}
-                className={`text-sm font-medium transition-colors ${
-                  viewMode === "create" 
-                    ? "text-primary" 
-                    : "text-foreground hover:text-primary"
-                }`}
-                data-testid="button-nav-home"
-              >
-                Home
-              </button>
-              <button 
-                onClick={() => setViewMode("my-books")}
-                className={`text-sm font-medium transition-colors ${
-                  viewMode === "my-books" 
-                    ? "text-primary" 
-                    : "text-foreground hover:text-primary"
-                }`}
-                data-testid="button-my-books"
-              >
-                My Books
-              </button>
-              <Link href="/dashboard/template-books">
-                <button 
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                  data-testid="button-templates"
-                >
-                  Templates
-                </button>
-              </Link>
-              <Link href="/help">
-                <button 
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                  data-testid="button-help"
-                >
-                  Help
-                </button>
-              </Link>
-              <Link href="/faq">
-                <button 
-                  className="text-sm font-medium text-foreground hover:text-primary transition-colors"
-                  data-testid="button-faq"
-                >
-                  FAQ
-                </button>
-              </Link>
-            </nav>
-            
-            <div className="flex items-center space-x-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full p-0" data-testid="button-user-avatar">
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-primary-foreground text-sm font-medium">
-                        {userLoading ? 'U' : (
-                          userWithSubscription?.firstName?.charAt(0)?.toUpperCase() || 
-                          userWithSubscription?.email?.charAt(0)?.toUpperCase() || 
-                          'U'
-                        )}
-                      </span>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-64" align="end" forceMount data-testid="dropdown-user-menu">
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      {userLoading ? (
-                        <>
-                          <div className="h-4 bg-muted rounded animate-pulse" />
-                          <div className="h-3 bg-muted rounded animate-pulse w-3/4" />
-                        </>
-                      ) : userWithSubscription ? (
-                        <>
-                          <p className="text-sm font-medium leading-none" data-testid="text-user-name">
-                            {userWithSubscription.firstName && userWithSubscription.lastName 
-                              ? `${userWithSubscription.firstName} ${userWithSubscription.lastName}`
-                              : userWithSubscription.firstName || "User"}
-                          </p>
-                          <p className="text-xs leading-none text-muted-foreground" data-testid="text-user-email">
-                            {userWithSubscription.email || ""}
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-sm font-medium leading-none">User</p>
-                          <p className="text-xs leading-none text-muted-foreground">Loading...</p>
-                        </>
-                      )}
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="p-2">
-                    <div className="flex items-center space-x-2" data-testid="text-account-type">
-                      <Crown className="h-4 w-4" />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">Account Type</span>
-                        <span className="text-xs text-muted-foreground">
-                          {userLoading ? (
-                            <div className="h-3 bg-muted rounded animate-pulse w-20" />
-                          ) : userWithSubscription?.subscriptionPlan ? (
-                            SUBSCRIPTION_PLANS[userWithSubscription.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS]?.name || 'Free Trial'
-                          ) : 'Loading...'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setLocation('/subscription')}
-                    className="cursor-pointer"
-                    data-testid="link-manage-subscription"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Manage Subscription
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setLocation('/settings')}
-                    className="cursor-pointer"
-                    data-testid="link-settings"
-                  >
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => logoutMutation.mutate()}
-                    className="cursor-pointer"
-                    data-testid="button-logout"
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header
+        onHomeClick={() => setViewMode("create")}
+        onMyBooksClick={() => setViewMode("my-books")}
+        viewMode={viewMode}
+      />
 
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Sidebar - only show in create mode */}

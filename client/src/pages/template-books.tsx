@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import Header from "@/components/Header";
 
 export default function TemplateBooks() {
   const [location, setLocation] = useLocation();
@@ -116,17 +117,12 @@ export default function TemplateBooks() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
+      <Header />
+
+      <div className="bg-card border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href="/dashboard">
-                <Button variant="ghost" size="sm" data-testid="button-back-to-dashboard">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Dashboard
-                </Button>
-              </Link>
               <div>
                 <h1 className="text-2xl font-serif font-bold">Story Templates</h1>
                 <p className="text-sm text-muted-foreground">
@@ -145,7 +141,7 @@ export default function TemplateBooks() {
             </Button>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Free Trial Lock Notice */}
       {isFreeTrial && !canUseTemplates && (

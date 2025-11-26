@@ -7,6 +7,7 @@ import {
   Zap, Shield, TrendingUp, Users
 } from "lucide-react";
 import { motion } from "framer-motion";
+import Header from "@/components/Header";
 
 export default function Help() {
   const [, setLocation] = useLocation();
@@ -157,45 +158,7 @@ export default function Help() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      {/* Header */}
-      <header className="bg-card/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
-        <div className="max-w-screen-2xl mx-auto">
-          <div className="flex items-center justify-between h-16 px-6">
-            <Link href="/dashboard">
-              <button className="flex items-center space-x-4 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-                  <BookOpen size={20} className="text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-serif font-bold">LittleRoot</h1>
-                  <p className="text-xs text-muted-foreground">Children's Book Creator</p>
-                </div>
-              </button>
-            </Link>
-
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link href="/dashboard">
-                <button className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                  Home
-                </button>
-              </Link>
-              <Link href="/dashboard/template-books">
-                <button className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                  Templates
-                </button>
-              </Link>
-              <button className="text-sm font-medium text-primary">
-                Help
-              </button>
-              <Link href="/faq">
-                <button className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                  FAQ
-                </button>
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-6">

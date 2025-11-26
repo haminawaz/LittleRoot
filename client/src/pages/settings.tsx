@@ -20,6 +20,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { ArrowLeft, Save, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { UserWithSubscriptionInfo } from "@shared/schema";
+import Header from "@/components/Header";
 
 export default function Settings() {
   const [, setLocation] = useLocation();
@@ -164,23 +165,15 @@ export default function Settings() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-10">
+      <Header />
+
+      <div className="bg-card border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setLocation("/dashboard")}
-              data-testid="button-back"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
             <h1 className="text-2xl font-bold">Settings</h1>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">

@@ -47,6 +47,9 @@ export const users = pgTable("users", {
   hasAllFormattingOptions: boolean("has_all_formatting_options").default(false),
   passwordResetToken: varchar("password_reset_token"),
   passwordResetTokenExpires: timestamp("password_reset_token_expires"),
+  emailVerified: boolean("email_verified").default(false),
+  emailVerificationToken: varchar("email_verification_token"),
+  emailVerificationTokenExpires: timestamp("email_verification_token_expires"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

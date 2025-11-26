@@ -41,6 +41,7 @@ export default function RecoverPassword() {
       }
 
       setEmailSent(true);
+      setIsLoading(false);
       toast({
         title: "Email sent",
         description: "If an account exists with this email, you will receive password reset instructions.",

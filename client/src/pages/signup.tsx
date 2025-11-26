@@ -180,6 +180,15 @@ export default function Signup() {
         // Clear localStorage
         localStorage.removeItem('selectedPlan');
 
+        if (data.requiresVerification) {
+          toast({
+            title: "Registration Successful!",
+            description: "Please check your email to verify your account before logging in.",
+          });
+          setLocation('/verify-email-sent');
+          return;
+        }
+
         toast({
           title: "Welcome to LittleRoot!",
           description: "Your 7-day free trial has started.",

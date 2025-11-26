@@ -13,6 +13,8 @@ import Signup from "@/pages/signup";
 import Signin from "@/pages/signin";
 import RecoverPassword from "@/pages/recover-password";
 import ResetPassword from "@/pages/reset-password";
+import VerifyEmail from "@/pages/verify-email";
+import VerifyEmailSent from "@/pages/verify-email-sent";
 import Checkout from "@/pages/checkout";
 import Settings from "@/pages/settings";
 import Subscription from "@/pages/subscription";
@@ -86,6 +88,12 @@ function Router() {
       </Route>
       <Route path="/reset-password">
         {() => <ResetPassword />}
+      </Route>
+      <Route path="/verify-email">
+        {() => <VerifyEmail />}
+      </Route>
+      <Route path="/verify-email-sent">
+        {() => <VerifyEmailSent />}
       </Route>
       <Route path="/checkout">
         {() => <Checkout />}

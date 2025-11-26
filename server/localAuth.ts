@@ -30,6 +30,10 @@ export function setupLocalAuth() {
             return done(null, false, { message: "Incorrect password. Please try again." });
           }
 
+          if (!user.emailVerified) {
+            return done(null, false, { message: "Please verify your email address before logging in. Check your inbox for the verification email." });
+          }
+
           // Return user in same format as Replit Auth for consistency
           return done(null, { claims: { sub: user.id, email: user.email } });
         } catch (error) {

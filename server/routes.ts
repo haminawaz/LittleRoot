@@ -13,7 +13,7 @@ import { getImageDimensionsForFormat } from "./pdfGenerator";
 import { addTextOverlay } from "./imageUtils";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, comparePassword } from "./localAuth";
-import { sendEmail, generatePasswordResetEmail } from "./emailService";
+import { sendEmail, generatePasswordResetEmail, generateVerificationEmail, generateWelcomeEmail } from "./emailService";
 import { randomBytes } from "crypto";
 import path from "path";
 import fs from "fs";
@@ -160,8 +160,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
+      let isUpdatingExistingUser = false;
+      
       if (existingUser) {
-        return res.status(400).json({ message: "User already exists with this email" });
+        if (existingUser.emailVerified) {
+          return res.status(400).json({ message: "User already exists with this email" });
+        }
+
+        if (existingUser.emailVerificationTokenExpires) {
+          const now = new Date();
+          const tokenExpires = new Date(existingUser.emailVerificationTokenExpires);
+          
+          if (tokenExpires > now) {
+            return res.status(400).json({ 
+              message: "This email is already in use. Please use a different email address." 
+            });
+          }
+        }
+        isUpdatingExistingUser = true;
       }
 
       // Hash password
@@ -200,8 +216,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userData.trialEndsAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days trial
       }
 
-      // Create user
-      const user = await storage.upsertUser(userData);
+      const verificationToken = randomBytes(32).toString('hex');
+      const verificationTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      userData.emailVerified = false;
+      userData.emailVerificationToken = verificationToken;
+      userData.emailVerificationTokenExpires = verificationTokenExpires;
+
+      let user;
+      if (isUpdatingExistingUser && existingUser) {
+        const { email, ...updateData } = userData;
+        user = await storage.updateUserSubscription(existingUser.id, updateData);
+        if (!user) {
+          return res.status(500).json({ message: "Failed to update user" });
+        }
+      } else {
+        user = await storage.upsertUser(userData);
+      }
 
       // If payment method provided, create Stripe subscription
       if (paymentMethodId && stripe) {
@@ -260,12 +290,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Log in the user automatically (same format as Replit Auth)
-      req.login({ claims: { sub: user.id, email: user.email } }, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Registration successful but login failed" });
-        }
-        res.json({ success: true, user: { id: user.id, email: user.email } });
+      // Send verification email
+      const baseUrl = process.env.FRONTEND_URL || req.protocol + '://' + req.get('host');
+      const verificationUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
+      const emailContent = generateVerificationEmail(verificationUrl, user.firstName || undefined);
+      
+      try {
+        await sendEmail({
+          to: user.email!,
+          subject: emailContent.subject,
+          html: emailContent.html,
+          text: emailContent.text,
+        });
+        console.log(`Verification email sent successfully to ${user.email}`);
+      } catch (emailError: any) {
+        console.error("Error sending verification email:", emailError);
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Registration successful! Please check your email to verify your account.",
+        requiresVerification: true,
+        user: { id: user.id, email: user.email } 
       });
     } catch (error) {
       console.error("Error registering user:", error);
@@ -289,6 +335,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, user });
       });
     })(req, res, next);
+  });
+
+  app.get('/api/auth/verify-email', async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Verification token is required" });
+      }
+
+      const userResults = await db.select().from(users).where(
+        and(
+          eq(users.emailVerificationToken, token),
+          gte(users.emailVerificationTokenExpires, new Date())
+        )
+      );
+
+      if (userResults.length === 0) {
+        return res.status(400).json({ message: "Invalid or expired verification token" });
+      }
+
+      const user = userResults[0];
+
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "Email has already been verified" });
+      }
+
+      const plan = SUBSCRIPTION_PLANS[user.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.trial;
+      const planName = plan.name;
+
+      await storage.updateUserSubscription(user.id, {
+        emailVerified: true,
+        emailVerificationToken: null,
+        emailVerificationTokenExpires: null,
+      });
+
+      const welcomeEmailContent = generateWelcomeEmail(user.firstName || undefined, planName);
+      try {
+        await sendEmail({
+          to: user.email!,
+          subject: welcomeEmailContent.subject,
+          html: welcomeEmailContent.html,
+          text: welcomeEmailContent.text,
+        });
+        console.log(`Welcome email sent successfully to ${user.email}`);
+      } catch (emailError: any) {
+        console.error("Error sending welcome email:", emailError);
+      }
+
+      res.json({ success: true, message: "Email verified successfully! Welcome to LittleRoot!" });
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      res.status(500).json({ message: "Failed to verify email" });
+    }
   });
 
   // Update profile (first name, last name)

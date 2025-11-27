@@ -266,7 +266,7 @@ export default function TemplateCustomizationModal({
                 <Textarea
                   id="characterDescription"
                   placeholder="Describe your main character... (e.g., 'A brave little bunny with fluffy white fur, big brown eyes, and a red scarf')"
-                  rows={3}
+                  rows={4}
                   value={characterDescription}
                   onChange={(e) => setCharacterDescription(e.target.value)}
                   className="resize-none"

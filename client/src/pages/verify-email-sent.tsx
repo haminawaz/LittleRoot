@@ -1,7 +1,13 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Mail, ArrowLeft } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 
 export default function VerifyEmailSent() {
   const [, setLocation] = useLocation();
@@ -12,7 +18,9 @@ export default function VerifyEmailSent() {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LittleRoot</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              LittleRoot
+            </h1>
           </div>
           <div className="flex justify-center mb-4">
             <div className="p-4 bg-purple-100 dark:bg-purple-900/30 rounded-full">
@@ -37,12 +45,13 @@ export default function VerifyEmailSent() {
           </div>
 
           <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-            Didn't receive the email? Check your spam folder or contact support if you continue to have issues.
+            Didn't receive the email? Check your spam folder or contact support
+            if you continue to have issues.
           </p>
 
           <div className="space-y-2">
             <Button
-              onClick={() => setLocation('/signin')}
+              onClick={() => setLocation("/signin")}
               className="w-full"
               variant="outline"
               data-testid="button-go-to-signin"
@@ -56,4 +65,3 @@ export default function VerifyEmailSent() {
     </div>
   );
 }
-

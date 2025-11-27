@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { BookOpen, Eye, EyeOff, Check, X, Lock, ArrowLeft } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 const hasUpperCase = (password: string) => /[A-Z]/.test(password);

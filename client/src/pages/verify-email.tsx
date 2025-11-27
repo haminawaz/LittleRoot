@@ -1,8 +1,14 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BookOpen, CheckCircle, XCircle, ArrowLeft } from "lucide-react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 
 export default function VerifyEmail() {
@@ -38,7 +44,8 @@ export default function VerifyEmail() {
           setIsVerified(true);
           toast({
             title: "Email Verified!",
-            description: "Your email has been verified successfully. Welcome to LittleRoot!",
+            description:
+              "Your email has been verified successfully. Welcome to LittleRoot!",
           });
         } else {
           setError(data.message || "Failed to verify email");
@@ -84,7 +91,9 @@ export default function VerifyEmail() {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LittleRoot</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              LittleRoot
+            </h1>
           </div>
           {isVerified ? (
             <>
@@ -95,7 +104,8 @@ export default function VerifyEmail() {
               </div>
               <CardTitle className="text-2xl">Email Verified!</CardTitle>
               <CardDescription>
-                Your email has been successfully verified. You can now sign in to your account.
+                Your email has been successfully verified. You can now sign in
+                to your account.
               </CardDescription>
             </>
           ) : (
@@ -117,11 +127,12 @@ export default function VerifyEmail() {
             <div className="space-y-4">
               <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-md">
                 <p className="text-sm text-green-800 dark:text-green-200">
-                  🎉 Welcome to LittleRoot! Your account is now active. You can start creating beautiful children's books right away!
+                  🎉 Welcome to LittleRoot! Your account is now active. You can
+                  start creating beautiful children's books right away!
                 </p>
               </div>
               <Button
-                onClick={() => setLocation('/signin')}
+                onClick={() => setLocation("/signin")}
                 className="w-full"
                 data-testid="button-go-to-signin"
               >
@@ -132,11 +143,12 @@ export default function VerifyEmail() {
             <div className="space-y-4">
               <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-md">
                 <p className="text-sm text-red-800 dark:text-red-200">
-                  {error || "The verification link is invalid or has expired. Please request a new verification email."}
+                  {error ||
+                    "The verification link is invalid or has expired. Please request a new verification email."}
                 </p>
               </div>
               <Button
-                onClick={() => setLocation('/signin')}
+                onClick={() => setLocation("/signin")}
                 className="w-full"
                 variant="outline"
                 data-testid="button-back-to-signin"
@@ -151,4 +163,3 @@ export default function VerifyEmail() {
     </div>
   );
 }
-

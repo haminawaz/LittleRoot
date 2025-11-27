@@ -1,20 +1,15 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { BookOpen, Download, Eye, Moon, LogOut, User, AlertCircle, Crown, ChevronDown, CreditCard, Settings as SettingsIcon, BookmarkPlus, Lock } from "lucide-react";
+import { BookOpen, Download, Eye, BookmarkPlus, Lock } from "lucide-react";
 import StoryInput from "@/components/StoryInput";
 import PageGrid from "@/components/PageGrid";
 import BookPreviewModal from "@/components/BookPreviewModal";
 import { exportToPDF } from "@/lib/pdfExport";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { useAuth } from "@/hooks/useAuth";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import type { Story, StoryWithPages, UserWithSubscriptionInfo, Template } from "@shared/schema";
-import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import Header from "@/components/Header";
 
 export default function Home() {
@@ -25,7 +20,6 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"create" | "my-books">("create");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { user: authUser } = useAuth();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

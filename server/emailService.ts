@@ -9,17 +9,13 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions): Promise<void> {
   if (!process.env.GMAIL_USER || !process.env.GMAIL_PASSWORD) {
-    console.error('Email service not configured. Missing GMAIL_USER or GMAIL_PASSWORD environment variables.');
-    console.log('='.repeat(50));
-    console.log('EMAIL WOULD BE SENT (but email service not configured):');
-    console.log('To:', options.to);
-    console.log('Subject:', options.subject);
-    console.log('HTML Content:', options.html);
-    if (options.text) {
-      console.log('Text Content:', options.text);
-    }
-    console.log('='.repeat(50));
-    throw new Error('Email service not configured. Please set GMAIL_USER and GMAIL_PASSWORD environment variables.');
+    console.error(
+      "Email service not configured. Missing GMAIL_USER or GMAIL_PASSWORD environment variables."
+    );
+    console.log("EMAIL WOULD BE SENT (but email service not configured):");
+    throw new Error(
+      "Email service not configured. Please set GMAIL_USER and GMAIL_PASSWORD environment variables."
+    );
   }
 
   try {
@@ -39,13 +35,13 @@ export async function sendEmail(options: EmailOptions): Promise<void> {
       text: options.text,
     });
 
-    console.log('Email sent successfully:', {
+    console.log("Email sent successfully:", {
       messageId: info.messageId,
       to: options.to,
       subject: options.subject,
     });
   } catch (error: any) {
-    console.error('Error sending email:', error);
+    console.error("Error sending email:", error);
     throw new Error(`Failed to send email: ${error.message}`);
   }
 }
@@ -97,7 +93,10 @@ This link will expire in 1 hour. If you didn't request a password reset, you can
   return { subject, html, text };
 }
 
-export function generateVerificationEmail(verificationUrl: string, firstName?: string): {
+export function generateVerificationEmail(
+  verificationUrl: string,
+  firstName?: string
+): {
   subject: string;
   html: string;
   text: string;
@@ -148,14 +147,19 @@ This verification link will expire in 24 hours. If you didn't create an account 
   return { subject, html, text };
 }
 
-export function generateWelcomeEmail(firstName?: string, planName?: string): {
+export function generateWelcomeEmail(
+  firstName?: string,
+  planName?: string
+): {
   subject: string;
   html: string;
   text: string;
 } {
   const subject = "Welcome to LittleRoot - Let's Create Something Amazing!";
   const greeting = firstName ? `Hi ${firstName},` : "Hi there,";
-  const planInfo = planName ? `You're currently on the <strong>${planName}</strong> plan.` : "You're currently on the <strong>Free Trial</strong> plan.";
+  const planInfo = planName
+    ? `You're currently on the <strong>${planName}</strong> plan.`
+    : "You're currently on the <strong>Free Trial</strong> plan.";
   const html = `
     <!DOCTYPE html>
     <html>
@@ -172,7 +176,7 @@ export function generateWelcomeEmail(firstName?: string, planName?: string): {
         <h2 style="color: #1f2937; margin-top: 0;">Welcome to LittleRoot! 🎉</h2>
         <p>${greeting}</p>
         <p>We're thrilled to have you join our community of storytellers and creators! Your account has been successfully verified, and you're all set to start creating beautiful children's books.</p>
-        
+
         <div style="background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #9333ea;">
           <h3 style="color: #9333ea; margin-top: 0;">What You Can Do Now:</h3>
           <ul style="color: #4b5563; padding-left: 20px;">
@@ -184,9 +188,11 @@ export function generateWelcomeEmail(firstName?: string, planName?: string): {
         </div>
 
         <p>${planInfo}</p>
-        
+
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL || 'https://littleroot.com'}/dashboard" style="background: #9333ea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Start Creating</a>
+          <a href="${
+            process.env.FRONTEND_URL || "https://littleroot.com"
+          }/dashboard" style="background: #9333ea; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">Start Creating</a>
         </div>
 
         <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0;">
@@ -194,7 +200,7 @@ export function generateWelcomeEmail(firstName?: string, planName?: string): {
         </div>
 
         <p style="color: #6b7280; font-size: 14px;">If you have any questions or need help getting started, don't hesitate to reach out to our support team. We're here to help!</p>
-        
+
         <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
         <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">© ${new Date().getFullYear()} LittleRoot. All rights reserved.</p>
       </div>
@@ -216,7 +222,9 @@ What You Can Do Now:
 
 ${planInfo}
 
-Start creating: ${process.env.FRONTEND_URL || 'https://littleroot.com'}/dashboard
+Start creating: ${
+    process.env.FRONTEND_URL || "https://littleroot.com"
+  }/dashboard
 
 💡 Pro Tip: Check out our template books to get inspired, or start with your own story. The possibilities are endless!
 
@@ -226,4 +234,3 @@ If you have any questions or need help getting started, don't hesitate to reach 
   `;
   return { subject, html, text };
 }
-

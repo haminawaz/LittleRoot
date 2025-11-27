@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { StoryWithPages, Page } from "@shared/schema";
+import DeleteModal from "@/components/DeleteModal";
 
 interface PageGridProps {
   story: StoryWithPages;
@@ -16,6 +17,8 @@ export default function PageGrid({ story }: PageGridProps) {
   const queryClient = useQueryClient();
   const [splitMode, setSplitMode] = useState<string | null>(null);
   const [splitIndex, setSplitIndex] = useState<number>(0);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [pageToDelete, setPageToDelete] = useState<string | null>(null);
   
   // Track current text for each page (for live regeneration)
   const [pageTexts, setPageTexts] = useState<Record<string, string>>(() => {
@@ -233,14 +236,20 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleDeletePage = (pageId: string) => {
-    if (confirm("Are you sure you want to delete this page?")) {
-      deletePageMutation.mutate(pageId);
+    setPageToDelete(pageId);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (pageToDelete) {
+      deletePageMutation.mutate(pageToDelete);
       // Remove from local state
       setPageTexts(prev => {
         const newTexts = { ...prev };
-        delete newTexts[pageId];
+        delete newTexts[pageToDelete];
         return newTexts;
       });
+      setPageToDelete(null);
     }
   };
 
@@ -500,6 +509,20 @@ export default function PageGrid({ story }: PageGridProps) {
         </div>
       </div>
 
+      <DeleteModal
+        open={deleteModalOpen}
+        onOpenChange={(open) => {
+          setDeleteModalOpen(open);
+          if (!open) {
+            setPageToDelete(null);
+          }
+        }}
+        message="Are you sure you want to delete this page? This action cannot be undone."
+        onConfirm={handleConfirmDelete}
+        title="Delete Page"
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
     </div>
   );
 }

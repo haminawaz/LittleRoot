@@ -173,7 +173,6 @@ export default function Subscription() {
                 </div>
 
                 {/* Plan Features Section - Professional Redesign */}
-                {!isTrial && (
                   <div className="pt-6 border-t border-border space-y-6">
                     <div className="flex items-center gap-2">
                       <Sparkles className="h-5 w-5 text-purple-600" />
@@ -224,7 +223,7 @@ export default function Subscription() {
                           <div className="flex-1">
                             <p className="text-sm font-medium text-muted-foreground">Bonus Variations</p>
                             <p className="text-2xl font-bold">
-                              {user?.bonusVariationsRemaining || 0}
+                              {user?.bonusVariationsUsed || 0}
                               <span className="text-sm text-muted-foreground font-normal"> / {user?.bonusVariationsLimit || 0}</span>
                             </p>
                           </div>
@@ -321,7 +320,6 @@ export default function Subscription() {
                       )}
                     </div>
                   </div>
-                )}
 
                 {!isTrial && (
                   <div className="pt-4 border-t border-border space-y-4">

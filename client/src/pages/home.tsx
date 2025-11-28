@@ -192,42 +192,42 @@ export default function Home() {
         viewMode={viewMode}
       />
 
-      <div className="flex h-[calc(100vh-4rem)]">
+      <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
         {/* Sidebar - only show in create mode */}
         {viewMode === "create" && (
-          <aside className="w-80 bg-card border-r border-border flex flex-col">
-            <div className="p-6 border-b border-border">
-              <h2 className="text-lg font-serif font-semibold mb-4">Create Your Story</h2>
+          <aside className="w-full lg:w-80 bg-card border-r border-border flex flex-col order-2 lg:order-1">
+            <div className="p-4 sm:p-6 border-b border-border">
+              <h2 className="text-base sm:text-lg font-serif font-semibold mb-3 sm:mb-4">Create Your Story</h2>
             
               {/* Progress Steps */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full ${getStepStatus(1)} flex items-center justify-center text-white text-sm font-medium`}>
+              <div className="space-y-2 sm:space-y-3">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(1)} flex items-center justify-center text-white text-xs sm:text-sm font-medium`}>
                     1
                   </div>
-                  <span className="text-sm font-medium">Story Input</span>
+                  <span className="text-xs sm:text-sm font-medium">Story Input</span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full ${getStepStatus(2)} flex items-center justify-center text-sm font-medium ${getStepStatus(2) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(2)} flex items-center justify-center text-xs sm:text-sm font-medium ${getStepStatus(2) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
                     2
                   </div>
-                  <span className={`text-sm ${getStepStatus(2) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
+                  <span className={`text-xs sm:text-sm ${getStepStatus(2) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
                     Page Splitting
                   </span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full ${getStepStatus(3)} flex items-center justify-center text-sm font-medium ${getStepStatus(3) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(3)} flex items-center justify-center text-xs sm:text-sm font-medium ${getStepStatus(3) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
                     3
                   </div>
-                  <span className={`text-sm ${getStepStatus(3) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
+                  <span className={`text-xs sm:text-sm ${getStepStatus(3) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
                     AI Illustration
                   </span>
                 </div>
-                <div className="flex items-center space-x-3">
-                  <div className={`w-8 h-8 rounded-full ${getStepStatus(4)} flex items-center justify-center text-sm font-medium ${getStepStatus(4) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(4)} flex items-center justify-center text-xs sm:text-sm font-medium ${getStepStatus(4) === 'step-pending' ? 'text-muted-foreground' : 'text-white'}`}>
                     4
                   </div>
-                  <span className={`text-sm ${getStepStatus(4) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
+                  <span className={`text-xs sm:text-sm ${getStepStatus(4) === 'step-pending' ? 'text-muted-foreground' : 'font-medium'}`}>
                     Review & Export
                   </span>
                 </div>
@@ -243,20 +243,20 @@ export default function Home() {
         )}
 
         {/* Main Workspace */}
-        <main className="flex-1 flex flex-col">
+        <main className="flex-1 flex flex-col order-1 lg:order-2 min-w-0">
           {viewMode === "create" && (
             <>
               {/* Workspace Header */}
-              <div className="bg-card border-b border-border p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-serif font-semibold" data-testid="text-story-title">
+              <div className="bg-card border-b border-border p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-base sm:text-lg font-serif font-semibold truncate" data-testid="text-story-title">
                       {story?.title || "Your Story Title"}
                     </h2>
-                    <p className="flex items-center text-sm text-muted-foreground gap-2">
-                      <span data-testid="text-page-count">{story?.pages?.length || 0}</span>pages 
+                    <p className="flex flex-wrap items-center text-xs sm:text-sm text-muted-foreground gap-1.5 sm:gap-2">
+                      <span data-testid="text-page-count">{story?.pages?.length || 0} pages</span>
                       <span>•</span>
-                      <span data-testid="text-word-count">{story?.content?.split(' ').length || 0}</span>words
+                      <span data-testid="text-word-count">{story?.content?.split(' ').length || 0} words</span>
                       <span>•</span>
                       <span className={`${
                         story?.status === 'error' ? 'text-destructive' : 'text-chart-2'
@@ -267,16 +267,17 @@ export default function Home() {
                       </span>
                     </p>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => setShowPreview(true)}
                       disabled={!story || story.pages.length === 0}
                       data-testid="button-preview"
+                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
                     >
                       <Eye size={14} className="mr-1" />
-                      Preview
+                      <span className="hidden sm:inline">Preview</span>
                     </Button>
                     <Button 
                       variant="outline"
@@ -295,6 +296,7 @@ export default function Home() {
                         isAlreadySavedAsTemplate ? "This story is already saved as a template" : 
                         "Save this story as a template"
                       }
+                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
                     >
                       {saveAsTemplateMutation.isPending ? (
                         <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
@@ -303,23 +305,26 @@ export default function Home() {
                       ) : (
                         <BookmarkPlus size={14} className="mr-1" />
                       )}
-                      {saveAsTemplateMutation.isPending ? 'Saving...' : 
-                       templateQuotaFull ? 'Upgrade to Save More' :
-                       isAlreadySavedAsTemplate ? 'Already Saved' : 
-                       'Save as Template'}
+                      <span className="hidden sm:inline">
+                        {saveAsTemplateMutation.isPending ? 'Saving...' : 
+                         templateQuotaFull ? 'Upgrade to Save More' :
+                         isAlreadySavedAsTemplate ? 'Already Saved' : 
+                         'Save as Template'}
+                      </span>
                     </Button>
                     <Button 
                       size="sm"
                       onClick={handleExportPDF}
                       disabled={!story || story.pages.length === 0 || isExporting}
                       data-testid="button-export"
+                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
                     >
                       {isExporting ? (
                         <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
                       ) : (
                         <Download size={14} className="mr-1" />
                       )}
-                      {isExporting ? 'Exporting...' : 'Export PDF'}
+                      <span className="hidden sm:inline">{isExporting ? 'Exporting...' : 'Export PDF'}</span>
                     </Button>
                   </div>
                 </div>
@@ -327,22 +332,22 @@ export default function Home() {
               
               {/* Error Banner */}
               {story?.status === 'error' && (
-                <div className="bg-destructive/10 border-l-4 border-destructive px-4 py-3 mx-6 mt-4 rounded-r-md">
-                  <div className="flex items-center">
+                <div className="bg-destructive/10 border-l-4 border-destructive px-3 sm:px-4 py-2 sm:py-3 mx-3 sm:mx-6 mt-3 sm:mt-4 rounded-r-md">
+                  <div className="flex items-start">
                     <div className="flex-shrink-0">
-                      <svg className="h-5 w-5 text-destructive" viewBox="0 0 20 20" fill="currentColor">
+                      <svg className="h-4 w-4 sm:h-5 sm:w-5 text-destructive mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                       </svg>
                     </div>
-                    <div className="ml-3">
-                      <h3 className="text-sm font-medium text-destructive">
+                    <div className="ml-2 sm:ml-3 min-w-0 flex-1">
+                      <h3 className="text-xs sm:text-sm font-medium text-destructive">
                         Image Generation Failed
                       </h3>
-                      <div className="mt-2 text-sm text-destructive/80">
+                      <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-destructive/80">
                         <p>
                           The AI illustration process encountered an error. This could be due to:
                         </p>
-                        <ul className="mt-1 list-disc list-inside">
+                        <ul className="mt-1 list-disc list-inside space-y-0.5">
                           <li>API quota exceeded - Please wait and try again later</li>
                           <li>Request timeout - Try with a shorter story or simpler requirements</li>
                           <li>Temporary service issues - Please retry in a few moments</li>
@@ -357,22 +362,22 @@ export default function Home() {
               )}
               
               {/* Book Pages */}
-              <div className="flex-1 p-6 overflow-y-auto">
+              <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Loading story...</p>
+                      <p className="text-sm sm:text-base text-muted-foreground">Loading story...</p>
                     </div>
                   </div>
                 ) : story ? (
                   <PageGrid story={story} />
                 ) : (
                   <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                      <BookOpen size={48} className="text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-medium text-muted-foreground mb-2">Ready to Create?</p>
-                      <p className="text-sm text-muted-foreground">
+                    <div className="text-center px-4">
+                      <BookOpen size={40} className="sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-base sm:text-lg font-medium text-muted-foreground mb-2">Ready to Create?</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         Enter your story details in the sidebar to get started.
                       </p>
                     </div>
@@ -385,11 +390,11 @@ export default function Home() {
           {viewMode === "my-books" && (
             <>
               {/* My Books Header */}
-              <div className="bg-card border-b border-border p-4">
-                <div className="flex items-center justify-between">
+              <div className="bg-card border-b border-border p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                   <div>
-                    <h2 className="text-lg font-serif font-semibold">My Books</h2>
-                    <p className="text-sm text-muted-foreground">
+                    <h2 className="text-base sm:text-lg font-serif font-semibold">My Books</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
                       {allStories?.length || 0} saved stories
                     </p>
                   </div>
@@ -398,6 +403,7 @@ export default function Home() {
                     size="sm"
                     onClick={() => setViewMode("create")}
                     data-testid="button-create-new"
+                    className="w-full sm:w-auto text-xs sm:text-sm"
                   >
                     Create New Story
                   </Button>
@@ -405,21 +411,21 @@ export default function Home() {
               </div>
               
               {/* Saved Stories List */}
-              <div className="flex-1 p-6 overflow-y-auto">
+              <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-y-auto">
                 {isLoadingStories ? (
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-muted-foreground">Loading stories...</p>
+                      <p className="text-sm sm:text-base text-muted-foreground">Loading stories...</p>
                     </div>
                   </div>
                 ) : allStories?.length ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                     {allStories.map((savedStory) => {
                       return (
                         <div 
                           key={savedStory.id} 
-                          className="bg-card rounded-lg border border-border p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                          className="bg-card rounded-lg border border-border p-3 sm:p-4 hover:shadow-lg transition-shadow cursor-pointer"
                           onClick={() => {
                             // Update URL with story ID
                             window.history.pushState({}, '', `/dashboard?story=${savedStory.id}`);
@@ -429,14 +435,14 @@ export default function Home() {
                           data-testid={`card-story-${savedStory.id}`}
                         >
                           <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-lg">{savedStory.title}</h3>
+                            <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-2">{savedStory.title}</h3>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+                          <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
                             {savedStory.content.substring(0, 100)}...
                           </p>
-                          <div className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{savedStory.artStyle}</span>
-                            <span>{new Date(savedStory.createdAt).toLocaleDateString()}</span>
+                          <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground">
+                            <span className="truncate flex-1 min-w-0 pr-2">{savedStory.artStyle}</span>
+                            <span className="flex-shrink-0">{new Date(savedStory.createdAt).toLocaleDateString()}</span>
                           </div>
                         </div>
                       );
@@ -444,13 +450,13 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-center h-64">
-                    <div className="text-center">
-                      <BookOpen size={48} className="text-muted-foreground mx-auto mb-4" />
-                      <p className="text-lg font-medium text-muted-foreground mb-2">No Stories Yet</p>
-                      <p className="text-sm text-muted-foreground mb-4">
+                    <div className="text-center px-4">
+                      <BookOpen size={40} className="sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-base sm:text-lg font-medium text-muted-foreground mb-2">No Stories Yet</p>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-4">
                         You haven't created any stories yet. Start by creating your first story!
                       </p>
-                      <Button onClick={() => setViewMode("create")} data-testid="button-get-started">
+                      <Button onClick={() => setViewMode("create")} data-testid="button-get-started" size="sm" className="text-xs sm:text-sm">
                         Get Started
                       </Button>
                     </div>

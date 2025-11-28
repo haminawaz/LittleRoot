@@ -250,7 +250,7 @@ export default function Signup() {
                 id="name"
                 name="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder="Enter your full name"
                 value={formData.name}
                 onChange={handleInputChange}
                 required
@@ -268,7 +268,7 @@ export default function Signup() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="john@example.com"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange}
                 required
@@ -287,7 +287,7 @@ export default function Signup() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   value={formData.password}
                   onChange={handleInputChange}
                   data-testid="input-signup-password"
@@ -314,7 +314,7 @@ export default function Signup() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   data-testid="input-signup-confirm-password"

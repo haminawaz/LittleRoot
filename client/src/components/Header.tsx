@@ -1,10 +1,12 @@
 import { Link, useLocation } from "wouter";
+import { useState } from "react";
 import {
   BookOpen,
   LogOut,
   Crown,
   CreditCard,
   Settings as SettingsIcon,
+  Menu,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +17,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UserWithSubscriptionInfo } from "@shared/schema";
 import { SUBSCRIPTION_PLANS } from "@shared/schema";
@@ -33,6 +41,7 @@ export default function Header({
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const isDashboard = location === "/dashboard";
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const { data: userWithSubscription, isLoading: userLoading } =
     useQuery<UserWithSubscriptionInfo>({
@@ -83,38 +92,40 @@ export default function Header({
   return (
     <header className="bg-card/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto">
-        <div className="flex items-center justify-between h-16 px-6">
-          {isDashboard && onHomeClick ? (
-            <button
-              onClick={onHomeClick}
-              className="flex items-center space-x-4 hover:opacity-80 transition-opacity"
-              data-testid="button-home"
-            >
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <BookOpen size={20} className="text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-serif font-bold">LittleRoot</h1>
-                <p className="text-xs text-muted-foreground">
-                  Children's Book Creator
-                </p>
-              </div>
-            </button>
-          ) : (
-            <Link href="/dashboard">
-              <button className="flex items-center space-x-4 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20">
-                  <BookOpen size={20} className="text-white" />
+        <div className="flex items-center justify-between h-16 px-3 sm:px-6">
+          <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-shrink-0">
+            {isDashboard && onHomeClick ? (
+              <button
+                onClick={onHomeClick}
+                className="flex items-center space-x-2 sm:space-x-4 hover:opacity-80 transition-opacity"
+                data-testid="button-home"
+              >
+                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
+                  <BookOpen size={18} className="sm:w-5 sm:h-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-lg font-serif font-bold">LittleRoot</h1>
-                  <p className="text-xs text-muted-foreground">
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-serif font-bold truncate">LittleRoot</h1>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
                     Children's Book Creator
                   </p>
                 </div>
               </button>
-            </Link>
-          )}
+            ) : (
+              <Link href="/dashboard">
+                <button className="flex items-center space-x-2 sm:space-x-4 hover:opacity-80 transition-opacity">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
+                    <BookOpen size={18} className="sm:w-5 sm:h-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h1 className="text-base sm:text-lg font-serif font-bold truncate">LittleRoot</h1>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+                      Children's Book Creator
+                    </p>
+                  </div>
+                </button>
+              </Link>
+            )}
+          </div>
 
           <nav className="hidden md:flex items-center space-x-6">
             {isDashboard && onHomeClick ? (
@@ -210,33 +221,45 @@ export default function Header({
             </Link>
           </nav>
 
-          <div className="flex items-center">
-            <div className="flex items-center space-x-3">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className="relative h-8 w-8 rounded-full p-0"
-                    data-testid="button-user-avatar"
-                  >
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-primary-foreground text-sm font-medium">
-                        {userLoading
-                          ? "U"
-                          : userWithSubscription?.firstName
-                              ?.charAt(0)
-                              ?.toUpperCase() ||
-                            userWithSubscription?.email
-                              ?.charAt(0)
-                              ?.toUpperCase() ||
-                            "U"}
-                      </span>
-                    </div>
-                  </Button>
-                </DropdownMenuTrigger>
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* Mobile Menu Button - moved to right */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="md:hidden h-8 w-8"
+              onClick={() => setSidebarOpen(true)}
+              data-testid="button-mobile-menu"
+            >
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open menu</span>
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="relative h-8 w-8 rounded-full p-0 flex-shrink-0"
+                  data-testid="button-user-avatar"
+                >
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <span className="text-primary-foreground text-sm font-medium">
+                      {userLoading
+                        ? "U"
+                        : userWithSubscription?.firstName
+                            ?.charAt(0)
+                            ?.toUpperCase() ||
+                          userWithSubscription?.email
+                            ?.charAt(0)
+                            ?.toUpperCase() ||
+                          "U"}
+                    </span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
                 <DropdownMenuContent
                   className="w-64"
                   align="end"
+                  sideOffset={8}
                   forceMount
                   data-testid="dropdown-user-menu"
                 >
@@ -330,10 +353,124 @@ export default function Header({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-            </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-[280px] sm:w-80">
+          <SheetHeader>
+            <SheetTitle>Navigation</SheetTitle>
+          </SheetHeader>
+          <nav className="flex flex-col space-y-4 mt-8">
+            {isDashboard && onHomeClick ? (
+              <button
+                onClick={() => {
+                  onHomeClick();
+                  setSidebarOpen(false);
+                }}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md ${
+                  viewMode === "create"
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-nav-home-mobile"
+              >
+                Home
+              </button>
+            ) : (
+              <Link href="/dashboard">
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                    isActive("/dashboard")
+                      ? "text-primary font-semibold bg-primary/10"
+                      : "text-foreground hover:text-primary hover:bg-accent"
+                  }`}
+                  data-testid="button-nav-home-mobile"
+                >
+                  Home
+                </button>
+              </Link>
+            )}
+
+            {isDashboard && onMyBooksClick ? (
+              <button
+                onClick={() => {
+                  onMyBooksClick();
+                  setSidebarOpen(false);
+                }}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md ${
+                  viewMode === "my-books"
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-my-books-mobile"
+              >
+                My Books
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  handleMyBooksClick();
+                  setSidebarOpen(false);
+                }}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                  isMyBooksActive()
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-my-books-mobile"
+              >
+                My Books
+              </button>
+            )}
+
+            <Link href="/dashboard/template-books">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                  isActive("/dashboard/template-books")
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-templates-mobile"
+              >
+                Templates
+              </button>
+            </Link>
+
+            <Link href="/help">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                  isActive("/help")
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-help-mobile"
+              >
+                Help
+              </button>
+            </Link>
+
+            <Link href="/faq">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                  isActive("/faq")
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-faq-mobile"
+              >
+                FAQ
+              </button>
+            </Link>
+          </nav>
+        </SheetContent>
+      </Sheet>
     </header>
   );
 }

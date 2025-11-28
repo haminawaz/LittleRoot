@@ -266,7 +266,7 @@ export default function ResetPassword() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Enter your new password"
                   value={formData.password}
                   onChange={handleInputChange}
                   data-testid="input-reset-password"
@@ -301,7 +301,7 @@ export default function ResetPassword() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="Confirm your new password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   data-testid="input-reset-confirm-password"

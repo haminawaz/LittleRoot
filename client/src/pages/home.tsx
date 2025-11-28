@@ -253,9 +253,11 @@ export default function Home() {
                     <h2 className="text-lg font-serif font-semibold" data-testid="text-story-title">
                       {story?.title || "Your Story Title"}
                     </h2>
-                    <p className="text-sm text-muted-foreground">
-                      <span data-testid="text-page-count">{story?.pages?.length || 0}</span> pages • 
-                      <span data-testid="text-word-count">{story?.content?.split(' ').length || 0}</span> words •
+                    <p className="flex items-center text-sm text-muted-foreground gap-2">
+                      <span data-testid="text-page-count">{story?.pages?.length || 0}</span>pages 
+                      <span>•</span>
+                      <span data-testid="text-word-count">{story?.content?.split(' ').length || 0}</span>words
+                      <span>•</span>
                       <span className={`${
                         story?.status === 'error' ? 'text-destructive' : 'text-chart-2'
                       }`} data-testid="text-story-status">

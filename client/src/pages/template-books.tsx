@@ -166,7 +166,7 @@ export default function TemplateBooks() {
                   Free trial includes 0 template books. Upgrade to unlock our curated story templates and jumpstart your creativity!
                 </p>
                 <Link href="/subscription">
-                  <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
                     <Crown className="h-4 w-4 mr-2" />
                     Upgrade to Access Templates
                   </Button>

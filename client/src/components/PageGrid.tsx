@@ -589,7 +589,15 @@ export default function PageGrid({ story }: PageGridProps) {
         cancelText="Cancel"
       />
 
-      <Dialog open={addPageModalOpen} onOpenChange={setAddPageModalOpen}>
+      <Dialog 
+        open={addPageModalOpen} 
+        onOpenChange={(open) => {
+          setAddPageModalOpen(open);
+          if (!open) {
+            setNewPageText("");
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Add New Page</DialogTitle>

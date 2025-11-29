@@ -195,17 +195,16 @@ export default function BookPreviewModal({
         )}
 
         <div className="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
-          {/* Book Viewer */}
-          <div className="flex-1 bg-muted/30 p-2 sm:p-3 md:p-4 lg:p-6 xl:p-8 flex items-center justify-center min-w-0 min-h-0 overflow-auto">
+          <div className="flex-1 bg-muted/30 p-2 sm:p-3 md:p-4 lg:p-6 xl:p-8 flex items-center justify-center min-w-0 min-h-0 overflow-hidden">
             <div className="bg-white shadow-2xl max-w-2xl w-full h-full flex flex-col overflow-hidden rounded-lg">
               {isCoverPage ? (
-                <div className="flex-1 overflow-y-auto relative">
+                <div className="flex-1 flex items-center justify-center relative overflow-hidden">
                   {(story as any).coverImageUrl ? (
                     <>
                       <img
                         src={(story as any).coverImageUrl}
                         alt="Book cover"
-                        className="w-full h-auto"
+                        className="max-w-full max-h-full w-auto h-auto object-contain"
                         data-testid="img-preview-cover"
                       />
                       <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
@@ -247,7 +246,7 @@ export default function BookPreviewModal({
                   )}
                 </div>
               ) : currentPageData ? (
-                <div className="flex-1 overflow-y-auto relative">
+                <div className="flex-1 flex items-center justify-center relative overflow-hidden">
                   {currentPageData.isGenerating ? (
                     <div className="w-full h-full bg-gradient-to-br from-purple-100 via-blue-100 to-pink-100 flex items-center justify-center">
                       <div className="relative">
@@ -291,7 +290,7 @@ export default function BookPreviewModal({
                     <img
                       src={currentPageData.imageUrl}
                       alt={`Page ${currentPageData.pageNumber} illustration`}
-                      className="w-full h-auto"
+                      className="max-w-full max-h-full w-auto h-auto object-contain"
                       data-testid={`img-preview-page-${currentPageData.pageNumber}`}
                     />
                   ) : (

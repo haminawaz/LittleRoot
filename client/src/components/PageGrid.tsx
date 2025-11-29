@@ -289,7 +289,7 @@ export default function PageGrid({ story }: PageGridProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
         {story.pages.map((page) => (
           <div 
             key={page.id} 
@@ -298,9 +298,9 @@ export default function PageGrid({ story }: PageGridProps) {
             data-page-id={page.id}
           >
             {/* Page Header with Controls */}
-            <div className="bg-muted/50 px-3 py-2 border-b border-border flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <span className="text-sm font-medium">Page {page.pageNumber}</span>
+            <div className="bg-muted/50 px-2 sm:px-3 py-1.5 sm:py-2 border-b border-border flex items-center justify-between">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <span className="text-xs sm:text-sm font-medium">Page {page.pageNumber}</span>
               </div>
               
               <div className="flex items-center space-x-1">

@@ -179,9 +179,18 @@ export default function PageGrid({ story }: PageGridProps) {
       const response = await apiRequest("POST", `/api/pages/${pageId}/split`, { splitIndex });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const currentText = pageTexts[variables.pageId] || story.pages.find(p => p.id === variables.pageId)?.text || "";
+      const firstHalf = currentText.substring(0, variables.splitIndex).trim();
+
+      setPageTexts(prev => ({
+        ...prev,
+        [variables.pageId]: firstHalf
+      }));
+      
       queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
       setSplitMode(null);
+      splitPageMutation.reset();
       toast({
         title: "Success",
         description: "Page split successfully!",
@@ -228,6 +237,12 @@ export default function PageGrid({ story }: PageGridProps) {
     if (currentText !== undefined) {
       updatePageMutation.mutate({ pageId, text: currentText });
     }
+  };
+
+  const hasMultipleWords = (pageId: string) => {
+    const currentText = (pageTexts[pageId] || story.pages.find(p => p.id === pageId)?.text || "").trim();
+    const words = currentText.split(/\s+/).filter(word => word.length > 0);
+    return words.length > 1;
   };
 
   const handleAddPage = () => {
@@ -431,12 +446,39 @@ export default function PageGrid({ story }: PageGridProps) {
                   </div>
                   <Textarea
                     value={pageTexts[page.id] || page.text}
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                        'Home', 'End', 'PageUp', 'PageDown',
+                        'Tab', 'Escape'
+                      ];
+                      if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'a' || e.key === 'c') {
+                          return;
+                        }
+                        if (e.key === 'v' || e.key === 'x') {
+                          e.preventDefault();
+                          return;
+                        }
+                        return;
+                      }
+                      if (!allowedKeys.includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                    }}
+                    onCut={(e) => {
+                      e.preventDefault();
+                    }}
                     onChange={(e) => {
-                      handleTextChange(page.id, e.target.value);
-                      setSplitIndex(e.target.selectionStart || 0);
+                      const textarea = e.target as HTMLTextAreaElement;
+                      setSplitIndex(textarea.selectionStart || 0);
                     }}
                     onSelect={(e) => setSplitIndex((e.target as HTMLTextAreaElement).selectionStart || 0)}
-                    className="w-full text-sm bg-transparent border border-primary resize-none focus:outline-none focus:ring-2 focus:ring-ring rounded p-2"
+                    onClick={(e) => setSplitIndex((e.target as HTMLTextAreaElement).selectionStart || 0)}
+                    className="w-full text-sm bg-muted/50 border border-primary resize-none focus:outline-none focus:ring-2 focus:ring-ring rounded p-2 cursor-text"
                     rows={3}
                     data-testid={`textarea-page-${page.pageNumber}`}
                   />
@@ -487,6 +529,12 @@ export default function PageGrid({ story }: PageGridProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSplitPage(page.id)}
+                      disabled={
+                        updatePageMutation.isPending || 
+                        pageTexts[page.id] === undefined || 
+                        pageTexts[page.id] !== page.text ||
+                        !hasMultipleWords(page.id)
+                      }
                       data-testid={`button-split-${page.pageNumber}`}
                     >
                       <Scissors size={12} className="mr-1" />

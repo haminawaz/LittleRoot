@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { StoryWithPages, Page } from "@shared/schema";
 import DeleteModal from "@/components/DeleteModal";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 interface PageGridProps {
   story: StoryWithPages;
@@ -19,6 +20,8 @@ export default function PageGrid({ story }: PageGridProps) {
   const [splitIndex, setSplitIndex] = useState<number>(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [pageToDelete, setPageToDelete] = useState<string | null>(null);
+  const [addPageModalOpen, setAddPageModalOpen] = useState(false);
+  const [newPageText, setNewPageText] = useState("");
   
   // Track current text for each page (for live regeneration)
   const [pageTexts, setPageTexts] = useState<Record<string, string>>(() => {
@@ -134,9 +137,11 @@ export default function PageGrid({ story }: PageGridProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      setAddPageModalOpen(false);
+      setNewPageText("");
       toast({
         title: "Success",
-        description: "Page added successfully!",
+        description: "Page added successfully! Image is being generated...",
       });
     },
     onError: () => {
@@ -174,9 +179,18 @@ export default function PageGrid({ story }: PageGridProps) {
       const response = await apiRequest("POST", `/api/pages/${pageId}/split`, { splitIndex });
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
+      const currentText = pageTexts[variables.pageId] || story.pages.find(p => p.id === variables.pageId)?.text || "";
+      const firstHalf = currentText.substring(0, variables.splitIndex).trim();
+
+      setPageTexts(prev => ({
+        ...prev,
+        [variables.pageId]: firstHalf
+      }));
+      
       queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
       setSplitMode(null);
+      splitPageMutation.reset();
       toast({
         title: "Success",
         description: "Page split successfully!",
@@ -225,13 +239,31 @@ export default function PageGrid({ story }: PageGridProps) {
     }
   };
 
+  const hasMultipleWords = (pageId: string) => {
+    const currentText = (pageTexts[pageId] || story.pages.find(p => p.id === pageId)?.text || "").trim();
+    const words = currentText.split(/\s+/).filter(word => word.length > 0);
+    return words.length > 1;
+  };
+
   const handleAddPage = () => {
+    setAddPageModalOpen(true);
+  };
+
+  const handleSubmitNewPage = () => {
+    if (!newPageText.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter some story content.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     const newPageNumber = story.pages.length + 1;
-    const newText = "Enter your story text here...";
     addPageMutation.mutate({
       storyId: story.id,
       pageNumber: newPageNumber,
-      text: newText,
+      text: newPageText.trim(),
     });
   };
 
@@ -414,12 +446,39 @@ export default function PageGrid({ story }: PageGridProps) {
                   </div>
                   <Textarea
                     value={pageTexts[page.id] || page.text}
+                    onKeyDown={(e) => {
+                      const allowedKeys = [
+                        'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+                        'Home', 'End', 'PageUp', 'PageDown',
+                        'Tab', 'Escape'
+                      ];
+                      if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'a' || e.key === 'c') {
+                          return;
+                        }
+                        if (e.key === 'v' || e.key === 'x') {
+                          e.preventDefault();
+                          return;
+                        }
+                        return;
+                      }
+                      if (!allowedKeys.includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                    }}
+                    onCut={(e) => {
+                      e.preventDefault();
+                    }}
                     onChange={(e) => {
-                      handleTextChange(page.id, e.target.value);
-                      setSplitIndex(e.target.selectionStart || 0);
+                      const textarea = e.target as HTMLTextAreaElement;
+                      setSplitIndex(textarea.selectionStart || 0);
                     }}
                     onSelect={(e) => setSplitIndex((e.target as HTMLTextAreaElement).selectionStart || 0)}
-                    className="w-full text-sm bg-transparent border border-primary resize-none focus:outline-none focus:ring-2 focus:ring-ring rounded p-2"
+                    onClick={(e) => setSplitIndex((e.target as HTMLTextAreaElement).selectionStart || 0)}
+                    className="w-full text-sm bg-muted/50 border border-primary resize-none focus:outline-none focus:ring-2 focus:ring-ring rounded p-2 cursor-text"
                     rows={3}
                     data-testid={`textarea-page-${page.pageNumber}`}
                   />
@@ -470,6 +529,12 @@ export default function PageGrid({ story }: PageGridProps) {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSplitPage(page.id)}
+                      disabled={
+                        updatePageMutation.isPending || 
+                        pageTexts[page.id] === undefined || 
+                        pageTexts[page.id] !== page.text ||
+                        !hasMultipleWords(page.id)
+                      }
                       data-testid={`button-split-${page.pageNumber}`}
                     >
                       <Scissors size={12} className="mr-1" />
@@ -523,6 +588,59 @@ export default function PageGrid({ story }: PageGridProps) {
         confirmText="Delete"
         cancelText="Cancel"
       />
+
+      <Dialog 
+        open={addPageModalOpen} 
+        onOpenChange={(open) => {
+          setAddPageModalOpen(open);
+          if (!open) {
+            setNewPageText("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add New Page</DialogTitle>
+            <DialogDescription>
+              Enter your story content for this page. An illustration will be automatically generated based on your text.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea
+              value={newPageText}
+              onChange={(e) => setNewPageText(e.target.value)}
+              placeholder="Enter your story text here..."
+              className="min-h-[200px] resize-none"
+              rows={8}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAddPageModalOpen(false);
+                setNewPageText("");
+              }}
+              disabled={addPageMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitNewPage}
+              disabled={addPageMutation.isPending || !newPageText.trim()}
+            >
+              {addPageMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Create Page"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

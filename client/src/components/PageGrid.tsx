@@ -319,9 +319,45 @@ export default function PageGrid({ story }: PageGridProps) {
     reorderPagesMutation.mutate(newOrder.map(p => p.id));
   };
 
+  const coverImageUrl = (story as any).coverImageUrl;
+
   return (
     <div>
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+          {coverImageUrl && (
+          <div 
+            className="bg-card book-shadow overflow-hidden group hover:shadow-lg transition-shadow"
+            data-testid="card-cover"
+          >
+            <div className="bg-muted/50 px-2 sm:px-3 py-2 sm:py-3 border-b border-border flex items-center justify-between">
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <span className="text-xs sm:text-sm font-medium">Cover</span>
+              </div>
+            </div>
+
+            <div className="aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative">
+              <img
+                src={coverImageUrl}
+                alt="Book cover"
+                className="w-full h-full object-cover"
+                data-testid="img-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+              <div className="absolute top-4 right-4">
+                <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium">
+                  Cover
+                </span>
+              </div>
+            </div>
+
+            <div className="p-4">
+              <p className="text-xs text-muted-foreground text-center">
+                {story.title}
+              </p>
+            </div>
+          </div>
+        )}
+
         {story.pages.map((page) => (
           <div 
             key={page.id} 

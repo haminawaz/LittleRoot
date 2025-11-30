@@ -621,7 +621,7 @@ export default function Home() {
                       return (
                         <div
                           key={savedStory.id}
-                          className="bg-card rounded-lg border border-border p-3 sm:p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                          className="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col"
                           onClick={() => {
                             window.history.pushState(
                               {},
@@ -633,23 +633,43 @@ export default function Home() {
                           }}
                           data-testid={`card-story-${savedStory.id}`}
                         >
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-2">
-                              {savedStory.title}
-                            </h3>
+                          <div className="aspect-[3/4] bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 relative overflow-hidden flex-shrink-0">
+                            {savedStory.coverImageUrl ? (
+                              <img
+                                src={savedStory.coverImageUrl}
+                                alt={`${savedStory.title} cover`}
+                                className="w-full h-full object-cover"
+                                data-testid={`img-cover-${savedStory.id}`}
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <BookOpen
+                                  size={48}
+                                  className="text-muted-foreground/40"
+                                />
+                              </div>
+                            )}
                           </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2">
-                            {savedStory.content.substring(0, 100)}...
-                          </p>
-                          <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground">
-                            <span className="truncate flex-1 min-w-0 pr-2">
-                              {savedStory.artStyle}
-                            </span>
-                            <span className="flex-shrink-0">
-                              {new Date(
-                                savedStory.createdAt
-                              ).toLocaleDateString()}
-                            </span>
+
+                          <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-2">
+                                {savedStory.title}
+                              </h3>
+                            </div>
+                            <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2 flex-shrink-0">
+                              {savedStory.content.substring(0, 100)}...
+                            </p>
+                            <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground mt-auto">
+                              <span className="truncate flex-1 min-w-0 pr-2">
+                                {savedStory.artStyle}
+                              </span>
+                              <span className="flex-shrink-0">
+                                {new Date(
+                                  savedStory.createdAt
+                                ).toLocaleDateString()}
+                              </span>
+                            </div>
                           </div>
                         </div>
                       );

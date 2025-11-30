@@ -4,6 +4,73 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { BookOpen, Sparkles, Palette, Download } from "lucide-react";
 import { useLocation } from "wouter";
 
+interface Testimonial {
+  id: number;
+  quote: string;
+  name: string;
+  role: string;
+  initials: string;
+  gradientFrom: string;
+  gradientTo: string;
+}
+
+const testimonials: Testimonial[] = [
+  {
+    id: 1,
+    quote: "My daughter absolutely loves the books I create with LittleRoot! The AI illustrations are magical and the process is so easy. We've created 3 books already and each one is more beautiful than the last.",
+    name: "Sarah Martinez",
+    role: "Parent • California",
+    initials: "SM",
+    gradientFrom: "from-purple-400",
+    gradientTo: "to-pink-400",
+  },
+  {
+    id: 2,
+    quote: "As an elementary school teacher, I use LittleRoot to create custom storybooks for my classroom. The children are amazed by the illustrations, and I can personalize stories to match our curriculum. It's been a game-changer!",
+    name: "David Wilson",
+    role: "Elementary Teacher • Texas",
+    initials: "DW",
+    gradientFrom: "from-blue-400",
+    gradientTo: "to-cyan-400",
+  },
+  {
+    id: 3,
+    quote: "I've always wanted to write children's books but could never afford professional illustrators. LittleRoot made my dream come true! The character consistency feature is incredible - my characters look perfect across every page.",
+    name: "Jessica Park",
+    role: "Aspiring Author • New York",
+    initials: "JP",
+    gradientFrom: "from-green-400",
+    gradientTo: "to-emerald-400",
+  },
+  {
+    id: 4,
+    quote: "The variety of art styles is amazing! I've created books in watercolor, digital, and cartoon styles. Each one has its own unique charm. My kids can't decide which style they love more.",
+    name: "Michael Chen",
+    role: "Father of 3 • Washington",
+    initials: "MC",
+    gradientFrom: "from-orange-400",
+    gradientTo: "to-red-400",
+  },
+  {
+    id: 5,
+    quote: "I run a small publishing business, and LittleRoot has revolutionized how I create content. The PDF export feature is perfect, and the quality is print-ready. My clients are always impressed!",
+    name: "Amanda Rodriguez",
+    role: "Publisher • Florida",
+    initials: "AR",
+    gradientFrom: "from-indigo-400",
+    gradientTo: "to-purple-400",
+  },
+  {
+    id: 6,
+    quote: "Creating bedtime stories for my grandchildren has never been easier. The AI understands exactly what I want, and the illustrations are always perfect. They ask me to read our LittleRoot books every night!",
+    name: "Patricia Brown",
+    role: "Grandmother • Arizona",
+    initials: "PB",
+    gradientFrom: "from-teal-400",
+    gradientTo: "to-blue-400",
+  },
+];
+
 export default function Landing() {
   const [, setLocation] = useLocation();
 
@@ -132,6 +199,50 @@ export default function Landing() {
               </CardDescription>
             </CardHeader>
           </Card>
+        </div>
+
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              Loved by Parents, Teachers & Creators
+            </h3>
+            <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+              Join thousands of satisfied users who are creating beautiful children's books with LittleRoot
+            </p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
+            {testimonials.map((testimonial) => (
+              <Card 
+                key={testimonial.id}
+                className="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 hover:shadow-xl transition-all duration-300"
+              >
+                <CardContent className="p-6">
+                  <div className="mb-4">
+                    <div className="flex items-center gap-1 text-amber-500 mb-2">
+                      {[...Array(5)].map((_, i) => (
+                        <svg key={i} className="w-5 h-5 fill-current" viewBox="0 0 20 20">
+                          <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed italic">
+                      "{testimonial.quote}"
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                    <div className={`w-12 h-12 rounded-full bg-gradient-to-br ${testimonial.gradientFrom} ${testimonial.gradientTo} flex items-center justify-center text-white font-semibold text-lg flex-shrink-0`}>
+                      {testimonial.initials}
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900 dark:text-white">{testimonial.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{testimonial.role}</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {/* Pricing Plans */}

@@ -193,6 +193,20 @@ export default function Home() {
   const handleExportPDF = async () => {
     if (!story) return;
 
+    const hasGeneratingPages = story.pages?.some(
+      (page) => page.isGenerating
+    ) ?? false;
+
+    if (hasGeneratingPages) {
+      toast({
+        title: "Please Wait",
+        description:
+          "Please wait until all illustrations are generated before downloading your book.",
+        variant: "default",
+      });
+      return;
+    }
+
     setIsExporting(true);
 
     const progressToast = toast({

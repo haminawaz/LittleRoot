@@ -37,6 +37,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
   setupLocalAuth();
 
+  // Set up admin authentication (separate from user auth)
+  const { setupAdminAuth } = await import("./admin/auth");
+  setupAdminAuth();
+
+  // Register admin routes
+  const { registerAdminRoutes } = await import("./admin/routes");
+  registerAdminRoutes(app);
+
   // Object storage routes for public file serving
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;

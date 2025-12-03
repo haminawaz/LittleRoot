@@ -52,7 +52,7 @@ import { Badge } from "@/components/ui/badge";
 import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import type { User as UserType } from "@shared/schema";
-import AdminHeader from "@/components/AdminHeader";
+import AdminLayout from "@/components/AdminLayout";
 
 interface UserDetail extends UserType {
   stats?: {
@@ -359,13 +359,15 @@ export default function AdminUserDetail() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <AdminHeader />
-      <div className="container mx-auto px-4 py-8 space-y-6">
+    <AdminLayout>
+      <div className="space-y-6">
         <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             User Details
           </h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            {user.email}
+          </p>
         </div>
         {/* Profile Information */}
         <Card>
@@ -478,9 +480,7 @@ export default function AdminUserDetail() {
                   <Label className="text-sm font-medium text-gray-500">
                     Stripe Customer ID
                   </Label>
-                  <p className="text-md font-mono">
-                    {user.stripeCustomerId}
-                  </p>
+                  <p className="text-md font-mono">{user.stripeCustomerId}</p>
                 </div>
               )}
             </div>
@@ -777,6 +777,6 @@ export default function AdminUserDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </AdminLayout>
   );
 }

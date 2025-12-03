@@ -1,0 +1,47 @@
+import { useEffect, useState } from "react";
+import { useLocation } from "wouter";
+import AdminHeader from "./AdminHeader";
+import AdminSidebar from "./AdminSidebar";
+
+interface AdminLayoutProps {
+  children: React.ReactNode;
+}
+
+export default function AdminLayout({ children }: AdminLayoutProps) {
+  const [location] = useLocation();
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [prevLocation, setPrevLocation] = useState(location);
+
+  useEffect(() => {
+    if (location !== prevLocation && prevLocation !== "") {
+      setIsNavigating(true);
+      setPrevLocation(location);
+
+      const timer = setTimeout(() => {
+        setIsNavigating(false);
+      }, 150);
+
+      return () => clearTimeout(timer);
+    } else if (prevLocation === "") {
+      setPrevLocation(location);
+    }
+  }, [location, prevLocation]);
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+      <AdminSidebar />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <AdminHeader />
+        <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+          {isNavigating ? (
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            </div>
+          ) : (
+            <div className="p-6">{children}</div>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

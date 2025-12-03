@@ -45,10 +45,6 @@ export default function PageGrid({ story }: PageGridProps) {
   const generateImageMutation = useMutation({
     mutationFn: async ({ pageId, text }: { pageId: string; text: string }) => {
       const response = await apiRequest("POST", `/api/pages/${pageId}/generate-image`, { text });
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw errorData;
-      }
       return response.json() as Promise<Page>;
     },
     onMutate: async ({ pageId }: { pageId: string; text: string }) => {
@@ -94,9 +90,29 @@ export default function PageGrid({ story }: PageGridProps) {
           variant: "destructive",
         });
       } else {
+        let errorMessage = "Failed to generate image. Please try again.";
+        if (error?.message) {
+          try {
+            const parsed = JSON.parse(error.message);
+            if (parsed.error) {
+              errorMessage = parsed.error;
+            } else if (parsed.message) {
+              errorMessage = parsed.message;
+            }
+          } catch {
+            if (typeof error.message === 'string' && !error.message.startsWith('{')) {
+              errorMessage = error.message;
+            } else if (error.error) {
+              errorMessage = error.error;
+            }
+          }
+        } else if (error?.error) {
+          errorMessage = error.error;
+        }
+        
         toast({
           title: "Error",
-          description: error.message || error.error || "Failed to generate image. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       }

@@ -160,12 +160,40 @@ export default function PageGrid({ story }: PageGridProps) {
         description: "Page added successfully! Image is being generated...",
       });
     },
-    onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to add page. Please try again.",
-        variant: "destructive",
-      });
+    onError: (error: any) => {
+      if (error?.illustrationLimitReached || error?.quotaExceeded) {
+        toast({
+          title: "Illustration Limit Reached",
+          description: error.error || error.message || "You've reached your illustration limit. Please upgrade your plan to add more illustrations.",
+          variant: "destructive",
+        });
+      } else {
+        let errorMessage = "Failed to add page. Please try again.";
+        if (error?.message) {
+          try {
+            const parsed = JSON.parse(error.message);
+            if (parsed.error) {
+              errorMessage = parsed.error;
+            } else if (parsed.message) {
+              errorMessage = parsed.message;
+            }
+          } catch {
+            if (typeof error.message === 'string' && !error.message.startsWith('{')) {
+              errorMessage = error.message;
+            } else if (error.error) {
+              errorMessage = error.error;
+            }
+          }
+        } else if (error?.error) {
+          errorMessage = error.error;
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      }
     },
   });
 

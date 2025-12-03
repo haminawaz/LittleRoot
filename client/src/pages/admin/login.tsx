@@ -70,7 +70,7 @@ export default function AdminLogin() {
         description: "You have been logged in successfully.",
       });
 
-      await queryClient.refetchQueries({ queryKey: ["/api/admin/me"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/admin/me"] });
       setIsLoading(false);
       setLocation("/admin/dashboard");
     } catch (error) {

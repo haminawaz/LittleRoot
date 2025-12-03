@@ -2,20 +2,32 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function AdminHeader() {
   const [location, setLocation] = useLocation();
+  const queryClient = useQueryClient();
 
-  const handleLogout = async () => {
-    try {
-      await fetch("/api/admin/logout", {
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetch("/api/admin/logout", {
         method: "POST",
         credentials: "include",
       });
+      if (!response.ok) throw new Error("Logout failed");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.clear();
       setLocation("/admin/login");
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error("Logout error:", error);
-    }
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   const navLinks = [

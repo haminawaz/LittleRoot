@@ -366,9 +366,6 @@ export default function AdminUserDetail() {
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             User Details
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {user.email}
-          </p>
         </div>
         {/* Profile Information */}
         <Card>
@@ -381,7 +378,7 @@ export default function AdminUserDetail() {
                 <Label className="text-sm font-medium text-gray-500">
                   Name
                 </Label>
-                <p className="text-lg">
+                <p className="text-md">
                   {user.firstName || user.lastName
                     ? `${user.firstName || ""} ${user.lastName || ""}`.trim()
                     : "N/A"}
@@ -391,31 +388,25 @@ export default function AdminUserDetail() {
                 <Label className="text-sm font-medium text-gray-500">
                   Email
                 </Label>
-                <p className="text-lg">{user.email || "N/A"}</p>
-              </div>
-              <div>
-                <Label className="text-sm font-medium text-gray-500">
-                  User ID
-                </Label>
-                <p className="text-lg font-mono text-sm">{user.id}</p>
+                <p className="text-md">{user.email || "N/A"}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
                   Sign-up Date
                 </Label>
-                <p className="text-lg">{formatDate(user.createdAt)}</p>
+                <p className="text-md">{formatDate(user.createdAt)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
                   Last Updated
                 </Label>
-                <p className="text-lg">{formatDate(user.updatedAt)}</p>
+                <p className="text-md">{formatDate(user.updatedAt)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
                   Email Verified
                 </Label>
-                <p className="text-lg">
+                <p className="text-md">
                   {user.emailVerified ? (
                     <Badge className="bg-green-500">Verified</Badge>
                   ) : (
@@ -438,13 +429,13 @@ export default function AdminUserDetail() {
                 <Label className="text-sm font-medium text-gray-500">
                   Plan
                 </Label>
-                <p className="text-lg">{formatPlan(user.subscriptionPlan)}</p>
+                <p className="text-md">{formatPlan(user.subscriptionPlan)}</p>
               </div>
               <div>
                 <Label className="text-sm font-medium text-gray-500">
                   Status
                 </Label>
-                <p className="text-lg">
+                <p className="text-md">
                   {getStatusBadge(user.subscriptionStatus)}
                 </p>
               </div>
@@ -452,7 +443,7 @@ export default function AdminUserDetail() {
                 <Label className="text-sm font-medium text-gray-500">
                   Credits Used (This Month)
                 </Label>
-                <p className="text-lg">
+                <p className="text-md">
                   {user.illustrationsUsedThisMonth || 0} /{" "}
                   {user.illustrationsLimitPerMonth || 0}
                 </p>
@@ -461,7 +452,7 @@ export default function AdminUserDetail() {
                 <Label className="text-sm font-medium text-gray-500">
                   Books Used (This Month)
                 </Label>
-                <p className="text-lg">
+                <p className="text-md">
                   {user.booksUsedThisMonth || 0} /{" "}
                   {user.booksLimitPerMonth || 0}
                 </p>
@@ -471,7 +462,7 @@ export default function AdminUserDetail() {
                   <Label className="text-sm font-medium text-gray-500">
                     Trial Ends
                   </Label>
-                  <p className="text-lg">{formatDate(user.trialEndsAt)}</p>
+                  <p className="text-md">{formatDate(user.trialEndsAt)}</p>
                 </div>
               )}
               {user.currentPeriodEnd && (
@@ -479,7 +470,7 @@ export default function AdminUserDetail() {
                   <Label className="text-sm font-medium text-gray-500">
                     Current Period Ends
                   </Label>
-                  <p className="text-lg">{formatDate(user.currentPeriodEnd)}</p>
+                  <p className="text-md">{formatDate(user.currentPeriodEnd)}</p>
                 </div>
               )}
               {user.stripeCustomerId && (
@@ -487,7 +478,7 @@ export default function AdminUserDetail() {
                   <Label className="text-sm font-medium text-gray-500">
                     Stripe Customer ID
                   </Label>
-                  <p className="text-lg font-mono text-sm">
+                  <p className="text-md font-mono">
                     {user.stripeCustomerId}
                   </p>
                 </div>

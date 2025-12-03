@@ -23,6 +23,12 @@ import Help from "@/pages/help";
 import FAQ from "@/pages/faq";
 import AdminLogin from "@/pages/admin/login";
 import AdminDashboard from "@/pages/admin/dashboard";
+import AdminUsers from "@/pages/admin/users";
+import AdminUserDetail from "@/pages/admin/user-detail";
+import AdminRevenue from "@/pages/admin/revenue";
+import AdminMessages from "@/pages/admin/messages";
+import AdminActivity from "@/pages/admin/activity";
+import AdminSettings from "@/pages/admin/settings";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdminAuthenticated, adminLoading } = useAuth();
@@ -144,6 +150,24 @@ function Router() {
       </Route>
       <Route path="/admin/dashboard">
         {() => <AdminProtectedRoute component={AdminDashboard} />}
+      </Route>
+      <Route path="/admin/users">
+        {() => <AdminProtectedRoute component={AdminUsers} />}
+      </Route>
+      <Route path="/admin/users/:id">
+        {() => <AdminProtectedRoute component={AdminUserDetail} />}
+      </Route>
+      <Route path="/admin/revenue">
+        {() => <AdminProtectedRoute component={AdminRevenue} />}
+      </Route>
+      <Route path="/admin/messages">
+        {() => <AdminProtectedRoute component={AdminMessages} />}
+      </Route>
+      <Route path="/admin/activity">
+        {() => <AdminProtectedRoute component={AdminActivity} />}
+      </Route>
+      <Route path="/admin/settings">
+        {() => <AdminProtectedRoute component={AdminSettings} />}
       </Route>
       <Route>
         {() => <NotFound />}

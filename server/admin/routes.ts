@@ -3,9 +3,11 @@ import passport from "passport";
 import { isAdminAuthenticated } from "./middleware";
 import { setupAdminAuth } from "./auth";
 import { db } from "../db";
-import { users, stories, pages } from "@shared/schema";
+import { users, stories, pages, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
+import Stripe from "stripe";
+import { sendEmail } from "../emailService";
 
 export function registerAdminRoutes(app: Express) {
   setupAdminAuth();
@@ -173,17 +175,19 @@ export function registerAdminRoutes(app: Express) {
       }
 
       // Plan filter
-      if (plan) {
+      if (plan && plan !== "all") {
         whereConditions.push(eq(users.subscriptionPlan, plan));
       }
 
       // Status filter
-      if (status === "active") {
-        whereConditions.push(eq(users.subscriptionStatus, "active"));
-      } else if (status === "canceled") {
-        whereConditions.push(eq(users.subscriptionStatus, "canceled"));
-      } else if (status === "past_due") {
-        whereConditions.push(eq(users.subscriptionStatus, "past_due"));
+      if (status && status !== "all") {
+        if (status === "active") {
+          whereConditions.push(eq(users.subscriptionStatus, "active"));
+        } else if (status === "canceled") {
+          whereConditions.push(eq(users.subscriptionStatus, "canceled"));
+        } else if (status === "past_due") {
+          whereConditions.push(eq(users.subscriptionStatus, "past_due"));
+        }
       }
 
       const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -268,6 +272,221 @@ export function registerAdminRoutes(app: Express) {
     } catch (error) {
       console.error("Update user error:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  // Get user billing history
+  app.get('/api/admin/users/:id/billing', isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const user = await storage.getUser(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey || !user.stripeCustomerId) {
+        return res.json({ invoices: [] });
+      }
+
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2025-08-27.basil",
+      });
+
+      const invoices = await stripe.invoices.list({
+        customer: user.stripeCustomerId,
+        limit: 100,
+      });
+
+      res.json({
+        invoices: invoices.data.map((inv) => ({
+          id: inv.id,
+          amount: inv.amount_paid / 100,
+          currency: inv.currency,
+          status: inv.status,
+          date: new Date(inv.created * 1000).toISOString(),
+          periodStart: inv.period_start ? new Date(inv.period_start * 1000).toISOString() : null,
+          periodEnd: inv.period_end ? new Date(inv.period_end * 1000).toISOString() : null,
+          invoicePdf: inv.invoice_pdf,
+          hostedInvoiceUrl: inv.hosted_invoice_url,
+        })),
+      });
+    } catch (error) {
+      console.error("Get billing history error:", error);
+      res.status(500).json({ message: "Failed to fetch billing history" });
+    }
+  });
+
+  // Add/remove credits
+  app.post('/api/admin/users/:id/credits', isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { amount, type } = req.body; // type: 'add' or 'remove'
+
+      if (!amount || !type || (type !== 'add' && type !== 'remove')) {
+        return res.status(400).json({ message: "Invalid request. Amount and type (add/remove) required." });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const currentCredits = user.illustrationsUsedThisMonth || 0;
+      const newCredits = type === 'add' 
+        ? Math.max(0, currentCredits - Number(amount)) // Subtract from used (effectively adding available)
+        : Math.min(user.illustrationsLimitPerMonth || 0, currentCredits + Number(amount)); // Add to used
+
+      const updatedUser = await storage.updateUserSubscription(id, {
+        illustrationsUsedThisMonth: newCredits,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Update credits error:", error);
+      res.status(500).json({ message: "Failed to update credits" });
+    }
+  });
+
+  // Change user plan
+  app.post('/api/admin/users/:id/plan', isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { plan } = req.body;
+
+      if (!plan || !SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS]) {
+        return res.status(400).json({ message: "Invalid plan" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const planInfo = SUBSCRIPTION_PLANS[plan as keyof typeof SUBSCRIPTION_PLANS];
+      const illustrationsLimit = planInfo.booksPerMonth * planInfo.pagesPerBook;
+
+      const updates: any = {
+        subscriptionPlan: plan,
+        booksLimitPerMonth: planInfo.booksPerMonth,
+        illustrationsLimitPerMonth: illustrationsLimit,
+        templateBooksLimit: planInfo.templateBooks,
+        bonusVariationsLimit: planInfo.bonusVariations,
+        hasCommercialRights: planInfo.commercialRights,
+        hasResellRights: planInfo.resellRights,
+        hasAllFormattingOptions: planInfo.allFormattingOptions,
+      };
+
+      // If changing to trial, set trial end date
+      if (plan === 'trial') {
+        const trialEndsAt = new Date();
+        trialEndsAt.setDate(trialEndsAt.getDate() + 7);
+        updates.trialEndsAt = trialEndsAt;
+        updates.subscriptionStatus = 'active';
+      }
+
+      const updatedUser = await storage.updateUserSubscription(id, updates);
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Change plan error:", error);
+      res.status(500).json({ message: "Failed to change plan" });
+    }
+  });
+
+  // Refund last charge
+  app.post('/api/admin/users/:id/refund', isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const user = await storage.getUser(id);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+      if (!stripeSecretKey || !user.stripeCustomerId) {
+        return res.status(400).json({ message: "User has no Stripe customer ID" });
+      }
+
+      const stripe = new Stripe(stripeSecretKey, {
+        apiVersion: "2025-08-27.basil",
+      });
+
+      // Get the most recent paid invoice
+      const invoices = await stripe.invoices.list({
+        customer: user.stripeCustomerId,
+        limit: 1,
+        status: 'paid',
+      });
+
+      if (invoices.data.length === 0) {
+        return res.status(404).json({ message: "No paid invoices found" });
+      }
+
+      const invoice = invoices.data[0];
+      const paymentIntentId = typeof (invoice as any).payment_intent === 'string' 
+        ? (invoice as any).payment_intent 
+        : (invoice as any).payment_intent?.id;
+
+      if (!paymentIntentId) {
+        return res.status(400).json({ message: "No payment intent found for invoice" });
+      }
+
+      // Create refund
+      const refund = await stripe.refunds.create({
+        payment_intent: paymentIntentId,
+      });
+
+      res.json({
+        success: true,
+        refund: {
+          id: refund.id,
+          amount: refund.amount / 100,
+          currency: refund.currency,
+          status: refund.status,
+        },
+      });
+    } catch (error: any) {
+      console.error("Refund error:", error);
+      res.status(500).json({ message: error.message || "Failed to process refund" });
+    }
+  });
+
+  // Send custom email
+  app.post('/api/admin/users/:id/email', isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { subject, body } = req.body;
+
+      if (!subject || !body) {
+        return res.status(400).json({ message: "Subject and body are required" });
+      }
+
+      const user = await storage.getUser(id);
+      if (!user || !user.email) {
+        return res.status(404).json({ message: "User not found or has no email" });
+      }
+
+      await sendEmail({
+        to: user.email,
+        subject,
+        html: body,
+      });
+
+      res.json({ success: true, message: "Email sent successfully" });
+    } catch (error) {
+      console.error("Send email error:", error);
+      res.status(500).json({ message: "Failed to send email" });
     }
   });
 }

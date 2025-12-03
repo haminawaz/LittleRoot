@@ -9,14 +9,21 @@ import {
   type UserWithSubscriptionInfo,
   type Template,
   type InsertTemplate,
+  type SupportTicket,
+  type InsertSupportTicket,
+  type SupportTicketWithMessages,
+  type SupportMessage,
+  type InsertSupportMessage,
   SUBSCRIPTION_PLANS,
   stories, 
   pages, 
   users,
-  templates 
+  templates,
+  supportTickets,
+  supportMessages
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, desc, sql } from "drizzle-orm";
+import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth and local auth)
@@ -59,6 +66,21 @@ export interface IStorage {
   getTemplatesByUserId(userId: string): Promise<Template[]>;
   findTemplateByUserAndContent(userId: string, title: string, content: string): Promise<Template | undefined>;
   deleteTemplate(id: string): Promise<boolean>;
+
+  // Support Tickets
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  getSupportTicket(id: string): Promise<SupportTicket | undefined>;
+  getSupportTicketWithMessages(id: string): Promise<SupportTicketWithMessages | undefined>;
+  getSupportTicketsByUserId(userId: string): Promise<SupportTicket[]>;
+  updateSupportTicket(id: string, updates: Partial<SupportTicket>): Promise<SupportTicket | undefined>;
+  
+  // Support Messages
+  createSupportMessage(message: InsertSupportMessage): Promise<SupportMessage>;
+  getSupportMessagesByTicketId(ticketId: string): Promise<SupportMessage[]>;
+  markMessagesAsSeenByUser(ticketId: string, userId: string): Promise<void>;
+  markMessagesAsSeenByAdmin(ticketId: string): Promise<void>;
+  getUnseenMessagesCountForUser(userId: string): Promise<number>;
+  getUnseenMessagesCountForTicket(ticketId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -557,6 +579,136 @@ export class DatabaseStorage implements IStorage {
       .delete(templates)
       .where(eq(templates.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async createSupportTicket(insertTicket: InsertSupportTicket): Promise<SupportTicket> {
+    const [ticket] = await db
+      .insert(supportTickets)
+      .values({
+        ...insertTicket,
+        status: (insertTicket.status || "open") as "open" | "closed" | "pending",
+      })
+      .returning();
+    return ticket;
+  }
+
+  async getSupportTicket(id: string): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, id));
+    return ticket || undefined;
+  }
+
+  async getSupportTicketWithMessages(id: string): Promise<SupportTicketWithMessages | undefined> {
+    const ticket = await this.getSupportTicket(id);
+    if (!ticket) return undefined;
+    
+    const ticketMessages = await db
+      .select()
+      .from(supportMessages)
+      .where(eq(supportMessages.ticketId, id))
+      .orderBy(supportMessages.createdAt);
+    
+    return {
+      ...ticket,
+      messages: ticketMessages,
+    };
+  }
+
+  async getSupportTicketsByUserId(userId: string): Promise<SupportTicket[]> {
+    return await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async updateSupportTicket(id: string, updates: Partial<SupportTicket>): Promise<SupportTicket | undefined> {
+    const [ticket] = await db
+      .update(supportTickets)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(supportTickets.id, id))
+      .returning();
+    return ticket || undefined;
+  }
+
+  async createSupportMessage(insertMessage: InsertSupportMessage): Promise<SupportMessage> {
+    const [message] = await db
+      .insert(supportMessages)
+      .values(insertMessage)
+      .returning();
+    
+    await this.updateSupportTicket(insertMessage.ticketId, {});    
+    return message;
+  }
+
+  async getSupportMessagesByTicketId(ticketId: string): Promise<SupportMessage[]> {
+    return await db
+      .select()
+      .from(supportMessages)
+      .where(eq(supportMessages.ticketId, ticketId))
+      .orderBy(supportMessages.createdAt);
+  }
+
+  async markMessagesAsSeenByUser(ticketId: string, userId: string): Promise<void> {
+    await db
+      .update(supportMessages)
+      .set({ seenByUser: true })
+      .where(
+        and(
+          eq(supportMessages.ticketId, ticketId),
+          eq(supportMessages.senderType, "admin"),
+          eq(supportMessages.seenByUser, false)
+        )
+      );
+  }
+
+  async markMessagesAsSeenByAdmin(ticketId: string): Promise<void> {
+    await db
+      .update(supportMessages)
+      .set({ seenByAdmin: true })
+      .where(
+        and(
+          eq(supportMessages.ticketId, ticketId),
+          eq(supportMessages.senderType, "user"),
+          eq(supportMessages.seenByAdmin, false)
+        )
+      );
+  }
+
+  async getUnseenMessagesCountForUser(userId: string): Promise<number> {
+    const tickets = await this.getSupportTicketsByUserId(userId);
+    if (tickets.length === 0) return 0;
+
+    const ticketIds = tickets.map(t => t.id);
+    const messages = await db
+      .select()
+      .from(supportMessages)
+      .where(
+        and(
+          inArray(supportMessages.ticketId, ticketIds),
+          eq(supportMessages.senderType, "admin"),
+          eq(supportMessages.seenByUser, false)
+        )
+      );
+    
+    return messages.length;
+  }
+
+  async getUnseenMessagesCountForTicket(ticketId: string): Promise<number> {
+    const messages = await db
+      .select()
+      .from(supportMessages)
+      .where(
+        and(
+          eq(supportMessages.ticketId, ticketId),
+          eq(supportMessages.senderType, "admin"),
+          eq(supportMessages.seenByUser, false)
+        )
+      );
+    
+    return messages.length;
   }
 }
 

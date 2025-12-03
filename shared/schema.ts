@@ -91,10 +91,43 @@ export const templates = pgTable("templates", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const admins = pgTable("admins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  passwordHash: varchar("password_hash").notNull(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_admins_email").on(table.email),
+]);
+
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  subject: text("subject").notNull(),
+  status: varchar("status").notNull().default("open").$type<("open" | "closed" | "pending")>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const supportMessages = pgTable("support_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticketId: varchar("ticket_id").notNull().references(() => supportTickets.id, { onDelete: "cascade" }),
+  senderId: varchar("sender_id").notNull(),
+  senderType: varchar("sender_type").notNull(),
+  message: text("message").notNull(),
+  seenByUser: boolean("seen_by_user").default(false).notNull(),
+  seenByAdmin: boolean("seen_by_admin").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   stories: many(stories),
   templates: many(templates),
+  supportTickets: many(supportTickets),
 }));
 
 export const storiesRelations = relations(stories, ({ many, one }) => ({
@@ -116,6 +149,21 @@ export const templatesRelations = relations(templates, ({ one }) => ({
   user: one(users, {
     fields: [templates.userId],
     references: [users.id],
+  }),
+}));
+
+export const supportTicketsRelations = relations(supportTickets, ({ many, one }) => ({
+  messages: many(supportMessages),
+  user: one(users, {
+    fields: [supportTickets.userId],
+    references: [users.id],
+  }),
+}));
+
+export const supportMessagesRelations = relations(supportMessages, ({ one }) => ({
+  ticket: one(supportTickets, {
+    fields: [supportMessages.ticketId],
+    references: [supportTickets.id],
   }),
 }));
 
@@ -141,6 +189,17 @@ export const insertTemplateSchema = createInsertSchema(templates).omit({
   createdAt: true,
 });
 
+export const insertSupportTicketSchema = createInsertSchema(supportTickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSupportMessageSchema = createInsertSchema(supportMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -151,10 +210,19 @@ export type InsertPage = z.infer<typeof insertPageSchema>;
 export type Page = typeof pages.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
 export type Template = typeof templates.$inferSelect;
+export type Admin = typeof admins.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
+export type SupportMessage = typeof supportMessages.$inferSelect;
 
 // Extended interfaces
 export interface StoryWithPages extends Story {
   pages: Page[];
+}
+
+export interface SupportTicketWithMessages extends SupportTicket {
+  messages: SupportMessage[];
 }
 
 export interface UserWithSubscriptionInfo extends User {

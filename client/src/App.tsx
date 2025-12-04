@@ -21,9 +21,17 @@ import Subscription from "@/pages/subscription";
 import TemplateBooks from "@/pages/template-books";
 import Help from "@/pages/help";
 import FAQ from "@/pages/faq";
+import AdminLogin from "@/pages/admin/login";
+import AdminDashboard from "@/pages/admin/dashboard";
+import AdminUsers from "@/pages/admin/users";
+import AdminUserDetail from "@/pages/admin/user-detail";
+import AdminRevenue from "@/pages/admin/revenue";
+import AdminMessages from "@/pages/admin/messages";
+import AdminActivity from "@/pages/admin/activity";
+import AdminSettings from "@/pages/admin/settings";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, isAdminAuthenticated, adminLoading } = useAuth();
 
   // Root redirect handler - redirect to /home or /dashboard based on auth
   const RootRedirect = () => {
@@ -66,6 +74,26 @@ function Router() {
     }
     if (!isAuthenticated) {
       return null; // Will redirect via useEffect
+    }
+    return <Component />;
+  };
+
+  const AdminProtectedRoute = ({ component: Component }: { component: ComponentType }) => {
+    const [, setLocation] = useLocation();
+
+    useEffect(() => {
+      if (!adminLoading && !isAdminAuthenticated) {
+        setLocation('/admin/login');
+      }
+    }, [adminLoading, isAdminAuthenticated, setLocation]);
+    
+    if (adminLoading) {
+      return <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>;
+    }
+    if (!isAdminAuthenticated) {
+      return null;
     }
     return <Component />;
   };
@@ -116,6 +144,30 @@ function Router() {
       </Route>
       <Route path="/faq">
         {() => <ProtectedRoute component={FAQ} />}
+      </Route>
+      <Route path="/admin/login">
+        {() => <AdminLogin />}
+      </Route>
+      <Route path="/admin/dashboard">
+        {() => <AdminProtectedRoute component={AdminDashboard} />}
+      </Route>
+      <Route path="/admin/users">
+        {() => <AdminProtectedRoute component={AdminUsers} />}
+      </Route>
+      <Route path="/admin/users/:id">
+        {() => <AdminProtectedRoute component={AdminUserDetail} />}
+      </Route>
+      <Route path="/admin/revenue">
+        {() => <AdminProtectedRoute component={AdminRevenue} />}
+      </Route>
+      <Route path="/admin/messages">
+        {() => <AdminProtectedRoute component={AdminMessages} />}
+      </Route>
+      <Route path="/admin/activity">
+        {() => <AdminProtectedRoute component={AdminActivity} />}
+      </Route>
+      <Route path="/admin/settings">
+        {() => <AdminProtectedRoute component={AdminSettings} />}
       </Route>
       <Route>
         {() => <NotFound />}

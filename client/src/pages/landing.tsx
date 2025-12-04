@@ -1,8 +1,11 @@
 // Based on javascript_log_in_with_replit integration
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, Sparkles, Palette, Download } from "lucide-react";
+import { BookOpen, Sparkles, Palette, Download, Pause, Play } from "lucide-react";
 import { useLocation } from "wouter";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import Autoplay from "embla-carousel-autoplay";
+import { useState, useEffect, useRef } from "react";
 
 interface Testimonial {
   id: number;
@@ -71,8 +74,89 @@ const testimonials: Testimonial[] = [
   },
 ];
 
+interface SliderSlide {
+  id: number;
+  title: string;
+  description: string;
+  image: string;
+  gradientFrom: string;
+  gradientTo: string;
+  icon: React.ReactNode;
+}
+
+const sliderSlides: SliderSlide[] = [
+  {
+    id: 1,
+    title: "Bring Your Stories to Life",
+    description: "Transform your imagination into beautiful, illustrated children's books with the power of AI",
+    image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=1200&h=600&fit=crop",
+    gradientFrom: "from-purple-500",
+    gradientTo: "to-pink-500",
+    icon: <Sparkles className="h-16 w-16 text-white" />,
+  },
+  {
+    id: 2,
+    title: "Stunning AI Illustrations",
+    description: "Create consistent, magical characters and scenes that captivate young readers",
+    image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=1200&h=600&fit=crop",
+    gradientFrom: "from-blue-500",
+    gradientTo: "to-cyan-500",
+    icon: <Palette className="h-16 w-16 text-white" />,
+  },
+  {
+    id: 3,
+    title: "Multiple Art Styles",
+    description: "Choose from watercolor, digital, cartoon, fantasy, and more to match your story's mood",
+    image: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=1200&h=600&fit=crop",
+    gradientFrom: "from-amber-500",
+    gradientTo: "to-orange-500",
+    icon: <BookOpen className="h-16 w-16 text-white" />,
+  },
+  {
+    id: 4,
+    title: "Print-Ready PDFs",
+    description: "Export your finished books as high-quality PDFs, ready for printing or digital sharing",
+    image: "https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=1200&h=600&fit=crop",
+    gradientFrom: "from-green-500",
+    gradientTo: "to-emerald-500",
+    icon: <Download className="h-16 w-16 text-white" />,
+  },
+];
+
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const [api, setApi] = useState<any>(null);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [current, setCurrent] = useState(0);
+  const autoplayPluginRef = useRef(
+    Autoplay({
+      delay: 4000,
+      stopOnInteraction: false,
+      stopOnMouseEnter: true,
+    })
+  );
+
+  useEffect(() => {
+    if (!api) {
+      return;
+    }
+
+    setCurrent(api.selectedScrollSnap());
+
+    api.on("select", () => {
+      setCurrent(api.selectedScrollSnap());
+    });
+  }, [api]);
+
+  const toggleAutoplay = () => {
+    if (!autoplayPluginRef.current) return;
+    if (isPlaying) {
+      autoplayPluginRef.current.stop();
+    } else {
+      autoplayPluginRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
 
   const handleLogin = () => {
     window.location.href = "/signin";
@@ -199,6 +283,80 @@ export default function Landing() {
               </CardDescription>
             </CardHeader>
           </Card>
+        </div>
+
+        <div className="mb-20 relative max-w-7xl mx-auto">
+          <Carousel
+            setApi={setApi}
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            plugins={[autoplayPluginRef.current]}
+            className="w-full relative"
+          >
+            <CarouselContent className="-ml-2 md:-ml-4">
+              {sliderSlides.map((slide) => (
+                <CarouselItem key={slide.id} className="pl-2 md:pl-4 basis-full">
+                  <div className="relative overflow-hidden rounded-2xl shadow-2xl h-[400px] md:h-[500px] group">
+                    <div 
+                      className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
+                      style={{
+                        backgroundImage: `url(${slide.image})`,
+                      }}
+                    >
+                      <div className={`absolute inset-0 bg-gradient-to-r ${slide.gradientFrom} ${slide.gradientTo} opacity-80`}></div>
+                    </div>
+                    <div className="relative h-full flex flex-col items-center justify-center text-center px-6 md:px-12 text-white">
+                      <div className="mb-6 transform transition-transform duration-300 group-hover:scale-110">
+                        {slide.icon}
+                      </div>
+                      <h3 className="text-3xl md:text-5xl font-bold mb-4 drop-shadow-lg animate-slide-up">
+                        {slide.title}
+                      </h3>
+                      <p className="text-lg md:text-xl max-w-2xl drop-shadow-md animate-slide-up-delay">
+                        {slide.description}
+                      </p>
+                    </div>
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            
+            <CarouselPrevious className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 bg-white/90 hover:bg-white shadow-lg border-0 z-20" />
+            <CarouselNext className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 h-10 w-10 md:h-12 md:w-12 bg-white/90 hover:bg-white shadow-lg border-0 z-20" />
+            
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20 bg-black/20 backdrop-blur-sm px-4 py-2 rounded-full">
+              <div className="flex items-center gap-2">
+                {sliderSlides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => api?.scrollTo(index)}
+                    className={`h-2.5 md:h-3 rounded-full transition-all duration-300 ${
+                      current === index
+                        ? "w-6 md:w-8 bg-white"
+                        : "w-2.5 md:w-3 bg-white/50 hover:bg-white/70"
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+              
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleAutoplay}
+                className="ml-2 h-7 w-7 md:h-8 md:w-8 bg-white/90 hover:bg-white shadow-lg border-0"
+                aria-label={isPlaying ? "Pause slideshow" : "Play slideshow"}
+              >
+                {isPlaying ? (
+                  <Pause className="h-3 w-3 md:h-4 md:w-4" />
+                ) : (
+                  <Play className="h-3 w-3 md:h-4 md:w-4" />
+                )}
+              </Button>
+            </div>
+          </Carousel>
         </div>
 
         <div className="mb-20">

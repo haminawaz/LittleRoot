@@ -7,6 +7,8 @@ import {
   CreditCard,
   Settings as SettingsIcon,
   Menu,
+  MessageSquare,
+  Bell,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -50,6 +52,14 @@ export default function Header({
       refetchOnMount: true,
       refetchOnWindowFocus: true,
     });
+
+  const { data: unseenCountData } = useQuery<{ count: number }>({
+    queryKey: ["/api/support/unseen-count"],
+    refetchInterval: 30000,
+    enabled: !!userWithSubscription,
+  });
+
+  const unseenCount = unseenCountData?.count || 0;
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
@@ -234,6 +244,22 @@ export default function Header({
               <span className="sr-only">Open menu</span>
             </Button>
 
+            {unseenCount > 0 && (
+              <Link href="/support">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="relative h-8 w-8"
+                  data-testid="button-support-notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive flex items-center justify-center text-xs font-bold text-destructive-foreground">
+                    {unseenCount > 99 ? "99+" : unseenCount}
+                  </span>
+                </Button>
+              </Link>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -341,6 +367,14 @@ export default function Header({
                   >
                     <SettingsIcon className="mr-2 h-4 w-4" />
                     Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setLocation("/support")}
+                    className="cursor-pointer"
+                    data-testid="link-support"
+                  >
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    Support
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -466,6 +500,20 @@ export default function Header({
                 data-testid="button-faq-mobile"
               >
                 FAQ
+              </button>
+            </Link>
+
+            <Link href="/support">
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                  isActive("/support")
+                    ? "text-primary font-semibold bg-primary/10"
+                    : "text-foreground hover:text-primary hover:bg-accent"
+                }`}
+                data-testid="button-support-mobile"
+              >
+                Support
               </button>
             </Link>
           </nav>

@@ -5,7 +5,7 @@ import passport from "passport";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { insertStorySchema, insertPageSchema, type GenerateBookRequest, type Page, type UserWithSubscriptionInfo, SUBSCRIPTION_PLANS } from "@shared/schema";
+import { insertStorySchema, insertPageSchema, insertSupportTicketSchema, insertSupportMessageSchema, type GenerateBookRequest, type Page, type UserWithSubscriptionInfo, SUBSCRIPTION_PLANS } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { generateIllustration, splitStoryIntoPages, generateImagePrompt, generateBookIllustrations, generateCoverIllustration } from "./gemini";
 import { ObjectStorageService } from "./objectStorage";
@@ -1737,6 +1737,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error merging pages:", error);
       res.status(500).json({ error: "Failed to merge pages" });
+    }
+  });
+
+  // Create a new support ticket
+  app.post("/api/support/tickets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ticketData = insertSupportTicketSchema.parse({
+        ...req.body,
+        userId,
+      });
+      const ticket = await storage.createSupportTicket(ticketData);
+
+      if (req.body.message) {
+        await storage.createSupportMessage({
+          ticketId: ticket.id,
+          senderId: userId,
+          senderType: "user",
+          message: req.body.message,
+          seenByUser: true,
+          seenByAdmin: false,
+        });
+      }
+      
+      const ticketWithMessages = await storage.getSupportTicketWithMessages(ticket.id);
+      res.json(ticketWithMessages);
+    } catch (error) {
+      console.error("Error creating support ticket:", error);
+      res.status(400).json({ error: "Invalid ticket data" });
+    }
+  });
+
+  // Get all support tickets for the current user
+  app.get("/api/support/tickets", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const tickets = await storage.getSupportTicketsByUserId(userId);
+
+      const ticketsWithUnseenCount = await Promise.all(
+        tickets.map(async (ticket) => {
+          const unseenCount = await storage.getUnseenMessagesCountForTicket(ticket.id);
+          return {
+            ...ticket,
+            unseenCount,
+          };
+        })
+      );
+      
+      res.json(ticketsWithUnseenCount);
+    } catch (error) {
+      console.error("Error fetching support tickets:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get a specific support ticket with messages
+  app.get("/api/support/tickets/:ticketId", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ticketId = req.params.ticketId;
+      
+      const ticket = await storage.getSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ error: "Ticket not found" });
+      }
+      
+      if (ticket.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const ticketWithMessages = await storage.getSupportTicketWithMessages(ticketId);
+      res.json(ticketWithMessages);
+    } catch (error) {
+      console.error("Error fetching support ticket:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Add a message to a support ticket
+  app.post("/api/support/tickets/:ticketId/messages", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ticketId = req.params.ticketId;
+      
+      const ticket = await storage.getSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ error: "Ticket not found" });
+      }
+      
+      if (ticket.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      const messageData = insertSupportMessageSchema.parse({
+        ticketId,
+        senderId: userId,
+        senderType: "user",
+        message: req.body.message,
+        seenByUser: true,
+        seenByAdmin: false,
+      });
+      
+      const message = await storage.createSupportMessage(messageData);
+      
+      if (ticket.status === "closed") {
+        await storage.updateSupportTicket(ticketId, { status: "open" });
+      }
+      
+      res.json(message);
+    } catch (error) {
+      console.error("Error creating support message:", error);
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  app.post("/api/support/tickets/:ticketId/mark-seen", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ticketId = req.params.ticketId;
+
+      const ticket = await storage.getSupportTicket(ticketId);
+      if (!ticket) {
+        return res.status(404).json({ error: "Ticket not found" });
+      }
+      
+      if (ticket.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      await storage.markMessagesAsSeenByUser(ticketId, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error marking messages as seen:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/support/unseen-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const count = await storage.getUnseenMessagesCountForUser(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error getting unseen messages count:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

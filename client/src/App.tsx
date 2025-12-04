@@ -21,6 +21,7 @@ import Subscription from "@/pages/subscription";
 import TemplateBooks from "@/pages/template-books";
 import Help from "@/pages/help";
 import FAQ from "@/pages/faq";
+import Support from "@/pages/support";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -116,6 +117,9 @@ function Router() {
       </Route>
       <Route path="/faq">
         {() => <ProtectedRoute component={FAQ} />}
+      </Route>
+      <Route path="/support">
+        {() => <ProtectedRoute component={Support} />}
       </Route>
       <Route>
         {() => <NotFound />}

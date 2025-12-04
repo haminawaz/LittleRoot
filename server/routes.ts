@@ -1495,12 +1495,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // Add new page
-  app.post("/api/pages", async (req, res) => {
+  app.post("/api/pages", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { storyId, text, pageNumber } = req.body;
       
       if (!storyId || !text || pageNumber === undefined) {
         return res.status(400).json({ error: "Missing required fields: storyId, text, pageNumber" });
+      }
+
+      const story = await storage.getStory(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      if (story.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden: You can only add pages to your own stories" });
+      }
+
+      const user = await storage.getUserWithSubscriptionInfo(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.subscriptionPlan !== "trial") {
+        const illustrationsUsed = user.illustrationsUsedThisMonth || 0;
+        const illustrationsLimit = user.illustrationsLimitPerMonth || 0;
+        
+        if (illustrationsLimit > 0 && illustrationsUsed >= illustrationsLimit) {
+          return res.status(403).json({ 
+            error: "You've reached your illustration limit. Please upgrade your plan to add more illustrations.",
+            quotaExceeded: true,
+            illustrationLimitReached: true
+          });
+        }
       }
 
       // Get existing pages to determine insertion point
@@ -1511,12 +1539,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (page.pageNumber >= pageNumber) {
           await storage.updatePage(page.id, { pageNumber: page.pageNumber + 1 });
         }
-      }
-
-      // Get story for character image and art style
-      const story = await storage.getStory(storyId);
-      if (!story) {
-        return res.status(404).json({ error: "Story not found" });
       }
 
       const imagePrompt = generateImagePrompt(text, story.title, story.artStyle);
@@ -1531,6 +1553,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       try {
+        if (user.subscriptionPlan !== "trial") {
+          await storage.incrementUserIllustrationUsage(userId);
+        }
+
         // Generate image automatically
         const imagesDir = path.join(process.cwd(), "generated-images");
         if (!fs.existsSync(imagesDir)) {
@@ -1563,6 +1589,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(updatedPage);
       } catch (error) {
         console.error(`Error generating image for new page ${newPage.id}:`, error);
+        if (user.subscriptionPlan !== "trial") {
+          const currentUser = await storage.getUser(userId);
+          if (currentUser && (currentUser.illustrationsUsedThisMonth || 0) > 0) {
+            await storage.updateUserSubscription(userId, {
+              illustrationsUsedThisMonth: Math.max(0, (currentUser.illustrationsUsedThisMonth || 0) - 1)
+            });
+          }
+        }
         // Update page to not generating, but keep the page
         const updatedPage = await storage.updatePage(newPage.id, { isGenerating: false });
         res.json(updatedPage);

@@ -2,10 +2,26 @@ import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import { useRef, useEffect, useState } from "react";
 
 const GoogleLoginButton = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState<string>("350");
+
+  useEffect(() => {
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const computedWidth = containerRef.current.offsetWidth;
+        setWidth(computedWidth.toString());
+      }
+    };
+
+    updateWidth();
+    window.addEventListener("resize", updateWidth);
+    return () => window.removeEventListener("resize", updateWidth);
+  }, []);
 
   const handleLoginSuccess = async (credentialResponse: CredentialResponse) => {
     try {
@@ -46,16 +62,22 @@ const GoogleLoginButton = () => {
   };
 
   return (
-    <GoogleLogin
-      onSuccess={handleLoginSuccess}
-      onError={() => {
-        toast({
-          title: "Login failed",
-          description: "Google login was cancelled or failed.",
-          variant: "destructive",
-        });
-      }}
-    />
+    <div ref={containerRef} className="w-full">
+      <GoogleLogin
+        onSuccess={handleLoginSuccess}
+        type="standard"
+        text="continue_with"
+        shape="pill"
+        width={width}
+        onError={() => {
+          toast({
+            title: "Login failed",
+            description: "Google login was cancelled or failed.",
+            variant: "destructive",
+          });
+        }}
+      />
+    </div>
   );
 };
 

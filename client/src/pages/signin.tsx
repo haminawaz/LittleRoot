@@ -9,6 +9,7 @@ import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
+import FacebookLoginButton from "@/components/FacebookLoginButton";
 
 export default function Signin() {
   const [, setLocation] = useLocation();
@@ -154,8 +155,9 @@ export default function Signin() {
               </div>
             </div>
 
-            <div className="flex justify-center">
+            <div className="flex flex-col gap-3 w-full">
               <GoogleLoginButton />
+              <FacebookLoginButton />
             </div>
 
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">

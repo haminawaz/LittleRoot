@@ -3,10 +3,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
+import GoogleLoginButton from "@/components/GoogleLoginButton";
 
 export default function Signin() {
   const [, setLocation] = useLocation();
@@ -140,6 +142,21 @@ export default function Signin() {
             >
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
+
+            <div className="relative my-6">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+
+            <div className="flex justify-center">
+              <GoogleLoginButton />
+            </div>
 
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}

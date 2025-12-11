@@ -116,43 +116,43 @@ export default function Landing() {
               </button>
             </div>
           </div>
-          {mobileMenuOpen && (
-            <nav className="md:hidden mt-4 pb-4 border-t border-gray-200 pt-4">
-              <div className="flex flex-col gap-4">
-                <a
-                  href="#features"
-                  className="text-gray-700 hover:text-[#00BBA7] transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Features
-                </a>
-                <a
-                  href="#how-it-works"
-                  className="text-gray-700 hover:text-[#00BBA7] transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  How it Works
-                </a>
-                <a
-                  href="#pricing"
-                  className="text-gray-700 hover:text-[#00BBA7] transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Pricing
-                </a>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setLocation("/signin");
-                    setMobileMenuOpen(false);
-                  }}
-                  className="text-gray-700 hover:text-[#00BBA7] !bg-transparent justify-start"
-                >
-                  Log In
-                </Button>
-              </div>
-            </nav>
-          )}
+          <nav
+            className={`md:hidden overflow-hidden transition-all duration-300 ease-in-out ${
+              mobileMenuOpen
+                ? "max-h-96 opacity-100 mt-4 pb-4 border-t border-gray-200 pt-4"
+                : "max-h-0 opacity-0 mt-0 pb-0 pt-0 border-t-0"
+            }`}
+          >
+            <div className="flex flex-col gap-4">
+              <a
+                href="#features"
+                className="text-gray-700 hover:text-[#00BBA7] transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Features
+              </a>
+              <a
+                href="#how-it-works"
+                className="text-gray-700 hover:text-[#00BBA7] transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                How it Works
+              </a>
+              <a
+                href="#pricing"
+                className="text-gray-700 hover:text-[#00BBA7] transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Pricing
+              </a>
+              <a
+                href="#contact"
+                className="text-gray-700 hover:text-[#00BBA7] !bg-transparent justify-start"
+              >
+                Log In
+              </a>
+            </div>
+          </nav>
         </div>
       </header>
 

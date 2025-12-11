@@ -105,7 +105,7 @@ const HowWorks = () => {
                         {step.description}
                       </p>
                       <a
-                        href="#"
+                        href="#features"
                         className="text-[#00BBA7] hover:text-[#009689] font-medium inline-flex items-center gap-1 text-sm md:text-base"
                       >
                         Learn more{" "}

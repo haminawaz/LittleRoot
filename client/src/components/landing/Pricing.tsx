@@ -1,5 +1,4 @@
 import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,14 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-interface PricingProps {
-  handleChoosePlan: (
-    planId: string,
-    planName: string,
-    planPrice: number
-  ) => void;
-}
 
 interface Plan {
   id: string;
@@ -133,7 +124,7 @@ const plans: Plan[] = [
   },
 ];
 
-const Pricing = ({ handleChoosePlan }: PricingProps) => {
+const Pricing = () => {
   return (
     <section id="pricing" className="py-8 md:py-16 lg:py-24">
       <div className="container mx-auto px-4">
@@ -204,14 +195,12 @@ const Pricing = ({ handleChoosePlan }: PricingProps) => {
                     </li>
                   ))}
                 </ul>
-                <Button
-                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-sm md:text-base lg:text-lg py-2 md:py-3"
-                  onClick={() =>
-                    handleChoosePlan(plan.id, plan.name, plan.price)
-                  }
+                <a
+                  href="#contact"
+                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-sm md:text-base lg:text-lg py-2 md:py-3 rounded-full text-center"
                 >
                   {plan.buttonText}
-                </Button>
+                </a>
               </CardContent>
             </Card>
           ))}

@@ -25,22 +25,6 @@ export default function Landing() {
     });
   }, []);
 
-  const handleChoosePlan = (
-    planId: string,
-    planName: string,
-    planPrice: number
-  ) => {
-    localStorage.setItem(
-      "selectedPlan",
-      JSON.stringify({
-        id: planId,
-        name: planName,
-        price: planPrice,
-      })
-    );
-    setLocation("/signup");
-  };
-
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Email submitted:", email);
@@ -48,7 +32,7 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
       {bannerVisible && (
         <div className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3" data-aos="fade-down">
           <div className="container mx-auto px-4 flex items-center justify-between gap-2">
@@ -63,15 +47,13 @@ export default function Landing() {
               </span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
+              <a
+                href="#contact"
                 className="bg-white hover:bg-white/90 text-[#8200DB] hover:!text-[#8200DB] h-auto py-1 md:py-1.5 px-2 md:px-4 rounded-sm text-xs md:text-sm font-medium whitespace-nowrap"
-                onClick={() => handleChoosePlan("trial", "Free Trial", 0)}
               >
                 <span className="hidden sm:inline">Claim Discount</span>
                 <span className="sm:hidden">Claim</span>
-              </Button>
+              </a>
               <button
                 onClick={() => setBannerVisible(false)}
                 className="text-white hover:text-white/80 p-1"
@@ -112,23 +94,19 @@ export default function Landing() {
               </a>
             </nav>
             <div className="flex items-center gap-2 md:gap-4 font-medium">
-              <Button
-                variant="ghost"
-                onClick={() => setLocation("/signin")}
+              <a
+                href="#contact"
                 className="hidden sm:flex text-gray-700 hover:text-[#00BBA7] !bg-transparent text-sm md:text-base"
               >
                 Log In
-              </Button>
-              <Button
-                onClick={() => {
-                  localStorage.removeItem("selectedPlan");
-                  handleChoosePlan("trial", "Free Trial", 0);
-                }}
+              </a>
+              <a
+                href="#contact"
                 className="bg-[#00BBA7] hover:bg-[#00BBA7]/80 drop-shadow-lg shadow-[0_6px_12px_0_rgba(0,187,167,0.3)] text-white rounded-full text-xs md:text-sm px-3 md:px-6 py-1.5 md:py-2"
               >
                 <span className="hidden sm:inline">Get Early Access</span>
                 <span className="sm:hidden">Get Access</span>
-              </Button>
+              </a>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden text-gray-700 p-2"
@@ -178,10 +156,10 @@ export default function Landing() {
         </div>
       </header>
 
-      <Hero handleChoosePlan={handleChoosePlan} />
+      <Hero />
       <Features />
       <HowWorks />
-      <Pricing handleChoosePlan={handleChoosePlan} />
+      <Pricing />
       <Contact
         handleEmailSubmit={handleEmailSubmit}
         email={email}

@@ -20,7 +20,7 @@ const Footer = () => {
             <div className="flex gap-2 md:gap-3">
               <a
                 href="#"
-                className="w-9 h-9 md:w-10 md:h-10 rounded-full !bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-gray-400 transition-colors"
                 aria-label="TikTok"
               >
                 <Music className="h-4 w-4 md:h-5 md:w-5 text-gray-700" />
@@ -61,7 +61,7 @@ const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-gray-900 transition-colors">
+                <a href="#how-it-works" className="hover:text-gray-900 transition-colors">
                   Roadmap
                 </a>
               </li>
@@ -71,17 +71,17 @@ const Footer = () => {
           <div data-aos="fade-up" data-aos-delay="200">
             <ul className="space-y-2 md:space-y-3 text-sm md:text-base text-[#90A1B9]">
               <li>
-                <a href="#" className="hover:text-gray-900 transition-colors">
+                <a aria-disabled={true} href="#" className="hover:text-gray-900 transition-colors">
                   About Us
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-gray-900 transition-colors">
+                <a href="#contact" className="hover:text-gray-900 transition-colors">
                   Contact
                 </a>
               </li>
               <li>
-                <a href="#" className="hover:text-gray-900 transition-colors">
+                <a aria-disabled={true} href="#" className="hover:text-gray-900 transition-colors">
                   Privacy Policy
                 </a>
               </li>

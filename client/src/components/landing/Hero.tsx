@@ -1,15 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight } from "lucide-react";
 
-interface HeroProps {
-  handleChoosePlan: (
-    planId: string,
-    planName: string,
-    planPrice: number
-  ) => void;
-}
-
-const Hero = ({ handleChoosePlan }: HeroProps) => {
+const Hero = () => {
   return (
     <>
       <section className="container mx-auto px-4 py-8 md:py-16 lg:py-24">
@@ -34,22 +26,20 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               life with consistent characters and professional illustrations.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4 mb-6">
-              <Button
-                size="lg"
-                className="bg-[#00BBA7] hover:bg-[#00BBA7]/90 text-black text-base md:text-lg px-6 md:px-8 py-4 md:py-6 rounded-full flex items-center justify-center gap-2 w-full sm:w-auto"
-                onClick={() => handleChoosePlan("trial", "Free Trial", 0)}
+              <a
+                  href="#contact"
+                className="bg-[#00BBA7] hover:bg-[#00BBA7]/90 text-black text-base md:text-lg px-6 md:px-8 py-3 rounded-full flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 <Sparkles className="h-4 w-4 md:h-5 md:w-5" />
                 Start Creating
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-2 border-black text-black !bg-transparent hover:!bg-gray-50 text-base md:text-lg px-6 md:px-8 py-4 md:py-6 rounded-full flex items-center justify-center gap-2 w-full sm:w-auto"
+              </a>
+              <a
+                href="#contact"
+                className="border-2 border-black text-black !bg-transparent hover:!bg-gray-50 text-base md:text-lg px-6 md:px-8 py-3 rounded-full flex items-center justify-center gap-2 w-full sm:w-auto"
               >
                 View Showcase
                 <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
-              </Button>
+              </a>
             </div>
 
             <div className="flex items-center gap-2 md:gap-3">

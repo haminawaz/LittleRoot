@@ -1,7 +1,8 @@
 import { useLocation } from "wouter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, X, Menu } from "lucide-react";
+import AOS from "aos";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
 import HowWorks from "@/components/landing/HowWorks";
@@ -14,6 +15,15 @@ export default function Landing() {
   const [email, setEmail] = useState("");
   const [bannerVisible, setBannerVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    AOS.init({
+      duration: 800,
+      easing: "ease-in-out",
+      once: false,
+      offset: 100,
+    });
+  }, []);
 
   const handleChoosePlan = (
     planId: string,
@@ -40,7 +50,7 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white">
       {bannerVisible && (
-        <div className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3">
+        <div className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3" data-aos="fade-down">
           <div className="container mx-auto px-4 flex items-center justify-between gap-2">
             <div className="inline-flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium text-white flex-1 min-w-0">
               <span className="bg-purple-100/30 px-1.5 md:px-2 py-1 md:py-2 rounded-full flex-shrink-0">

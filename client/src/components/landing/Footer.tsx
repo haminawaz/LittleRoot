@@ -5,7 +5,7 @@ const Footer = () => {
     <footer className="bg-white text-gray-900 py-8 md:py-12 border-t-2 border-black">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-[50%_25%_25%] gap-6 md:gap-8 mb-6 md:mb-8">
-          <div className="sm:col-span-2 md:col-span-1 md:pr-[20%]">
+          <div className="sm:col-span-2 md:col-span-1 md:pr-[20%]" data-aos="fade-right">
             <div className="flex items-center gap-2 mb-3 md:mb-4">
               <img
                 src="/landing/footer-logo.svg"
@@ -42,7 +42,7 @@ const Footer = () => {
             </div>
           </div>
 
-          <div>
+          <div data-aos="fade-up" data-aos-delay="100">
             <ul className="space-y-2 md:space-y-3 text-sm md:text-base text-[#90A1B9]">
               <li>
                 <a
@@ -68,7 +68,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div>
+          <div data-aos="fade-up" data-aos-delay="200">
             <ul className="space-y-2 md:space-y-3 text-sm md:text-base text-[#90A1B9]">
               <li>
                 <a href="#" className="hover:text-gray-900 transition-colors">

@@ -14,7 +14,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
     <>
       <section className="container mx-auto px-4 py-8 md:py-16 lg:py-24">
         <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-          <div>
+          <div data-aos="fade-right">
             <div className="inline-flex items-center gap-2 bg-purple-100 text-purple-700 px-3 md:px-4 py-1.5 md:py-2 rounded-full border border-[#00BBA7] text-xs md:text-sm font-medium mb-4 md:mb-6">
               <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               <span>AI Storybook Creator</span>
@@ -75,7 +75,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               </p>
             </div>
           </div>
-          <div className="relative order-1 md:order-2 mb-8 md:mb-0 px-8 md:px-12 lg:px-0">
+          <div className="relative order-1 md:order-2 mb-8 md:mb-0 px-8 md:px-12 lg:px-0" data-aos="fade-left" data-aos-delay="200">
             <div className="relative rounded-2xl border-2 border-black overflow-hidden aspect-[8/10] transform rotate-3">
               <img
                 src="/landing/hero-img-1.png"
@@ -83,7 +83,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="block absolute -top-4 -right-2 md:-right-0 lg:-right-16 w-20 h-20 md:w-20 md:h-20 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10">
+            <div className="block absolute -top-4 -right-2 md:-right-0 lg:-right-16 w-20 h-20 md:w-20 md:h-20 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10" data-aos="zoom-in" data-aos-delay="400">
               <img
                 src="/landing/hero-img-3.png"
                 alt="Story illustration"
@@ -91,7 +91,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               />
             </div>
 
-            <div className="block absolute -bottom-12 -left-2 md:-left-8 lg:-left-20 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden z-10">
+            <div className="block absolute -bottom-12 -left-2 md:-left-8 lg:-left-20 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden z-10" data-aos="zoom-in" data-aos-delay="600">
               <img
                 src="/landing/hero-img-2.png"
                 alt="Story illustration"
@@ -104,7 +104,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
 
       <section className="py-8 md:py-16 lg:py-24">
         <div className="mx-auto px-4">
-          <div className="container text-center mb-8 md:mb-12">
+          <div className="container text-center mb-8 md:mb-12" data-aos="fade-up">
             <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
               Professional Studio Interface
             </h2>
@@ -114,14 +114,14 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               book all in one place.
             </p>
           </div>
-          <div className="hidden md:block px-4">
+          <div className="hidden md:block px-4" data-aos="zoom-in" data-aos-delay="200">
             <img
               src="/landing/studio-img-1.svg"
               alt="Professional Studio Interface"
               className="w-full h-auto object-cover"
             />
           </div>
-          <div className="block md:hidden px-4">
+          <div className="block md:hidden px-4" data-aos="zoom-in" data-aos-delay="200">
             <img
               src="/landing/studio-img-2.svg"
               alt="Professional Studio Interface"

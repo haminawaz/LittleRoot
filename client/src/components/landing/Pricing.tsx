@@ -137,7 +137,7 @@ const Pricing = ({ handleChoosePlan }: PricingProps) => {
   return (
     <section id="pricing" className="py-8 md:py-16 lg:py-24">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-8 md:mb-12">
+        <div className="text-center mb-8 md:mb-12" data-aos="fade-up">
           <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
             Choose Your Plan
           </h2>
@@ -147,10 +147,12 @@ const Pricing = ({ handleChoosePlan }: PricingProps) => {
           </p>
         </div>
         <div className="grid sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 lg:gap-6 max-w-7xl mx-auto">
-          {plans.map((plan) => (
+          {plans.map((plan, index) => (
             <Card
               key={plan.id}
               className={`border-2 ${plan.colorTheme.border} relative flex flex-col shadow-lg hover:shadow-xl transition-shadow !bg-white`}
+              data-aos="fade-up"
+              data-aos-delay={index * 100}
             >
               {plan.badge && (
                 <div className="absolute -top-3 md:-top-4 left-1/2 transform -translate-x-1/2 z-10">

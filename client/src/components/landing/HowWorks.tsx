@@ -59,13 +59,13 @@ const HowWorks = () => {
   return (
     <section id="how-it-works" className="py-8 md:py-16 lg:py-24">
       <div className="container mx-auto px-4">
-        <div className="flex justify-center">
+        <div className="flex justify-center" data-aos="fade-down">
           <div className="inline-flex items-center gap-2 bg-white text-[#009689] px-3 md:px-4 py-1.5 md:py-2 rounded-full border-2 border-[#E2E8F0] text-xs md:text-sm font-medium mb-4 md:mb-6">
             <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
             <span>Simple 4-Step Process</span>
           </div>
         </div>
-        <div className="text-center mb-8 md:mb-12">
+        <div className="text-center mb-8 md:mb-12" data-aos="fade-up">
           <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
             How Magic Happens
           </h2>
@@ -83,6 +83,8 @@ const HowWorks = () => {
                 className={`grid md:grid-cols-2 items-center relative gap-6 md:gap-4 lg:gap-0 ${
                   isEven ? "md:flex-row-reverse" : ""
                 } ${step.number !== 1 ? "mt-8 md:mt-0" : ""}`}
+                data-aos={isEven ? "fade-left" : "fade-right"}
+                data-aos-delay={index * 150}
               >
                 <div
                   className={`${step.number !== 1 && "md:pt-16"} ${
@@ -127,7 +129,7 @@ const HowWorks = () => {
                       step.number !== 4 ? "bottom-0" : "bottom-24"
                     } bottom-0 w-0.5 bg-black -translate-x-1/2`}
                   ></div>
-                  <div className="relative rounded-xl overflow-hidden shadow-lg">
+                  <div className="relative rounded-xl overflow-hidden shadow-lg" data-aos="zoom-in" data-aos-delay={index * 150 + 100}>
                     <img
                       src={step.image}
                       alt={step.title}

@@ -16,18 +16,19 @@ const Contact = ({ handleEmailSubmit, email, setEmail }: ContactProps) => {
         style={{
           background: `linear-gradient(to bottom right, #D946EF, #8B5CF6, #0EA5E9)`,
         }}
+        data-aos="zoom-in"
       >
         <div className="container mx-auto px-4">
           <div className="max-w-2xl mx-auto text-center">
-            <div className="flex justify-center mb-4 md:mb-6">
+            <div className="flex justify-center mb-4 md:mb-6" data-aos="fade-down" data-aos-delay="100">
               <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-[#4BFFEC]/10 flex items-center justify-center">
                 <Mail className="h-6 w-6 md:h-8 md:w-8 text-white" strokeWidth={1.5} />
               </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-4 md:mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-4 md:mb-6" data-aos="fade-up" data-aos-delay="200">
               Don't Miss the Magic
             </h2>
-            <p className="text-base md:text-lg lg:text-xl text-[#CAD5E2] mb-6 md:mb-8 leading-relaxed px-4">
+            <p className="text-base md:text-lg lg:text-xl text-[#CAD5E2] mb-6 md:mb-8 leading-relaxed px-4" data-aos="fade-up" data-aos-delay="300">
               Sign up now to secure your{" "}
               <strong className="font-bold text-white">
                 40% Early Access discount code
@@ -37,6 +38,8 @@ const Contact = ({ handleEmailSubmit, email, setEmail }: ContactProps) => {
             <form
               onSubmit={handleEmailSubmit}
               className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto mb-3 md:mb-4 px-4"
+              data-aos="fade-up"
+              data-aos-delay="400"
             >
               <div className="relative flex-1">
                 <Mail className="absolute left-3 md:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-gray-400" />

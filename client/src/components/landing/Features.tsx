@@ -107,13 +107,13 @@ const Features = () => {
     <>
       <section className="py-8 md:py-16 lg:py-24" id="features">
         <div className="container mx-auto px-4">
-          <div className="flex justify-center">
+          <div className="flex justify-center" data-aos="fade-down">
             <div className="inline-flex items-center gap-2 bg-white text-[#009689] px-3 md:px-4 py-1.5 md:py-2 rounded-full border-2 border-[#E2E8F0] text-xs md:text-sm font-medium mb-4 md:mb-6">
               <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               <span>Powerful Features</span>
             </div>
           </div>
-          <div className="text-center mb-8 md:mb-12">
+          <div className="text-center mb-8 md:mb-12" data-aos="fade-up">
             <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
               Everything You Need to Publish
             </h2>
@@ -126,6 +126,8 @@ const Features = () => {
               <Card
                 key={index}
                 className="hover:shadow-lg transition-shadow !bg-white border-2 !border-[#E2E8F0] pr-14 md:pr-8"
+                data-aos="fade-up"
+                data-aos-delay={index * 100}
               >
                 <CardHeader>
                   <div
@@ -147,14 +149,14 @@ const Features = () => {
       <section className="py-8 md:py-16 lg:py-24">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div className="overflow-hidden aspect-[1]">
+            <div className="overflow-hidden aspect-[1]" data-aos="fade-right">
               <img
                 src="/landing/features-img.png"
                 alt="Designed for Storytellers"
                 className="w-full h-full object-contain"
               />
             </div>
-            <div className="">
+            <div className="" data-aos="fade-left">
               <h2 className="text-4xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
                 Designed for Storytellers
               </h2>
@@ -167,6 +169,8 @@ const Features = () => {
                   <Card
                     key={index}
                     className="hover:shadow-lg transition-shadow !bg-white border-2 !border-[#E2E8F0]"
+                    data-aos="zoom-in"
+                    data-aos-delay={index * 100}
                   >
                     <CardHeader>
                       <div className="w-12 h-12 border border-[#E2E8F0] rounded-lg flex items-center justify-center mb-3">

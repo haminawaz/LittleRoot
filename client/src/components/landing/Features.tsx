@@ -105,27 +105,27 @@ const storytellerCards: StorytellerCard[] = [
 const Features = () => {
   return (
     <>
-      <section className="py-16 md:py-24" id="features">
+      <section className="py-8 md:py-16 lg:py-24" id="features">
         <div className="container mx-auto px-4">
           <div className="flex justify-center">
-            <div className="inline-flex items-center gap-2 bg-white text-[#009689] px-4 py-2 rounded-full border-2 border-[#E2E8F0] text-sm font-medium mb-6">
-              <Sparkles className="h-4 w-4" />
+            <div className="inline-flex items-center gap-2 bg-white text-[#009689] px-3 md:px-4 py-1.5 md:py-2 rounded-full border-2 border-[#E2E8F0] text-xs md:text-sm font-medium mb-4 md:mb-6">
+              <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               <span>Powerful Features</span>
             </div>
           </div>
-          <div className="text-center mb-12">
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
               Everything You Need to Publish
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               We've thought of everything so you can focus on being creative.
             </p>
           </div>
-          <div className="grid md:grid-cols-3 gap-8 w-full mx-auto">
+          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 w-full mx-auto">
             {featureCards.map((card, index) => (
               <Card
                 key={index}
-                className="hover:shadow-lg transition-shadow !bg-white border-2 !border-[#E2E8F0]"
+                className="hover:shadow-lg transition-shadow !bg-white border-2 !border-[#E2E8F0] pr-14 md:pr-8"
               >
                 <CardHeader>
                   <div
@@ -144,9 +144,9 @@ const Features = () => {
         </div>
       </section>
 
-      <section className="py-16 md:py-24">
+      <section className="py-8 md:py-16 lg:py-24">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="overflow-hidden aspect-[1]">
               <img
                 src="/landing/features-img.png"
@@ -154,15 +154,15 @@ const Features = () => {
                 className="w-full h-full object-contain"
               />
             </div>
-            <div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            <div className="">
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
                 Designed for Storytellers
               </h2>
-              <p className="text-xl text-gray-600 mb-8">
+              <p className="text-base md:text-xl text-gray-600 mb-6 md:mb-8">
                 LittleRoot Studio provides a unique suite of tools to help you
                 visualize your narrative without needing artistic skills.
               </p>
-              <div className="grid grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                 {storytellerCards.map((card, index) => (
                   <Card
                     key={index}

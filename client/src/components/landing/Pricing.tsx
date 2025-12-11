@@ -135,27 +135,27 @@ const plans: Plan[] = [
 
 const Pricing = ({ handleChoosePlan }: PricingProps) => {
   return (
-    <section id="pricing" className="py-16 md:py-24">
+    <section id="pricing" className="py-8 md:py-16 lg:py-24">
       <div className="container mx-auto px-4">
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-8 md:mb-12">
+          <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
             Choose Your Plan
           </h2>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
             Start creating your own children's books today with our flexible
             pricing options.
           </p>
         </div>
-        <div className="grid md:grid-cols-4 gap-6 max-w-7xl mx-auto">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-7xl mx-auto">
           {plans.map((plan) => (
             <Card
               key={plan.id}
               className={`border-2 ${plan.colorTheme.border} relative flex flex-col shadow-lg hover:shadow-xl transition-shadow !bg-white`}
             >
               {plan.badge && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="absolute -top-3 md:-top-4 left-1/2 transform -translate-x-1/2 z-10">
                   <span
-                    className={`${plan.colorTheme.button} text-white px-4 py-3 rounded-full text-md font-semibold`}
+                    className={`${plan.colorTheme.button} text-white px-3 md:px-4 py-2 md:py-3 rounded-full text-xs md:text-sm lg:text-md font-semibold`}
                   >
                     {plan.badge}
                   </span>
@@ -167,12 +167,12 @@ const Pricing = ({ handleChoosePlan }: PricingProps) => {
                 ></div>
               )}
               <CardHeader
-                className={`text-center ${plan.badge ? "pt-8" : "pt-6"} pb-4`}
+                className={`text-center ${plan.badge ? "pt-6 md:pt-8" : "pt-4 md:pt-6"} pb-3 md:pb-4`}
               >
-                <CardTitle className="text-xl font-bold mb-2">
+                <CardTitle className="text-lg md:text-xl font-bold mb-1 md:mb-2">
                   {plan.name}
                 </CardTitle>
-                <div className="text-[#99A1AF] font-bold">
+                <div className="text-[#99A1AF] font-bold text-sm md:text-base">
                   {plan.normalPrice && (
                     <span className="line-through">
                       ${plan.normalPrice.toFixed(2)}
@@ -181,29 +181,29 @@ const Pricing = ({ handleChoosePlan }: PricingProps) => {
                 </div>
                 <div
                   className={`${
-                    plan.badge ? "text-5xl" : "text-4xl"
-                  } font-bold ${plan.colorTheme.text} mb-2`}
+                    plan.badge ? "text-3xl md:text-4xl lg:text-5xl" : "text-2xl md:text-3xl lg:text-4xl"
+                  } font-bold ${plan.colorTheme.text} mb-1 md:mb-2`}
                 >
                   ${plan.price === 0 ? "0" : plan.price.toFixed(2)}
                 </div>
-                <CardDescription className="text-[#62748E] font-medium">
+                <CardDescription className="text-[#62748E] font-medium text-sm md:text-base">
                   {plan.id === "trial" ? "7 days" : "per month"}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex-grow flex flex-col">
-                <ul className="space-y-3 mb-6 flex-grow text-sm">
+              <CardContent className="flex-grow flex flex-col px-4 md:px-6 pb-4 md:pb-6">
+                <ul className="space-y-2 md:space-y-3 mb-4 md:mb-6 flex-grow text-xs md:text-sm">
                   {plan.features.map((feature, index) => (
                     <li
                       key={index}
                       className="flex text-[#45556C] items-start gap-2"
                     >
-                      <Check className="h-5 w-5 text-[#90A1B9] shrink-0 mt-0.5" />
+                      <Check className="h-4 w-4 md:h-5 md:w-5 text-[#90A1B9] shrink-0 mt-0.5" />
                       <span>{feature}</span>
                     </li>
                   ))}
                 </ul>
                 <Button
-                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-lg"
+                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-sm md:text-base lg:text-lg py-2 md:py-3"
                   onClick={() =>
                     handleChoosePlan(plan.id, plan.name, plan.price)
                   }

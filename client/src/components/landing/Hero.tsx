@@ -20,7 +20,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               <span>AI Storybook Creator</span>
             </div>
 
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-4 md:mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-4 md:mb-6 leading-tight">
               Turn Stories into{" "}
               <span className="bg-gradient-to-r from-[#00BBA7] to-blue-400 bg-clip-text text-transparent">
                 Beautiful
@@ -29,7 +29,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
                 Books
               </span>
             </h1>
-            <p className="text-base md:text-xl text-gray-600 mb-6 md:mb-8 leading-relaxed">
+            <p className="text-base md:text-lg lg:text-xl text-gray-600 mb-6 md:mb-8 leading-relaxed">
               LittleRoot Studios uses AI to bring your children's stories to
               life with consistent characters and professional illustrations.
             </p>
@@ -75,7 +75,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               </p>
             </div>
           </div>
-          <div className="relative order-1 md:order-2 mb-8 md:mb-0 px-12 md:px-0">
+          <div className="relative order-1 md:order-2 mb-8 md:mb-0 px-8 md:px-12 lg:px-0">
             <div className="relative rounded-2xl border-2 border-black overflow-hidden aspect-[8/10] transform rotate-3">
               <img
                 src="/landing/hero-img-1.png"
@@ -83,7 +83,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
                 className="w-full h-full object-cover"
               />
             </div>
-            <div className="block absolute -top-4 -right-2 md:-right-16 w-24 h-24 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10">
+            <div className="block absolute -top-4 -right-2 md:-right-0 lg:-right-16 w-20 h-20 md:w-20 md:h-20 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10">
               <img
                 src="/landing/hero-img-3.png"
                 alt="Story illustration"
@@ -91,7 +91,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
               />
             </div>
 
-            <div className="block absolute -bottom-12 -left-2 md:-left-20 w-32 h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden z-10">
+            <div className="block absolute -bottom-12 -left-2 md:-left-8 lg:-left-20 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden z-10">
               <img
                 src="/landing/hero-img-2.png"
                 alt="Story illustration"
@@ -105,7 +105,7 @@ const Hero = ({ handleChoosePlan }: HeroProps) => {
       <section className="py-8 md:py-16 lg:py-24">
         <div className="mx-auto px-4">
           <div className="container text-center mb-8 md:mb-12">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
+            <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
               Professional Studio Interface
             </h2>
             <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">

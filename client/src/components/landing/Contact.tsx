@@ -24,7 +24,7 @@ const Contact = ({ handleEmailSubmit, email, setEmail }: ContactProps) => {
                 <Mail className="h-6 w-6 md:h-8 md:w-8 text-white" strokeWidth={1.5} />
               </div>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 md:mb-6">
+            <h2 className="text-2xl sm:text-3xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-4 md:mb-6">
               Don't Miss the Magic
             </h2>
             <p className="text-base md:text-lg lg:text-xl text-[#CAD5E2] mb-6 md:mb-8 leading-relaxed px-4">

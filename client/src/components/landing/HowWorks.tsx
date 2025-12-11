@@ -66,10 +66,10 @@ const HowWorks = () => {
           </div>
         </div>
         <div className="text-center mb-8 md:mb-12">
-          <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
+          <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
             How Magic Happens
           </h2>
-          <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
+          <p className="text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
             We've combined advanced AI with a simple, intuitive workflow so you
             can focus on the story.
           </p>
@@ -80,14 +80,14 @@ const HowWorks = () => {
             return (
               <div
                 key={step.number}
-                className={`grid md:grid-cols-2 items-center relative gap-6 md:gap-0 ${
+                className={`grid md:grid-cols-2 items-center relative gap-6 md:gap-4 lg:gap-0 ${
                   isEven ? "md:flex-row-reverse" : ""
                 } ${step.number !== 1 ? "mt-8 md:mt-0" : ""}`}
               >
                 <div
                   className={`${step.number !== 1 && "md:pt-16"} ${
                     isEven ? "md:order-2" : ""
-                  } ${isEven ? "md:pl-12" : "md:pr-12"} order-1`}
+                  } ${isEven ? "md:pl-6 lg:pl-12" : "md:pr-6 lg:pr-12"} order-1`}
                 >
                   <div className="flex flex-col items-start gap-3 md:gap-4 mb-4 md:mb-6">
                     <div
@@ -118,7 +118,7 @@ const HowWorks = () => {
                 <div
                   className={`${step.number !== 1 && "md:pt-16"} ${
                     isEven ? "md:order-1" : ""
-                  } ${isEven ? "md:pr-12" : "md:pl-12"} order-2`}
+                  } ${isEven ? "md:pr-6 lg:pr-12" : "md:pl-6 lg:pl-12"} order-2`}
                 >
                   <div
                     className={`hidden md:block absolute left-1/2 ${

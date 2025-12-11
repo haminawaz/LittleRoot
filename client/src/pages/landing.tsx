@@ -78,10 +78,10 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <img src="/logo.svg" alt="Little Root" className="h-8 md:h-12" />
+              <img src="/logo.svg" alt="Little Root" className="h-8 md:h-10 lg:h-12" />
             </div>
 
-            <nav className="hidden md:flex items-center gap-8 font-medium">
+            <nav className="hidden md:flex items-center gap-4 lg:gap-8 font-medium text-sm lg:text-base">
               <a
                 href="#features"
                 className="text-gray-700 hover:text-[#00BBA7] transition-colors"

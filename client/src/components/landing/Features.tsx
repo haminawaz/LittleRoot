@@ -114,14 +114,14 @@ const Features = () => {
             </div>
           </div>
           <div className="text-center mb-8 md:mb-12">
-            <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
+            <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
               Everything You Need to Publish
             </h2>
-            <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">
+            <p className="text-base md:text-lg lg:text-xl text-gray-600 max-w-3xl mx-auto px-4">
               We've thought of everything so you can focus on being creative.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 lg:gap-8 w-full mx-auto">
+          <div className="grid sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 lg:gap-8 w-full mx-auto">
             {featureCards.map((card, index) => (
               <Card
                 key={index}
@@ -155,10 +155,10 @@ const Features = () => {
               />
             </div>
             <div className="">
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
+              <h2 className="text-4xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-3 md:mb-4">
                 Designed for Storytellers
               </h2>
-              <p className="text-base md:text-xl text-gray-600 mb-6 md:mb-8">
+              <p className="text-base md:text-lg lg:text-xl text-gray-600 mb-6 md:mb-8">
                 LittleRoot Studio provides a unique suite of tools to help you
                 visualize your narrative without needing artistic skills.
               </p>

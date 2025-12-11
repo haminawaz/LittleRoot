@@ -160,6 +160,7 @@ export default function Help() {
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       <Header />
 
+      {/* Hero Section */}
       <section className="relative overflow-hidden py-20 px-6">
         <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10"></div>
         <motion.div 

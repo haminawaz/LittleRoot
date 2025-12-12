@@ -16,6 +16,8 @@ import {
   type InsertSupportMessage,
   type SocialAccount,
   type InsertSocialAccount,
+  type EarlyAccessSignup,
+  type InsertEarlyAccessSignup,
   SUBSCRIPTION_PLANS,
   stories, 
   pages, 
@@ -23,7 +25,8 @@ import {
   templates,
   supportTickets,
   supportMessages,
-  socialAccounts
+  socialAccounts,
+  earlyAccessSignups
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -89,6 +92,11 @@ export interface IStorage {
   getSocialAccountByUserIdAndProvider(userId: string, provider: string): Promise<SocialAccount | undefined>;
   createSocialAccount(account: InsertSocialAccount): Promise<SocialAccount>;
   upsertSocialAccount(account: InsertSocialAccount): Promise<SocialAccount>;
+
+  getEarlyAccessSignupByEmail(email: string): Promise<EarlyAccessSignup | undefined>;
+  createEarlyAccessSignup(signup: InsertEarlyAccessSignup): Promise<EarlyAccessSignup>;
+  getEarlyAccessSignupsPaginated(page: number, limit: number): Promise<EarlyAccessSignup[]>;
+  getEarlyAccessSignupsCount(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -769,6 +777,42 @@ export class DatabaseStorage implements IStorage {
     } else {
       return await this.createSocialAccount(account);
     }
+  }
+
+  async getEarlyAccessSignupByEmail(email: string): Promise<EarlyAccessSignup | undefined> {
+    const [signup] = await db
+      .select()
+      .from(earlyAccessSignups)
+      .where(eq(earlyAccessSignups.email, email));
+    return signup;
+  }
+
+  async createEarlyAccessSignup(signup: InsertEarlyAccessSignup): Promise<EarlyAccessSignup> {
+    const [newSignup] = await db
+      .insert(earlyAccessSignups)
+      .values({
+        ...signup,
+        code: signup.code || "EAO2026",
+      })
+      .returning();
+    return newSignup;
+  }
+
+  async getEarlyAccessSignupsPaginated(page: number, limit: number): Promise<EarlyAccessSignup[]> {
+    const offset = (page - 1) * limit;
+    return await db
+      .select()
+      .from(earlyAccessSignups)
+      .orderBy(desc(earlyAccessSignups.createdAt))
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async getEarlyAccessSignupsCount(): Promise<number> {
+    const result = await db
+      .select({ count: sql<number>`COUNT(*)` })
+      .from(earlyAccessSignups);
+    return Number(result[0]?.count || 0);
   }
 }
 

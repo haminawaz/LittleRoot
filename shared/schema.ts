@@ -136,6 +136,15 @@ export const socialAccounts = pgTable("social_accounts", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+export const earlyAccessSignups = pgTable("early_access_signups", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").unique().notNull(),
+  code: varchar("code").notNull().default("EAO2026"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_early_access_email").on(table.email),
+]);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   stories: many(stories),
@@ -234,6 +243,11 @@ export const insertSocialAccountSchema = createInsertSchema(socialAccounts).omit
   updatedAt: true,
 });
 
+export const insertEarlyAccessSignupSchema = createInsertSchema(earlyAccessSignups).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -251,6 +265,8 @@ export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
 export type SupportMessage = typeof supportMessages.$inferSelect;
 export type InsertSocialAccount = z.infer<typeof insertSocialAccountSchema>;
 export type SocialAccount = typeof socialAccounts.$inferSelect;
+export type InsertEarlyAccessSignup = z.infer<typeof insertEarlyAccessSignupSchema>;
+export type EarlyAccessSignup = typeof earlyAccessSignups.$inferSelect;
 
 // Extended interfaces
 export interface StoryWithPages extends Story {

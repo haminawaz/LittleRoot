@@ -14,6 +14,8 @@ import { addTextOverlay } from "./imageUtils";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, comparePassword } from "./localAuth";
 import { sendEmail, generatePasswordResetEmail, generateVerificationEmail, generateWelcomeEmail } from "./emailService";
+import { verifyGoogleToken } from "./googleAuth";
+import { verifyFacebookToken } from "./facebookAuth";
 import { randomBytes } from "crypto";
 import path from "path";
 import fs from "fs";
@@ -337,6 +339,181 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  app.post('/api/user/auth/google-login', async (req, res) => {
+    try {
+      const { credential } = req.body;
+
+      if (!credential) {
+        return res.status(400).json({ message: "Google credential is required" });
+      }
+
+      const googlePayload = await verifyGoogleToken(credential);
+      if (!googlePayload.email) {
+        return res.status(400).json({ message: "Email is required from Google account" });
+      }
+
+      let user = await storage.getUserByEmail(googlePayload.email);
+
+      if (!user) {
+        const newUser = await storage.upsertUser({
+          email: googlePayload.email,
+          emailVerified: true,
+          firstName: googlePayload.given_name || null,
+          lastName: googlePayload.family_name || null,
+          profileImageUrl: googlePayload.picture || null,
+          passwordHash: null,
+        });
+
+        user = newUser;
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "google",
+          providerId: googlePayload.sub,
+          email: googlePayload.email,
+          firstName: googlePayload.given_name || null,
+          lastName: googlePayload.family_name || null,
+          profileImageUrl: googlePayload.picture || null,
+        });
+      } else {
+        if (!user.emailVerified) {
+          await storage.updateUserSubscription(user.id, {
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationTokenExpires: null,
+          });
+        }
+
+        const updates: Partial<typeof users.$inferInsert> = {};
+        if (googlePayload.given_name && !user.firstName) {
+          updates.firstName = googlePayload.given_name;
+        }
+        if (googlePayload.family_name && !user.lastName) {
+          updates.lastName = googlePayload.family_name;
+        }
+        if (googlePayload.picture && !user.profileImageUrl) {
+          updates.profileImageUrl = googlePayload.picture;
+        }
+        if (Object.keys(updates).length > 0) {
+          await storage.updateUserSubscription(user.id, updates);
+        }
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "google",
+          providerId: googlePayload.sub,
+          email: googlePayload.email,
+          firstName: googlePayload.given_name || null,
+          lastName: googlePayload.family_name || null,
+          profileImageUrl: googlePayload.picture || null,
+        });
+      }
+
+      req.login({ claims: { sub: user.id, email: user.email } }, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ 
+          success: true, 
+          user: { claims: { sub: user.id, email: user.email } } 
+        });
+      });
+    } catch (error: any) {
+      console.error("Google login error:", error);
+      res.status(500).json({ 
+        message: error.message || "Google login failed. Please try again." 
+      });
+    }
+  });
+
+  app.post('/api/user/auth/facebook-login', async (req, res) => {
+    try {
+      const { accessToken } = req.body;
+
+      if (!accessToken) {
+        return res.status(400).json({ message: "Facebook access token is required" });
+      }
+
+      const facebookPayload = await verifyFacebookToken(accessToken);
+
+      if (!facebookPayload.email) {
+        return res.status(400).json({ message: "Email is required from Facebook account" });
+      }
+
+      let user = await storage.getUserByEmail(facebookPayload.email);
+
+      if (!user) {
+        const newUser = await storage.upsertUser({
+          email: facebookPayload.email,
+          emailVerified: true,
+          firstName: facebookPayload.first_name || null,
+          lastName: facebookPayload.last_name || null,
+          profileImageUrl: facebookPayload.picture?.data?.url || null,
+          passwordHash: null,
+        });
+
+        user = newUser;
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "facebook",
+          providerId: facebookPayload.id,
+          email: facebookPayload.email,
+          firstName: facebookPayload.first_name || null,
+          lastName: facebookPayload.last_name || null,
+          profileImageUrl: facebookPayload.picture?.data?.url || null,
+        });
+      } else {
+        if (!user.emailVerified) {
+          await storage.updateUserSubscription(user.id, {
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationTokenExpires: null,
+          });
+        }
+
+        const updates: Partial<typeof users.$inferInsert> = {};
+        if (facebookPayload.first_name && !user.firstName) {
+          updates.firstName = facebookPayload.first_name;
+        }
+        if (facebookPayload.last_name && !user.lastName) {
+          updates.lastName = facebookPayload.last_name;
+        }
+        if (facebookPayload.picture?.data?.url && !user.profileImageUrl) {
+          updates.profileImageUrl = facebookPayload.picture.data.url;
+        }
+        if (Object.keys(updates).length > 0) {
+          await storage.updateUserSubscription(user.id, updates);
+        }
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "facebook",
+          providerId: facebookPayload.id,
+          email: facebookPayload.email,
+          firstName: facebookPayload.first_name || null,
+          lastName: facebookPayload.last_name || null,
+          profileImageUrl: facebookPayload.picture?.data?.url || null,
+        });
+      }
+
+      req.login({ claims: { sub: user.id, email: user.email } }, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({ 
+          success: true, 
+          user: { claims: { sub: user.id, email: user.email } } 
+        });
+      });
+    } catch (error: any) {
+      console.error("Facebook login error:", error);
+      res.status(500).json({ 
+        message: error.message || "Facebook login failed. Please try again." 
+      });
+    }
+  });
+
   app.get('/api/auth/verify-email', async (req, res) => {
     try {
       const { token } = req.query;
@@ -460,7 +637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByEmail(email);
 
-      if (user && user.passwordHash) {
+      if (user) {
         const resetToken = randomBytes(32).toString('hex');
         const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -1495,12 +1672,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
   // Add new page
-  app.post("/api/pages", async (req, res) => {
+  app.post("/api/pages", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const { storyId, text, pageNumber } = req.body;
       
       if (!storyId || !text || pageNumber === undefined) {
         return res.status(400).json({ error: "Missing required fields: storyId, text, pageNumber" });
+      }
+
+      const story = await storage.getStory(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      if (story.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden: You can only add pages to your own stories" });
+      }
+
+      const user = await storage.getUserWithSubscriptionInfo(userId);
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      if (user.subscriptionPlan !== "trial") {
+        const illustrationsUsed = user.illustrationsUsedThisMonth || 0;
+        const illustrationsLimit = user.illustrationsLimitPerMonth || 0;
+        
+        if (illustrationsLimit > 0 && illustrationsUsed >= illustrationsLimit) {
+          return res.status(403).json({ 
+            error: "You've reached your illustration limit. Please upgrade your plan to add more illustrations.",
+            quotaExceeded: true,
+            illustrationLimitReached: true
+          });
+        }
       }
 
       // Get existing pages to determine insertion point
@@ -1511,12 +1716,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (page.pageNumber >= pageNumber) {
           await storage.updatePage(page.id, { pageNumber: page.pageNumber + 1 });
         }
-      }
-
-      // Get story for character image and art style
-      const story = await storage.getStory(storyId);
-      if (!story) {
-        return res.status(404).json({ error: "Story not found" });
       }
 
       const imagePrompt = generateImagePrompt(text, story.title, story.artStyle);
@@ -1531,6 +1730,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       try {
+        if (user.subscriptionPlan !== "trial") {
+          await storage.incrementUserIllustrationUsage(userId);
+        }
+
         // Generate image automatically
         const imagesDir = path.join(process.cwd(), "generated-images");
         if (!fs.existsSync(imagesDir)) {
@@ -1563,6 +1766,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(updatedPage);
       } catch (error) {
         console.error(`Error generating image for new page ${newPage.id}:`, error);
+        if (user.subscriptionPlan !== "trial") {
+          const currentUser = await storage.getUser(userId);
+          if (currentUser && (currentUser.illustrationsUsedThisMonth || 0) > 0) {
+            await storage.updateUserSubscription(userId, {
+              illustrationsUsedThisMonth: Math.max(0, (currentUser.illustrationsUsedThisMonth || 0) - 1)
+            });
+          }
+        }
         // Update page to not generating, but keep the page
         const updatedPage = await storage.updatePage(newPage.id, { isGenerating: false });
         res.json(updatedPage);

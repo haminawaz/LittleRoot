@@ -14,13 +14,16 @@ import {
   type SupportTicketWithMessages,
   type SupportMessage,
   type InsertSupportMessage,
+  type SocialAccount,
+  type InsertSocialAccount,
   SUBSCRIPTION_PLANS,
   stories, 
   pages, 
   users,
   templates,
   supportTickets,
-  supportMessages
+  supportMessages,
+  socialAccounts
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -81,6 +84,11 @@ export interface IStorage {
   markMessagesAsSeenByAdmin(ticketId: string): Promise<void>;
   getUnseenMessagesCountForUser(userId: string): Promise<number>;
   getUnseenMessagesCountForTicket(ticketId: string): Promise<number>;
+  
+  getSocialAccountByProviderId(provider: string, providerId: string): Promise<SocialAccount | undefined>;
+  getSocialAccountByUserIdAndProvider(userId: string, provider: string): Promise<SocialAccount | undefined>;
+  createSocialAccount(account: InsertSocialAccount): Promise<SocialAccount>;
+  upsertSocialAccount(account: InsertSocialAccount): Promise<SocialAccount>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -709,6 +717,58 @@ export class DatabaseStorage implements IStorage {
       );
     
     return messages.length;
+  }
+
+  async getSocialAccountByProviderId(provider: string, providerId: string): Promise<SocialAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(socialAccounts)
+      .where(
+        and(
+          eq(socialAccounts.provider, provider),
+          eq(socialAccounts.providerId, providerId)
+        )
+      );
+    return account;
+  }
+
+  async getSocialAccountByUserIdAndProvider(userId: string, provider: string): Promise<SocialAccount | undefined> {
+    const [account] = await db
+      .select()
+      .from(socialAccounts)
+      .where(
+        and(
+          eq(socialAccounts.userId, userId),
+          eq(socialAccounts.provider, provider)
+        )
+      );
+    return account;
+  }
+
+  async createSocialAccount(account: InsertSocialAccount): Promise<SocialAccount> {
+    const [socialAccount] = await db
+      .insert(socialAccounts)
+      .values(account)
+      .returning();
+    return socialAccount;
+  }
+
+  async upsertSocialAccount(account: InsertSocialAccount): Promise<SocialAccount> {
+    const existing = await this.getSocialAccountByUserIdAndProvider(account.userId, account.provider);
+    
+    if (existing) {
+      const [updated] = await db
+        .update(socialAccounts)
+        .set({
+          ...account,
+          updatedAt: new Date(),
+        })
+        .where(eq(socialAccounts.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      return await this.createSocialAccount(account);
+    }
   }
 }
 

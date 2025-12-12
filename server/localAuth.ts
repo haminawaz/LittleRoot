@@ -21,7 +21,9 @@ export function setupLocalAuth() {
           }
 
           if (!user.passwordHash) {
-            return done(null, false, { message: "Please use Replit login for this account" });
+            return done(null, false, { 
+              message: "Password is not set for this account. Please sign in with social login or use 'Forgot Password' to set a password." 
+            });
           }
 
           const isValidPassword = await bcrypt.compare(password, user.passwordHash);

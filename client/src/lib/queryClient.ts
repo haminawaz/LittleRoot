@@ -5,13 +5,19 @@ async function throwIfResNotOk(res: Response) {
     const text = (await res.text()) || res.statusText;
     try {
       const json = JSON.parse(text);
-      if (json.message) {
-        throw new Error(json.message);
+      const userMessage = json.message || json.error || `Request failed with status ${res.status}`;
+      const error: any = new Error(userMessage);
+      Object.assign(error, json);
+      throw error;
+    } catch (e) {
+      if (e instanceof Error) {
+        throw e;
       }
-    } catch {
-      // If parsing fails, fall through to use text
+      if (text.trim().startsWith('{')) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+      throw new Error(text);
     }
-    throw new Error(text);
   }
 }
 

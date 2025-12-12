@@ -123,11 +123,25 @@ export const supportMessages = pgTable("support_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const socialAccounts = pgTable("social_accounts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider").notNull(),
+  providerId: varchar("provider_id").notNull(),
+  email: varchar("email"),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   stories: many(stories),
   templates: many(templates),
   supportTickets: many(supportTickets),
+  socialAccounts: many(socialAccounts),
 }));
 
 export const storiesRelations = relations(stories, ({ many, one }) => ({
@@ -167,6 +181,20 @@ export const supportMessagesRelations = relations(supportMessages, ({ one }) => 
   }),
 }));
 
+export const socialAccountsRelations = relations(socialAccounts, ({ one }) => ({
+  user: one(users, {
+    fields: [socialAccounts.userId],
+    references: [users.id],
+  }),
+}));
+
+export const usersRelationsWithSocial = relations(users, ({ many }) => ({
+  stories: many(stories),
+  templates: many(templates),
+  supportTickets: many(supportTickets),
+  socialAccounts: many(socialAccounts),
+}));
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -200,6 +228,12 @@ export const insertSupportMessageSchema = createInsertSchema(supportMessages).om
   createdAt: true,
 });
 
+export const insertSocialAccountSchema = createInsertSchema(socialAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -215,6 +249,8 @@ export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
 export type SupportMessage = typeof supportMessages.$inferSelect;
+export type InsertSocialAccount = z.infer<typeof insertSocialAccountSchema>;
+export type SocialAccount = typeof socialAccounts.$inferSelect;
 
 // Extended interfaces
 export interface StoryWithPages extends Story {

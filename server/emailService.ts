@@ -234,3 +234,98 @@ If you have any questions or need help getting started, don't hesitate to reach 
   `;
   return { subject, html, text };
 }
+
+export function generateEarlyAccessAdminNotification(
+  email: string,
+  code: string
+): {
+  subject: string;
+  html: string;
+  text: string;
+} {
+  const subject = "New Early Access Signup - LittleRoot";
+  const signupDate = new Date().toLocaleString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Early Access Signup</title>
+    </head>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="background: linear-gradient(135deg, #9333ea 0%, #f59e0b 100%); padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">LittleRoot Admin</h1>
+      </div>
+      <div style="background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px;">
+        <h2 style="color: #1f2937; margin-top: 0;">🎉 New Early Access Signup</h2>
+        <p style="color: #4b5563; font-size: 16px;">A new user has signed up for early access with a 40% discount code.</p>
+        
+        <div style="background: white; padding: 24px; border-radius: 8px; margin: 24px 0; border-left: 4px solid #9333ea; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-weight: 600; width: 120px;">Email:</td>
+              <td style="padding: 8px 0; color: #1f2937; font-weight: 500;">${email}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Code:</td>
+              <td style="padding: 8px 0;">
+                <span style="background: #f3e8ff; color: #9333ea; padding: 4px 12px; border-radius: 6px; font-family: monospace; font-weight: 600; font-size: 14px;">${code}</span>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-weight: 600;">Date:</td>
+              <td style="padding: 8px 0; color: #1f2937;">${signupDate}</td>
+            </tr>
+          </table>
+        </div>
+
+        <div style="background: #fef3c7; padding: 16px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+          <p style="margin: 0; color: #92400e; font-size: 14px;">
+            <strong>💡 Note:</strong> This user has been automatically added to the early access list. You can view all signups in the admin dashboard.
+          </p>
+        </div>
+
+        <div style="text-align: center; margin: 24px 0;">
+          <a href="${process.env.FRONTEND_URL || "https://littleroot.com"}/admin/early-access" style="background: #9333ea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: 600;">
+            View All Signups
+          </a>
+        </div>
+
+        <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
+          This is an automated notification from LittleRoot Admin System
+        </p>
+      </div>
+    </body>
+    </html>
+  `;
+  
+  const text = `
+New Early Access Signup - LittleRoot
+
+A new user has signed up for early access with a 40% discount code.
+
+Email: ${email}
+Code: ${code}
+Date: ${signupDate}
+
+Note: This user has been automatically added to the early access list. You can view all signups in the admin dashboard.
+
+View all signups: ${process.env.FRONTEND_URL || "https://littleroot.com"}/admin/early-access
+
+---
+This is an automated notification from LittleRoot Admin System
+  `;
+  
+  return { subject, html, text };
+}

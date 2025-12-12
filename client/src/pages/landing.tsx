@@ -2,6 +2,7 @@ import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sparkles, X, Menu } from "lucide-react";
+import { useMutation } from "@tanstack/react-query";
 import AOS from "aos";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
@@ -15,6 +16,9 @@ export default function Landing() {
   const [email, setEmail] = useState("");
   const [bannerVisible, setBannerVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
+  const [userCode, setUserCode] = useState<string>("");
 
   useEffect(() => {
     AOS.init({
@@ -25,10 +29,38 @@ export default function Landing() {
     });
   }, []);
 
+  const signupMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const response = await fetch("/api/early-access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to sign up");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsReturning(data.isReturning);
+      setUserCode(data.code);
+      setShowSuccessModal(true);
+      setEmail("");
+    },
+    onError: (error: any) => {
+      console.error("Error signing up:", error);
+      alert(error.message || "Failed to sign up. Please try again.");
+    },
+  });
+
   const handleEmailSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Email submitted:", email);
-    setEmail("");
+    if (email.trim()) {
+      signupMutation.mutate(email);
+    }
   };
 
   return (
@@ -160,11 +192,16 @@ export default function Landing() {
       <Features />
       <HowWorks />
       <Pricing />
-      <Contact
-        handleEmailSubmit={handleEmailSubmit}
-        email={email}
-        setEmail={setEmail}
-      />
+        <Contact
+          handleEmailSubmit={handleEmailSubmit}
+          signupMutation={signupMutation}
+          email={email}
+          setEmail={setEmail}
+          isReturning={isReturning}
+          showSuccessModal={showSuccessModal}
+          setShowSuccessModal={setShowSuccessModal}
+          userCode={userCode}
+        />
       <Footer />
     </div>
   );

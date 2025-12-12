@@ -5,7 +5,7 @@ import passport from "passport";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { insertStorySchema, insertPageSchema, insertSupportTicketSchema, insertSupportMessageSchema, type GenerateBookRequest, type Page, type UserWithSubscriptionInfo, SUBSCRIPTION_PLANS } from "@shared/schema";
+import { insertStorySchema, insertPageSchema, insertSupportTicketSchema, insertSupportMessageSchema, insertEarlyAccessSignupSchema, type GenerateBookRequest, type Page, type UserWithSubscriptionInfo, SUBSCRIPTION_PLANS, earlyAccessSignups } from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { generateIllustration, splitStoryIntoPages, generateImagePrompt, generateBookIllustrations, generateCoverIllustration } from "./gemini";
 import { ObjectStorageService } from "./objectStorage";
@@ -13,12 +13,13 @@ import { getImageDimensionsForFormat } from "./pdfGenerator";
 import { addTextOverlay } from "./imageUtils";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, comparePassword } from "./localAuth";
-import { sendEmail, generatePasswordResetEmail, generateVerificationEmail, generateWelcomeEmail } from "./emailService";
+import { sendEmail, generatePasswordResetEmail, generateVerificationEmail, generateWelcomeEmail, generateEarlyAccessAdminNotification } from "./emailService";
 import { verifyGoogleToken } from "./googleAuth";
 import { verifyFacebookToken } from "./facebookAuth";
-import { randomBytes } from "crypto";
+import { randomBytes, randomInt } from "crypto";
 import path from "path";
 import fs from "fs";
+const supportEmail = process.env.SUPPORT_EMAIL || process.env.GMAIL_USER;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const objectStorageService = new ObjectStorageService();
@@ -38,6 +39,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Set up authentication (Replit Auth and local email/password)
   await setupAuth(app);
   setupLocalAuth();
+
+  const { setupAdminAuth } = await import("./admin/auth");
+  setupAdminAuth();
+
+  const { registerAdminRoutes } = await import("./admin/routes");
+  registerAdminRoutes(app);
+
+  const generateUniqueCode = async (): Promise<string> => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let code: string;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    do {
+      code = "EAO";
+      for (let i = 0; i < 6; i++) {
+        code += chars[randomInt(0, chars.length)];
+      }
+      attempts++;
+
+      const existing = await db
+        .select()
+        .from(earlyAccessSignups)
+        .where(eq(earlyAccessSignups.code, code))
+        .limit(1);
+      
+      if (existing.length === 0) {
+        return code;
+      }
+    } while (attempts < maxAttempts);
+
+    return `EAO${Date.now().toString(36).toUpperCase().slice(-6)}`;
+  };
 
   // Object storage routes for public file serving
   app.get("/public-objects/:filePath(*)", async (req, res) => {
@@ -2092,6 +2126,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ count });
     } catch (error) {
       console.error("Error getting unseen messages count:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/early-access", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email || typeof email !== "string" || !email.includes("@")) {
+        return res.status(400).json({ error: "Valid email is required" });
+      }
+
+      const existingSignup = await storage.getEarlyAccessSignupByEmail(email);
+      const isReturning = !!existingSignup;
+      let userCode: string;
+
+      if (!isReturning) {
+        userCode = await generateUniqueCode();
+        const signupData = insertEarlyAccessSignupSchema.parse({
+          email: email.toLowerCase().trim(),
+          code: userCode,
+        });
+        await storage.createEarlyAccessSignup(signupData);
+        if (supportEmail) {
+          try {
+            const emailContent = generateEarlyAccessAdminNotification(email, userCode);
+            await sendEmail({
+              to: supportEmail,
+              subject: emailContent.subject,
+              html: emailContent.html,
+              text: emailContent.text,
+            });
+          } catch (emailError: any) {
+            console.error("Error sending support email:", emailError);
+          }
+        }
+      } else {
+        userCode = existingSignup.code;
+      }
+
+      res.json({
+        success: true,
+        isReturning,
+        code: userCode,
+        message: isReturning
+          ? "Welcome back! You're already on our Early Access list."
+          : "Successfully signed up for early access!",
+      });
+    } catch (error: any) {
+      console.error("Error processing early access signup:", error);
+      if (error.name === "ZodError") {
+        return res.status(400).json({ error: "Invalid email format" });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Sparkles, ArrowRight } from "lucide-react";
 
 const Hero = () => {
@@ -94,8 +93,8 @@ const Hero = () => {
 
       <section className="py-8 md:py-16 lg:py-24">
         <div className="mx-auto px-4">
-          <div className="container text-center mb-8 md:mb-12" data-aos="fade-up">
-            <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4">
+          <div className="container mx-auto text-center mb-8 md:mb-12" data-aos="fade-up">
+            <h2 className="text-4xl sm:text-5xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-3 md:mb-4 text-center">
               Professional Studio Interface
             </h2>
             <p className="text-base md:text-xl text-gray-600 max-w-3xl mx-auto px-4">

@@ -11,6 +11,7 @@ import { queryClient } from "@/lib/queryClient";
 import { z } from "zod";
 import GoogleLoginButton from "@/components/GoogleLoginButton";
 import FacebookLoginButton from "@/components/FacebookLoginButton";
+import TwitterLoginButton from "@/components/TwitterLoginButton";
 
 const hasUpperCase = (password: string) => /[A-Z]/.test(password);
 const hasLowerCase = (password: string) => /[a-z]/.test(password);
@@ -413,6 +414,7 @@ export default function Signup() {
             <div className="flex flex-col gap-3 w-full">
               <GoogleLoginButton />
               <FacebookLoginButton />
+              <TwitterLoginButton />
             </div>
 
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">

@@ -16,6 +16,7 @@ import { setupLocalAuth, hashPassword, comparePassword } from "./localAuth";
 import { sendEmail, generatePasswordResetEmail, generateVerificationEmail, generateWelcomeEmail, generateEarlyAccessAdminNotification } from "./emailService";
 import { verifyGoogleToken } from "./googleAuth";
 import { verifyFacebookToken } from "./facebookAuth";
+import { verifyTwitterToken, exchangeTwitterCode } from "./twitterAuth";
 import { randomBytes, randomInt } from "crypto";
 import path from "path";
 import fs from "fs";

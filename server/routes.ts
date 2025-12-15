@@ -548,6 +548,205 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/user/auth/twitter-login", async (req, res) => {
+    try {
+      const { accessToken } = req.body;
+
+      if (!accessToken) {
+        return res
+          .status(400)
+          .json({ message: "Twitter access token is required" });
+      }
+
+      const twitterPayload = await verifyTwitterToken(accessToken);
+      if (!twitterPayload.email && !twitterPayload.username) {
+        return res
+          .status(400)
+          .json({ message: "Unable to identify Twitter user" });
+      }
+
+      const email =
+        twitterPayload.email || `${twitterPayload.username}@twitter.local`;
+
+      let user = await storage.getUserByEmail(email);
+      if (!user) {
+        const newUser = await storage.upsertUser({
+          email: email,
+          emailVerified: twitterPayload.email ? true : false,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+          passwordHash: null,
+        });
+
+        user = newUser;
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "twitter",
+          providerId: twitterPayload.id,
+          email: email,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+        });
+      } else {
+        if (twitterPayload.email && !user.emailVerified) {
+          await storage.updateUserSubscription(user.id, {
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationTokenExpires: null,
+          });
+        }
+
+        const updates: Partial<typeof users.$inferInsert> = {};
+        if (twitterPayload.name) {
+          const nameParts = twitterPayload.name.split(" ");
+          if (nameParts[0] && !user.firstName) {
+            updates.firstName = nameParts[0];
+          }
+          if (nameParts.slice(1).join(" ") && !user.lastName) {
+            updates.lastName = nameParts.slice(1).join(" ");
+          }
+        }
+        if (twitterPayload.profile_image_url && !user.profileImageUrl) {
+          updates.profileImageUrl = twitterPayload.profile_image_url;
+        }
+        if (Object.keys(updates).length > 0) {
+          await storage.updateUserSubscription(user.id, updates);
+        }
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "twitter",
+          providerId: twitterPayload.id,
+          email: email,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+        });
+      }
+
+      req.login({ claims: { sub: user.id, email: user.email } }, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({
+          success: true,
+          user: { claims: { sub: user.id, email: user.email } },
+        });
+      });
+    } catch (error: any) {
+      console.error("Twitter login error:", error);
+      res.status(500).json({
+        message: error.message || "Twitter login failed. Please try again.",
+      });
+    }
+  });
+
+  app.post("/api/user/auth/twitter-callback", async (req, res) => {
+    try {
+      const { code, codeVerifier, redirectUri } = req.body;
+
+      if (!code || !codeVerifier || !redirectUri) {
+        return res
+          .status(400)
+          .json({
+            message: "Code, code verifier, and redirect URI are required",
+          });
+      }
+
+      const tokenData = await exchangeTwitterCode(
+        code,
+        codeVerifier,
+        redirectUri
+      );
+      const accessToken = tokenData.access_token;
+
+      const twitterPayload = await verifyTwitterToken(accessToken);
+      if (!twitterPayload.email && !twitterPayload.username) {
+        return res
+          .status(400)
+          .json({ message: "Unable to identify Twitter user" });
+      }
+
+      const email =
+        twitterPayload.email || `${twitterPayload.username}@twitter.local`;
+      let user = await storage.getUserByEmail(email);
+      if (!user) {
+        const newUser = await storage.upsertUser({
+          email: email,
+          emailVerified: twitterPayload.email ? true : false,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+          passwordHash: null,
+        });
+
+        user = newUser;
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "twitter",
+          providerId: twitterPayload.id,
+          email: email,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+        });
+      } else {
+        if (twitterPayload.email && !user.emailVerified) {
+          await storage.updateUserSubscription(user.id, {
+            emailVerified: true,
+            emailVerificationToken: null,
+            emailVerificationTokenExpires: null,
+          });
+        }
+
+        const updates: Partial<typeof users.$inferInsert> = {};
+        if (twitterPayload.name) {
+          const nameParts = twitterPayload.name.split(" ");
+          if (nameParts[0] && !user.firstName) {
+            updates.firstName = nameParts[0];
+          }
+          if (nameParts.slice(1).join(" ") && !user.lastName) {
+            updates.lastName = nameParts.slice(1).join(" ");
+          }
+        }
+        if (twitterPayload.profile_image_url && !user.profileImageUrl) {
+          updates.profileImageUrl = twitterPayload.profile_image_url;
+        }
+        if (Object.keys(updates).length > 0) {
+          await storage.updateUserSubscription(user.id, updates);
+        }
+
+        await storage.upsertSocialAccount({
+          userId: user.id,
+          provider: "twitter",
+          providerId: twitterPayload.id,
+          email: email,
+          firstName: twitterPayload.name?.split(" ")[0] || null,
+          lastName: twitterPayload.name?.split(" ").slice(1).join(" ") || null,
+          profileImageUrl: twitterPayload.profile_image_url || null,
+        });
+      }
+
+      req.login({ claims: { sub: user.id, email: user.email } }, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Failed to create session" });
+        }
+        res.json({
+          success: true,
+          user: { claims: { sub: user.id, email: user.email } },
+        });
+      });
+    } catch (error: any) {
+      console.error("Twitter callback error:", error);
+      res.status(500).json({
+        message: error.message || "Twitter login failed. Please try again.",
+      });
+    }
+  });
+
   app.get('/api/auth/verify-email', async (req, res) => {
     try {
       const { token } = req.query;

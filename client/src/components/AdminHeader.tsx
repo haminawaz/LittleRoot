@@ -22,7 +22,7 @@ export default function AdminHeader({ onMenuClick }: AdminHeaderProps) {
     },
     onSuccess: () => {
       queryClient.clear();
-      setLocation("/admin/login");
+      setLocation("/admin/signin");
     },
     onError: (error) => {
       console.error("Logout error:", error);

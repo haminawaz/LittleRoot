@@ -82,7 +82,7 @@ function Router() {
 
     useEffect(() => {
       if (!adminLoading && !isAdminAuthenticated) {
-        setLocation('/admin/login');
+        setLocation('/admin/signin');
       }
     }, [adminLoading, isAdminAuthenticated, setLocation]);
     

@@ -12,7 +12,7 @@ import Footer from "@/components/landing/Footer";
 import Contact from "@/components/landing/Contact";
 
 export default function Landing() {
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [bannerVisible, setBannerVisible] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -30,34 +30,43 @@ export default function Landing() {
   }, []);
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (hash) {
-      const scrollToSection = () => {
-        const element = document.getElementById(hash);
-        if (element) {
-          const headerOffset = 100;
-          const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition =
-            elementPosition + window.pageYOffset - headerOffset;
+    const scrollToHashSection = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash) {
+        const scrollToSection = () => {
+          const element = document.getElementById(hash);
+          if (element) {
+            const headerOffset = 100;
+            const elementPosition = element.getBoundingClientRect().top;
+            const offsetPosition =
+              elementPosition + window.pageYOffset - headerOffset;
 
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: "smooth",
-          });
-          return true;
-        }
-        return false;
-      };
-
-      if (!scrollToSection()) {
-        const retryInterval = setInterval(() => {
-          if (scrollToSection()) {
-            clearInterval(retryInterval);
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: "smooth",
+            });
+            return true;
           }
-        }, 100);
-        setTimeout(() => clearInterval(retryInterval), 2000);
+          return false;
+        };
+
+        if (!scrollToSection()) {
+          const retryInterval = setInterval(() => {
+            if (scrollToSection()) {
+              clearInterval(retryInterval);
+            }
+          }, 100);
+          setTimeout(() => clearInterval(retryInterval), 2000);
+        }
       }
-    }
+    };
+
+    scrollToHashSection();
+    window.addEventListener("hashchange", scrollToHashSection);
+
+    return () => {
+      window.removeEventListener("hashchange", scrollToHashSection);
+    };
   }, []);
 
   const signupMutation = useMutation({

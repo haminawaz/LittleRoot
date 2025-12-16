@@ -28,6 +28,8 @@ import AdminDashboard from "@/pages/admin/dashboard";
 import AdminUser from "@/pages/admin/users";
 import AdminEarlyAccess from "@/pages/admin/early-access";
 import AdminSettings from "./pages/admin/settings";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import TermsOfService from "@/pages/terms-of-service";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdminAuthenticated, adminLoading } = useAuth();
@@ -137,6 +139,12 @@ function Router() {
       </Route>
       <Route path="/subscription">
         {() => <ProtectedRoute component={Subscription} />}
+      </Route>
+      <Route path="/privacypolicy">
+        {() => <PrivacyPolicy />}
+      </Route>
+      <Route path="/termsofservice">
+        {() => <TermsOfService />}
       </Route>
       <Route path="/help">
         {() => <ProtectedRoute component={Help} />}

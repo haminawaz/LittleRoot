@@ -29,6 +29,37 @@ export default function Landing() {
     });
   }, []);
 
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash) {
+      const scrollToSection = () => {
+        const element = document.getElementById(hash);
+        if (element) {
+          const headerOffset = 100;
+          const elementPosition = element.getBoundingClientRect().top;
+          const offsetPosition =
+            elementPosition + window.pageYOffset - headerOffset;
+
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: "smooth",
+          });
+          return true;
+        }
+        return false;
+      };
+
+      if (!scrollToSection()) {
+        const retryInterval = setInterval(() => {
+          if (scrollToSection()) {
+            clearInterval(retryInterval);
+          }
+        }, 100);
+        setTimeout(() => clearInterval(retryInterval), 2000);
+      }
+    }
+  }, []);
+
   const signupMutation = useMutation({
     mutationFn: async (email: string) => {
       const response = await fetch("/api/early-access", {
@@ -64,9 +95,15 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-white" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div
+      className="min-h-screen bg-white"
+      style={{ fontFamily: "'Inter', sans-serif" }}
+    >
       {bannerVisible && (
-        <div className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3" data-aos="fade-down">
+        <div
+          className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3"
+          data-aos="fade-down"
+        >
           <div className="container mx-auto px-4 flex items-center justify-between gap-2">
             <div className="inline-flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium text-white flex-1 min-w-0">
               <span className="bg-purple-100/30 px-1.5 md:px-2 py-1 md:py-2 rounded-full flex-shrink-0">
@@ -102,7 +139,11 @@ export default function Landing() {
         <div className="container mx-auto px-4 py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <img src="/logo.svg" alt="Little Root" className="h-8 md:h-10 lg:h-12" />
+              <img
+                src="/logo.svg"
+                alt="Little Root"
+                className="h-8 md:h-10 lg:h-12"
+              />
             </div>
 
             <nav className="hidden md:flex items-center gap-4 lg:gap-8 font-medium text-sm lg:text-base">
@@ -192,16 +233,16 @@ export default function Landing() {
       <Features />
       <HowWorks />
       <Pricing />
-        <Contact
-          handleEmailSubmit={handleEmailSubmit}
-          signupMutation={signupMutation}
-          email={email}
-          setEmail={setEmail}
-          isReturning={isReturning}
-          showSuccessModal={showSuccessModal}
-          setShowSuccessModal={setShowSuccessModal}
-          userCode={userCode}
-        />
+      <Contact
+        handleEmailSubmit={handleEmailSubmit}
+        signupMutation={signupMutation}
+        email={email}
+        setEmail={setEmail}
+        isReturning={isReturning}
+        showSuccessModal={showSuccessModal}
+        setShowSuccessModal={setShowSuccessModal}
+        userCode={userCode}
+      />
       <Footer />
     </div>
   );

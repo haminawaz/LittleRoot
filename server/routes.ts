@@ -994,12 +994,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Cancel Stripe subscription if exists
-      if (stripe && user.stripeSubscriptionId) {
+      if (user.subscriptionProvider === "stripe" && stripe && user.stripeSubscriptionId) {
         try {
           await stripe.subscriptions.cancel(user.stripeSubscriptionId);
         } catch (error) {
           console.error("Error canceling Stripe subscription:", error);
           // Continue with account deletion even if Stripe cancellation fails
+        }
+      }
+
+      if (user.subscriptionProvider === "paypal" && user.paypalSubscriptionId) {
+        const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+        const paypalSecret = process.env.PAYPAL_SECRET;
+        const paypalBaseUrl =
+          process.env.PAYPAL_MODE === "live"
+            ? "https://api-m.paypal.com"
+            : "https://api-m.sandbox.paypal.com";
+
+        if (paypalClientId && paypalSecret) {
+          try {
+            const tokenResponse = await fetch(
+              `${paypalBaseUrl}/v1/oauth2/token`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  Authorization: `Basic ${Buffer.from(
+                    `${paypalClientId}:${paypalSecret}`
+                  ).toString("base64")}`,
+                },
+                body: "grant_type=client_credentials",
+              }
+            );
+
+            if (tokenResponse.ok) {
+              const { access_token } = await tokenResponse.json();
+              await fetch(
+                `${paypalBaseUrl}/v1/billing/subscriptions/${user.paypalSubscriptionId}/cancel`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${access_token}`,
+                  },
+                  body: JSON.stringify({
+                    reason: "User deleted account in LittleRoot",
+                  }),
+                }
+              );
+            }
+          } catch (error) {
+            console.error("Error canceling PayPal subscription:", error);
+          }
         }
       }
 
@@ -1030,235 +1076,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Subscription management routes
-  app.post('/api/subscription/create', isAuthenticated, async (req: any, res) => {
-    if (!stripe) {
-      return res.status(503).json({ error: "Payment processing not configured" });
-    }
-
-    try {
-      const userId = req.user.claims.sub;
-      const { planId } = req.body;
-      
-      if (!SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
-        return res.status(400).json({ error: "Invalid plan" });
-      }
-
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      let customerId = user.stripeCustomerId;
-      
-      // Create customer if doesn't exist
-      if (!customerId) {
-        const customer = await stripe.customers.create({
-          email: user.email || '',
-          metadata: { userId: userId }
-        });
-        customerId = customer.id;
-        await storage.updateUserStripeInfo(userId, customerId, '');
-      }
-
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      
-      // Create subscription
-      const subscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: plan.stripePriceId! }],
-        payment_behavior: 'default_incomplete',
-        expand: ['latest_invoice.payment_intent'],
-      });
-
-      res.json({
-        subscriptionId: subscription.id,
-        clientSecret: (subscription.latest_invoice as any)?.payment_intent?.client_secret,
-      });
-    } catch (error: any) {
-      console.error("Error creating subscription:", error);
-      res.status(500).json({ error: "Failed to create subscription: " + error.message });
-    }
-  });
-
-  // Upgrade existing user subscription (same flow as registration)
-  app.post("/api/subscription/upgrade", isAuthenticated, async (req: any, res) => {
-    if (!stripe) {
-      return res.status(503).json({ error: "Payment processing not configured" });
-    }
-
-    try {
-      const userId = req.user.claims.sub;
-      const { planId, paymentMethodId } = req.body;
-
-      if (!planId || !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]) {
-        return res.status(400).json({ error: "Invalid plan ID" });
-      }
-
-      if (!paymentMethodId) {
-        return res.status(400).json({ error: "Payment method required" });
-      }
-
-      const user = await storage.getUserWithSubscriptionInfo(userId);
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
-
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
-      let customerId = user.stripeCustomerId;
-      let subscriptionId = user.stripeSubscriptionId;
-
-      console.log(`Upgrading subscription for user ${userId}: planId=${planId}, has customer=${!!customerId}, has subscription=${!!subscriptionId}`);
-
-      // Verify payment method exists before proceeding
-      try {
-        await stripe.paymentMethods.retrieve(paymentMethodId);
-      } catch (pmError: any) {
-        console.error("Payment method not found:", pmError.message);
-        return res.status(400).json({ error: "Invalid payment method. Please try again with a new card." });
-      }
-
-      // Create customer if doesn't exist (for free trial users)
-      if (!customerId) {
-        console.log("Creating new Stripe customer for free trial user");
-        const customer = await stripe.customers.create({
-          email: user.email || '',
-          name: `${user.firstName} ${user.lastName}`,
-          metadata: { userId: userId },
-          payment_method: paymentMethodId,
-          invoice_settings: {
-            default_payment_method: paymentMethodId,
-          },
-        });
-        customerId = customer.id;
-        await storage.updateUserStripeInfo(userId, customerId, '');
-        console.log(`Created Stripe customer: ${customerId}`);
-      } else {
-        // Attach payment method to existing customer
-        console.log("Attaching payment method to existing customer");
-        try {
-          await stripe.paymentMethods.attach(paymentMethodId, {
-            customer: customerId,
-          });
-
-          // Set as default payment method
-          await stripe.customers.update(customerId, {
-            invoice_settings: {
-              default_payment_method: paymentMethodId,
-            },
-          });
-        } catch (attachError: any) {
-          // If payment method already attached, just update default
-          if (attachError.code !== 'resource_already_exists') {
-            console.error("Error attaching payment method:", attachError.message);
-            throw attachError;
-          }
-          await stripe.customers.update(customerId, {
-            invoice_settings: {
-              default_payment_method: paymentMethodId,
-            },
-          });
-        }
-      }
-
-      // Create or update subscription
-      if (subscriptionId) {
-        // Cancel old subscription and create new one (simpler than modifying)
-        console.log(`Cancelling old subscription: ${subscriptionId}`);
-        try {
-          await stripe.subscriptions.cancel(subscriptionId);
-        } catch (cancelError) {
-          console.log("Old subscription already cancelled or doesn't exist");
-        }
-      }
-      
-      // Create new subscription
-      console.log(`Creating new subscription with plan: ${plan.stripePriceId}`);
-      const newSubscription = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: plan.stripePriceId! }],
-        default_payment_method: paymentMethodId,
-        payment_settings: {
-          payment_method_types: ['card'],
-          save_default_payment_method: 'on_subscription',
-        },
-      });
-      
-      // Retrieve the subscription to get complete data including period dates
-      const subscription = await stripe.subscriptions.retrieve(newSubscription.id);
-      
-      await storage.updateUserStripeInfo(userId, customerId, subscription.id);
-
-      // Update user's subscription plan and access limits
-      const sub = subscription as any;
-      
-      // Period dates are in the subscription items, not at top level
-      const periodStart = sub.items?.data?.[0]?.current_period_start;
-      const periodEnd = sub.items?.data?.[0]?.current_period_end;
-      
-      console.log(`Subscription data: status=${sub.status}, period_start=${periodStart}, period_end=${periodEnd}`);
-      console.log(`Period start date: ${periodStart ? new Date(periodStart * 1000).toISOString() : 'null'}`);
-      console.log(`Period end date: ${periodEnd ? new Date(periodEnd * 1000).toISOString() : 'null'}`);
-      
-      await storage.updateUserSubscription(userId, {
-        subscriptionPlan: planId,
-        subscriptionStatus: sub.status === 'active' ? 'active' : 'pending',
-        booksLimitPerMonth: plan.booksPerMonth, // Update book limit based on new plan
-        illustrationsLimitPerMonth: plan.booksPerMonth * plan.pagesPerBook, // Illustrations = books * pages (144, 360, 600)
-        templateBooksLimit: plan.templateBooks,
-        bonusVariationsLimit: plan.bonusVariations,
-        hasCommercialRights: plan.commercialRights,
-        hasResellRights: plan.resellRights,
-        hasAllFormattingOptions: plan.allFormattingOptions,
-        currentPeriodStart: periodStart ? new Date(periodStart * 1000) : undefined,
-        currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
-        lastPaymentDate: new Date(), // Track initial payment when upgrading
-        trialEndsAt: null, // Clear trial end date when upgrading to paid
-      });
-
-      console.log(`Successfully created subscription ${subscription.id} for user ${userId}`);
-      res.json({ success: true, message: "Subscription upgraded successfully" });
-    } catch (error: any) {
-      console.error("Error upgrading subscription:", error);
-      // Return more specific error message
-      const errorMessage = error.message || "Failed to upgrade subscription";
-      res.status(500).json({ error: errorMessage });
-    }
-  });
-
-  // Cancel subscription (at period end)
   app.post('/api/subscription/cancel', isAuthenticated, async (req: any, res) => {
-    if (!stripe) {
-      return res.status(503).json({ error: "Payment processing not configured" });
-    }
-
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
-      
       if (!user) {
         return res.status(404).json({ error: "User not found" });
       }
 
-      if (!user.stripeSubscriptionId) {
-        return res.status(400).json({ error: "No active subscription to cancel" });
+      if (user.subscriptionProvider === "stripe" && user.stripeSubscriptionId) {
+        if (!stripe) {
+          return res.status(503).json({ error: "Stripe not configured" });
+        }
+        await stripe.subscriptions.update(user.stripeSubscriptionId, {
+          cancel_at_period_end: true,
+        });
+        await storage.updateUserSubscription(userId, {
+          cancelAtPeriodEnd: true,
+        });
+        console.log(`Stripe subscription ${user.stripeSubscriptionId} set to cancel at period end for user ${userId}`);
+        return res.json({ 
+          success: true, 
+          message: "Subscription will be canceled at the end of the current billing period" 
+        });
       }
 
-      // Cancel subscription at period end via Stripe
-      const subscription = await stripe.subscriptions.update(user.stripeSubscriptionId, {
-        cancel_at_period_end: true,
-      });
+      if (user.subscriptionProvider === "paypal" && user.paypalSubscriptionId) {
+        const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+        const paypalSecret = process.env.PAYPAL_SECRET;
+        const paypalBaseUrl =
+          process.env.PAYPAL_MODE === "live"
+            ? "https://api-m.paypal.com"
+            : "https://api-m.sandbox.paypal.com";
 
-      // Update user's cancelAtPeriodEnd flag in database
-      await storage.updateUserSubscription(userId, {
-        cancelAtPeriodEnd: true,
-      });
+        if (!paypalClientId || !paypalSecret) {
+          return res.status(503).json({ error: "PayPal not configured" });
+        }
 
-      console.log(`Subscription ${user.stripeSubscriptionId} set to cancel at period end for user ${userId}`);
-      res.json({ 
-        success: true, 
-        message: "Subscription will be canceled at the end of the current billing period" 
-      });
+        try {
+          const tokenResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+              Authorization: `Basic ${Buffer.from(
+                `${paypalClientId}:${paypalSecret}`
+              ).toString("base64")}`,
+            },
+            body: "grant_type=client_credentials",
+          });
+          if (!tokenResponse.ok) {
+            throw new Error("Failed to get PayPal access token");
+          }
+
+          const { access_token } = await tokenResponse.json();
+          const cancelResponse = await fetch(
+            `${paypalBaseUrl}/v1/billing/subscriptions/${user.paypalSubscriptionId}/cancel`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${access_token}`,
+              },
+              body: JSON.stringify({
+                reason: "User canceled subscription in LittleRoot",
+              }),
+            }
+          );
+          if (!cancelResponse.ok) {
+            const errorData = await cancelResponse.json();
+            throw new Error(errorData.message || "Failed to cancel PayPal subscription");
+          }
+          await storage.updateUserSubscription(userId, {
+            subscriptionStatus: "canceled",
+            cancelAtPeriodEnd: false,
+          });
+          console.log(`PayPal subscription ${user.paypalSubscriptionId} canceled for user ${userId}`);
+          return res.json({ 
+            success: true, 
+            message: "Subscription has been canceled" 
+          });
+        } catch (error: any) {
+          console.error("Error canceling PayPal subscription:", error);
+          return res.status(500).json({ error: error.message || "Failed to cancel PayPal subscription" });
+        }
+      }
+
+      return res.status(400).json({ error: "No active subscription to cancel" });
     } catch (error: any) {
       console.error("Error canceling subscription:", error);
       res.status(500).json({ error: error.message || "Failed to cancel subscription" });
@@ -1356,6 +1259,556 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     res.json({ received: true });
+  });
+
+  const updateUserSubscriptionData = async (
+    userId: string,
+    planId: string,
+    plan: any,
+    subscriptionData?: any
+  ) => {
+    await storage.updateUserSubscription(userId, {
+      subscriptionPlan: planId,
+      subscriptionProvider: subscriptionData?.provider || "stripe",
+      subscriptionStatus:
+        subscriptionData?.status === "active" ? "active" : "pending",
+      booksLimitPerMonth: plan.booksPerMonth,
+      illustrationsLimitPerMonth: plan.booksPerMonth * plan.pagesPerBook,
+      templateBooksLimit: plan.templateBooks,
+      bonusVariationsLimit: plan.bonusVariations,
+      hasCommercialRights: plan.commercialRights,
+      hasResellRights: plan.resellRights,
+      hasAllFormattingOptions: plan.allFormattingOptions,
+      currentPeriodStart: subscriptionData?.periodStart
+        ? new Date(subscriptionData.periodStart * 1000)
+        : undefined,
+      currentPeriodEnd: subscriptionData?.periodEnd
+        ? new Date(subscriptionData.periodEnd * 1000)
+        : undefined,
+      lastPaymentDate: new Date(),
+      trialEndsAt: null,
+    });
+  };
+
+  app.post("/api/payment/create-order", async (req: any, res) => {
+    try {
+      const { paymentMethod, planId, amount, isUpgrade } = req.body;
+
+      if (
+        !paymentMethod ||
+        (paymentMethod !== "stripe" && paymentMethod !== "paypal")
+      ) {
+        return res
+          .status(400)
+          .json({
+            error: 'Invalid payment method. Must be "stripe" or "paypal"',
+          });
+      }
+
+      if (
+        !planId ||
+        !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
+      ) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+
+      const plan =
+        SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+
+      if (paymentMethod === "stripe") {
+        if (!stripe) {
+          return res.status(503).json({ error: "Stripe not configured" });
+        }
+
+        if (isUpgrade) {
+          const userId = req.user?.claims?.sub;
+          if (!userId) {
+            return res
+              .status(401)
+              .json({ error: "Authentication required for upgrades" });
+          }
+
+          const user = await storage.getUser(userId);
+          if (!user) {
+            return res.status(404).json({ error: "User not found" });
+          }
+
+          res.json({
+            success: true,
+            message: "Ready for Stripe payment",
+            requiresPaymentMethod: true,
+          });
+        } else {
+          res.json({
+            success: true,
+            message: "Ready for Stripe payment",
+            requiresPaymentMethod: true,
+          });
+        }
+      } else if (paymentMethod === "paypal") {
+        if (!amount) {
+          return res.status(400).json({ error: "Amount required for PayPal" });
+        }
+
+        const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+        const paypalSecret = process.env.PAYPAL_SECRET;
+        const paypalBaseUrl =
+          process.env.PAYPAL_MODE === "live"
+            ? "https://api-m.paypal.com"
+            : "https://api-m.sandbox.paypal.com";
+
+        if (!paypalClientId || !paypalSecret) {
+          return res.status(503).json({ error: "PayPal not configured" });
+        }
+
+        const tokenResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${Buffer.from(
+              `${paypalClientId}:${paypalSecret}`
+            ).toString("base64")}`,
+          },
+          body: "grant_type=client_credentials",
+        });
+
+        if (!tokenResponse.ok) {
+          throw new Error("Failed to get PayPal access token");
+        }
+
+        const { access_token } = await tokenResponse.json();
+        const orderResponse = await fetch(
+          `${paypalBaseUrl}/v2/checkout/orders`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${access_token}`,
+            },
+            body: JSON.stringify({
+              intent: "CAPTURE",
+              purchase_units: [
+                {
+                  amount: {
+                    currency_code: "USD",
+                    value: amount.toString(),
+                  },
+                  description: `LittleRoot ${plan.name} Subscription`,
+                },
+              ],
+            }),
+          }
+        );
+        if (!orderResponse.ok) {
+          const errorData = await orderResponse.json();
+          throw new Error(errorData.message || "Failed to create PayPal order");
+        }
+
+        const orderData = await orderResponse.json();
+        res.json({ orderId: orderData.id });
+      }
+    } catch (error: any) {
+      console.error("Error creating payment order:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to create payment order" });
+    }
+  });
+
+  app.post("/api/payment/capture-order", async (req: any, res) => {
+    try {
+      const {paymentMethod, planId, isUpgrade, name, email, password, paymentMethodId, subscriptionId} = req.body;
+      if (
+        !paymentMethod ||
+        (paymentMethod !== "stripe" && paymentMethod !== "paypal")
+      ) {
+        return res.status(400).json({
+          error: 'Invalid payment method. Must be "stripe" or "paypal"',
+        });
+      }
+
+      if (
+        !planId ||
+        !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
+      ) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
+
+      const plan =
+        SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+
+      if (paymentMethod === "stripe") {
+        if (!stripe) {
+          return res.status(503).json({ error: "Stripe not configured" });
+        }
+
+        if (!paymentMethodId) {
+          return res.status(400).json({ error: "Payment method ID required for Stripe" });
+        }
+
+        if (isUpgrade) {
+          const userId = req.user?.claims?.sub;
+          if (!userId) {
+            return res.status(401).json({ error: "Authentication required for upgrades" });
+          }
+
+          const user = await storage.getUserWithSubscriptionInfo(userId);
+          if (!user) {
+            return res.status(404).json({ error: "User not found" });
+          }
+
+          try {
+            await stripe.paymentMethods.retrieve(paymentMethodId);
+          } catch (pmError: any) {
+            return res.status(400).json({
+              error: "Invalid payment method. Please try again with a new card.",
+            });
+          }
+
+          let customerId = user.stripeCustomerId;
+          let subscriptionId = user.stripeSubscriptionId;
+
+          if (!customerId) {
+            const customer = await stripe.customers.create({
+              email: user.email || "",
+              name: `${user.firstName} ${user.lastName}`,
+              metadata: { userId: userId },
+              payment_method: paymentMethodId,
+              invoice_settings: {
+                default_payment_method: paymentMethodId,
+              },
+            });
+            customerId = customer.id;
+            await storage.updateUserStripeInfo(userId, customerId, "");
+          } else {
+            try {
+              await stripe.paymentMethods.attach(paymentMethodId, {
+                customer: customerId,
+              });
+              await stripe.customers.update(customerId, {
+                invoice_settings: { default_payment_method: paymentMethodId },
+              });
+            } catch (attachError: any) {
+              if (attachError.code !== "resource_already_exists") {
+                throw attachError;
+              }
+              await stripe.customers.update(customerId, {
+                invoice_settings: { default_payment_method: paymentMethodId },
+              });
+            }
+          }
+
+          if (subscriptionId) {
+            try {
+              await stripe.subscriptions.cancel(subscriptionId);
+            } catch (cancelError) {
+              console.log("Old subscription already cancelled or doesn't exist");
+            }
+          }
+
+          const newSubscription = await stripe.subscriptions.create({
+            customer: customerId,
+            items: [{ price: plan.stripePriceId! }],
+            default_payment_method: paymentMethodId,
+            payment_settings: {
+              payment_method_types: ["card"],
+              save_default_payment_method: "on_subscription",
+            },
+          });
+
+          const subscription = await stripe.subscriptions.retrieve(
+            newSubscription.id
+          );
+          await storage.updateUserStripeInfo(
+            userId,
+            customerId,
+            subscription.id
+          );
+
+          const sub = subscription as any;
+          const periodStart = sub.items?.data?.[0]?.current_period_start;
+          const periodEnd = sub.items?.data?.[0]?.current_period_end;
+
+          await updateUserSubscriptionData(userId, planId, plan, {
+            status: sub.status,
+            periodStart,
+            periodEnd,
+          });
+
+          res.json({
+            success: true,
+            message: "Subscription upgraded successfully",
+          });
+        } else {
+          if (!name || !email || !password) {
+            return res.status(400).json({ error: "Missing user information" });
+          }
+
+          const existingUser = await storage.getUserByEmail(email);
+          if (existingUser && existingUser.emailVerified) {
+            return res
+              .status(400)
+              .json({ message: "User already exists with this email" });
+          }
+
+          const passwordHash = await hashPassword(password);
+          const nameParts = name.split(" ");
+          const firstName = nameParts[0];
+          const lastName = nameParts.slice(1).join(" ");
+
+          let userData: any = {
+            email,
+            passwordHash,
+            firstName,
+            lastName,
+            subscriptionPlan: planId,
+            subscriptionStatus: "active",
+            booksLimitPerMonth: plan.booksPerMonth,
+            booksUsedThisMonth: 0,
+            illustrationsLimitPerMonth: plan.booksPerMonth * plan.pagesPerBook,
+            illustrationsUsedThisMonth: 0,
+            templateBooksLimit: plan.templateBooks,
+            templateBooksUsed: 0,
+            bonusVariationsLimit: plan.bonusVariations,
+            bonusVariationsUsed: 0,
+            hasCommercialRights: plan.commercialRights,
+            hasResellRights: plan.resellRights,
+            hasAllFormattingOptions: plan.allFormattingOptions,
+            emailVerified: false,
+          };
+
+          const verificationToken = randomBytes(32).toString("hex");
+          const verificationTokenExpires = new Date(
+            Date.now() + 24 * 60 * 60 * 1000
+          );
+          userData.emailVerificationToken = verificationToken;
+          userData.emailVerificationTokenExpires = verificationTokenExpires;
+
+          let user;
+          if (existingUser) {
+            const { email, ...updateData } = userData;
+            user = await storage.updateUserSubscription(
+              existingUser.id,
+              updateData
+            );
+          } else {
+            user = await storage.upsertUser(userData);
+          }
+
+          if (!user) {
+            return res.status(500).json({ message: "Failed to create user" });
+          }
+
+          try {
+            const customer = await stripe.customers.create({
+              email: user.email || "",
+              name: `${user.firstName} ${user.lastName}`,
+              payment_method: paymentMethodId,
+              invoice_settings: {
+                default_payment_method: paymentMethodId,
+              },
+              metadata: { userId: user.id },
+            });
+
+            const newSubscription = await stripe.subscriptions.create({
+              customer: customer.id,
+              items: [{ price: plan.stripePriceId! }],
+              payment_settings: {
+                payment_method_types: ["card"],
+                save_default_payment_method: "on_subscription",
+              },
+              expand: ["latest_invoice.payment_intent"],
+            });
+
+            const subscription = await stripe.subscriptions.retrieve(
+              newSubscription.id
+            );
+            await storage.updateUserStripeInfo(
+              user.id,
+              customer.id,
+              subscription.id
+            );
+
+            const sub = subscription as any;
+            const periodStart = sub.items?.data?.[0]?.current_period_start;
+            const periodEnd = sub.items?.data?.[0]?.current_period_end;
+
+            await storage.updateUserSubscription(user.id, {
+              subscriptionStatus:
+                sub.status === "active" ? "active" : "pending",
+              currentPeriodStart: periodStart
+                ? new Date(periodStart * 1000)
+                : undefined,
+              currentPeriodEnd: periodEnd
+                ? new Date(periodEnd * 1000)
+                : undefined,
+              lastPaymentDate: new Date(),
+            });
+          } catch (stripeError: any) {
+            console.error("Stripe error during registration:", stripeError);
+          }
+
+          res.json({ success: true, message: "Account created successfully" });
+        }
+      } else if (paymentMethod === "paypal") {
+        if (!subscriptionId) {
+          return res
+            .status(400)
+            .json({ error: "Subscription ID required for PayPal" });
+        }
+
+        const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+        const paypalSecret = process.env.PAYPAL_SECRET;
+        const paypalBaseUrl =
+          process.env.PAYPAL_MODE === "live"
+            ? "https://api-m.paypal.com"
+            : "https://api-m.sandbox.paypal.com";
+        if (!paypalClientId || !paypalSecret) {
+          return res.status(503).json({ error: "PayPal not configured" });
+        }
+
+        const tokenResponse = await fetch(`${paypalBaseUrl}/v1/oauth2/token`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            Authorization: `Basic ${Buffer.from(
+              `${paypalClientId}:${paypalSecret}`
+            ).toString("base64")}`,
+          },
+          body: "grant_type=client_credentials",
+        });
+        if (!tokenResponse.ok) {
+          throw new Error("Failed to get PayPal access token");
+        }
+
+        const { access_token } = await tokenResponse.json();
+
+        const subscriptionResponse = await fetch(
+          `${paypalBaseUrl}/v1/billing/subscriptions/${subscriptionId}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${access_token}`,
+            },
+          }
+        );
+
+        if (!subscriptionResponse.ok) {
+          const errorData = await subscriptionResponse.json();
+          throw new Error(
+            errorData.message || "Failed to retrieve PayPal subscription"
+          );
+        }
+
+        const subscriptionData = await subscriptionResponse.json();
+
+        if (subscriptionData.status !== "ACTIVE") {
+          return res.status(400).json({ error: "Subscription not active" });
+        }
+
+        if (isUpgrade) {
+          const userId = req.user?.claims?.sub;
+          if (!userId) {
+            return res
+              .status(401)
+              .json({ error: "Authentication required for upgrades" });
+          }
+
+          const user = await storage.getUserWithSubscriptionInfo(userId);
+          if (!user) {
+            return res.status(404).json({ error: "User not found" });
+          }
+          await storage.updateUserSubscription(userId, {
+            subscriptionPlan: planId,
+            subscriptionProvider: "paypal",
+            paypalSubscriptionId: subscriptionId,
+            subscriptionStatus: "active",
+            booksLimitPerMonth: plan.booksPerMonth,
+            illustrationsLimitPerMonth:
+              plan.booksPerMonth * plan.pagesPerBook,
+            templateBooksLimit: plan.templateBooks,
+            bonusVariationsLimit: plan.bonusVariations,
+            hasCommercialRights: plan.commercialRights,
+            hasResellRights: plan.resellRights,
+            hasAllFormattingOptions: plan.allFormattingOptions,
+            lastPaymentDate: new Date(),
+            trialEndsAt: null,
+          });
+          res.json({
+            success: true,
+            message: "Subscription upgraded successfully",
+          });
+        } else {
+          if (!name || !email || !password) {
+            return res.status(400).json({ error: "Missing user information" });
+          }
+
+          const existingUser = await storage.getUserByEmail(email);
+          if (existingUser && existingUser.emailVerified) {
+            return res
+              .status(400)
+              .json({ message: "User already exists with this email" });
+          }
+
+          const passwordHash = await hashPassword(password);
+          const nameParts = name.split(" ");
+          const firstName = nameParts[0];
+          const lastName = nameParts.slice(1).join(" ");
+
+          let userData: any = {
+            email,
+            passwordHash,
+            firstName,
+            lastName,
+            subscriptionPlan: planId,
+            subscriptionStatus: "active",
+            subscriptionProvider: "paypal",
+            paypalSubscriptionId: subscriptionId,
+            booksLimitPerMonth: plan.booksPerMonth,
+            booksUsedThisMonth: 0,
+            illustrationsLimitPerMonth: plan.booksPerMonth * plan.pagesPerBook,
+            illustrationsUsedThisMonth: 0,
+            templateBooksLimit: plan.templateBooks,
+            templateBooksUsed: 0,
+            bonusVariationsLimit: plan.bonusVariations,
+            bonusVariationsUsed: 0,
+            hasCommercialRights: plan.commercialRights,
+            hasResellRights: plan.resellRights,
+            hasAllFormattingOptions: plan.allFormattingOptions,
+            emailVerified: false,
+          };
+
+          const verificationToken = randomBytes(32).toString("hex");
+          const verificationTokenExpires = new Date(
+            Date.now() + 24 * 60 * 60 * 1000
+          );
+          userData.emailVerificationToken = verificationToken;
+          userData.emailVerificationTokenExpires = verificationTokenExpires;
+
+          let user;
+          if (existingUser) {
+            const { email, ...updateData } = userData;
+            user = await storage.updateUserSubscription(
+              existingUser.id,
+              updateData
+            );
+          } else {
+            user = await storage.upsertUser(userData);
+          }
+
+          if (!user) {
+            return res.status(500).json({ message: "Failed to create user" });
+          }
+          res.json({ success: true, message: "Account created successfully" });
+        }
+      }
+    } catch (error: any) {
+      console.error("Error capturing payment order:", error);
+      res
+        .status(500)
+        .json({ error: error.message || "Failed to process payment" });
+    }
   });
 
   // Get user's stories

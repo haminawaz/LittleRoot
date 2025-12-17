@@ -26,6 +26,8 @@ export const users = pgTable("users", {
   // Subscription fields
   stripeCustomerId: varchar("stripe_customer_id"),
   stripeSubscriptionId: varchar("stripe_subscription_id"),
+  subscriptionProvider: varchar("subscription_provider"),
+  paypalSubscriptionId: varchar("paypal_subscription_id"),
   subscriptionPlan: varchar("subscription_plan").default("trial"), // trial, hobbyist, pro, reseller
   subscriptionStatus: varchar("subscription_status").default("active"), // active, canceled, past_due
   cancelAtPeriodEnd: boolean("cancel_at_period_end").default(false),
@@ -302,8 +304,9 @@ export const SUBSCRIPTION_PLANS = {
   trial: { 
     name: "Free 7 Day Trial", 
     booksPerMonth: 1, 
-    price: 0, 
+    price: 0,
     stripePriceId: null,
+    paypalPlanId: null,
     templateBooks: 0,
     bonusVariations: 2,
     commercialRights: false,
@@ -316,6 +319,7 @@ export const SUBSCRIPTION_PLANS = {
     booksPerMonth: 6, 
     price: 19.99, 
     stripePriceId: "price_1SOtmW2aFol5BLxzREkwfEYU",
+    paypalPlanId: "price_1SOtmW2aFol5BLxzREkwfEYU",
     templateBooks: 3,
     bonusVariations: 10,
     commercialRights: true,
@@ -328,6 +332,7 @@ export const SUBSCRIPTION_PLANS = {
     booksPerMonth: 15, 
     price: 39.99, 
     stripePriceId: "price_1SOtmX2aFol5BLxzCHvwlQ71",
+    paypalPlanId: null,
     templateBooks: 15,
     bonusVariations: 25,
     commercialRights: true,
@@ -340,6 +345,7 @@ export const SUBSCRIPTION_PLANS = {
     booksPerMonth: 25, 
     price: 74.99, 
     stripePriceId: "price_1SOtmX2aFol5BLxzalckWDRI",
+    paypalPlanId: "price_1SOtmX2aFol5BLxzalckWDRI",
     templateBooks: 30,
     bonusVariations: 75,
     commercialRights: true,

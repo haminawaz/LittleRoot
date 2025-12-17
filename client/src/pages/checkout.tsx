@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, CreditCard, Lock } from "lucide-react";
+import { BookOpen, CreditCard, Lock, Wallet } from "lucide-react";
 import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
@@ -26,6 +28,7 @@ function CheckoutForm() {
   const [password, setPassword] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUpgrade, setIsUpgrade] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
 
   useEffect(() => {
     // Retrieve plan and check if this is an upgrade
@@ -70,6 +73,87 @@ function CheckoutForm() {
     }
   }, [setLocation, toast]);
 
+  const handlePayPalCreateSubscription = async (data: any, actions: any) => {
+    if (!selectedPlan) {
+      throw new Error("No plan selected");
+    }
+
+    const plans: any = SUBSCRIPTION_PLANS;
+    const planConfig = plans[selectedPlan.id] || plans.trial;
+
+    if (!planConfig.paypalPlanId) {
+      throw new Error("PayPal plan is not configured for this subscription");
+    }
+
+    return actions.subscription.create({
+      plan_id: planConfig.paypalPlanId,
+    });
+  };
+
+  const handlePayPalApprove = async (data: any, actions: any) => {
+    if (!selectedPlan) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/payment/capture-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentMethod: 'paypal',
+          subscriptionId: data.subscriptionID,
+          planId: selectedPlan.id,
+          isUpgrade,
+          ...(isUpgrade ? {} : {
+            name: signupData!.name,
+            email: signupData!.email,
+            password: password,
+          }),
+        }),
+        credentials: 'include',
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || result.message || 'Failed to process PayPal payment');
+      }
+
+      localStorage.removeItem('selectedPlan');
+      localStorage.removeItem('signupData');
+      localStorage.removeItem('isUpgrade');
+      sessionStorage.removeItem('signupPassword');
+
+      toast({
+        title: isUpgrade ? "Subscription upgraded!" : "Welcome to LittleRoot!",
+        description: `Your ${selectedPlan.name} subscription is now active.`,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      setLocation(isUpgrade ? '/subscription' : '/dashboard');
+    } catch (error: any) {
+      console.error("PayPal payment error:", error);
+      toast({
+        title: "Payment failed",
+        description: error.message || "Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePayPalError = (err: any) => {
+    console.error("PayPal error:", err);
+    toast({
+      title: "Payment error",
+      description: "An error occurred with PayPal. Please try again.",
+      variant: "destructive"
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -105,43 +189,29 @@ function CheckoutForm() {
         throw new Error(error.message);
       }
 
-      let response;
-      
-      if (isUpgrade) {
-        // Upgrade existing user's subscription
-        response = await fetch('/api/subscription/upgrade', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            planId: selectedPlan.id,
-            paymentMethodId: paymentMethod.id,
-          }),
-          credentials: 'include',
-        });
-      } else {
-        // Register new user with payment information
-        response = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
+      const response = await fetch('/api/payment/capture-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentMethod: 'stripe',
+          planId: selectedPlan.id,
+          paymentMethodId: paymentMethod.id,
+          isUpgrade,
+          ...(isUpgrade ? {} : {
             name: signupData!.name,
             email: signupData!.email,
             password: password,
-            planId: selectedPlan.id,
-            paymentMethodId: paymentMethod.id,
           }),
-          credentials: 'include',
-        });
-      }
+        }),
+        credentials: 'include',
+      });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || (isUpgrade ? "Failed to upgrade subscription" : "Failed to create account"));
+        throw new Error(data.error || data.message || (isUpgrade ? "Failed to upgrade subscription" : "Failed to create account"));
       }
 
       // Clear all stored data
@@ -216,53 +286,108 @@ function CheckoutForm() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Card Element */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <CreditCard className="inline h-4 w-4 mr-1" />
-                Card Information
-              </label>
-              <div className="border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-white dark:bg-gray-800">
-                <CardElement
-                  options={{
-                    style: {
-                      base: {
-                        fontSize: '16px',
-                        color: '#424770',
-                        '::placeholder': {
-                          color: '#aab7c4',
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+              Choose Payment Method
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('stripe')}
+                className={`flex items-center justify-center gap-2 p-3 border-2 rounded-lg transition-all ${
+                  paymentMethod === 'stripe'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                }`}
+              >
+                <CreditCard className="h-5 w-5" />
+                <span className="font-medium">Card</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('paypal')}
+                className={`flex items-center justify-center gap-2 p-3 border-2 rounded-lg transition-all ${
+                  paymentMethod === 'paypal'
+                    ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                }`}
+              >
+                <Wallet className="h-5 w-5" />
+                <span className="font-medium">PayPal</span>
+              </button>
+            </div>
+          </div>
+
+          {paymentMethod === 'stripe' ? (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <CreditCard className="inline h-4 w-4 mr-1" />
+                  Card Information
+                </label>
+                <div className="border border-gray-300 dark:border-gray-600 rounded-md p-3 bg-white dark:bg-gray-800">
+                  <CardElement
+                    options={{
+                      style: {
+                        base: {
+                          fontSize: '16px',
+                          color: '#424770',
+                          '::placeholder': {
+                            color: '#aab7c4',
+                          },
+                        },
+                        invalid: {
+                          color: '#9e2146',
                         },
                       },
-                      invalid: {
-                        color: '#9e2146',
-                      },
-                    },
-                  }}
-                />
+                    }}
+                  />
+                </div>
               </div>
-            </div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={!stripe || isProcessing}
-              data-testid="button-complete-payment"
-            >
-              {isProcessing ? (
-                "Processing..."
-              ) : (
-                <>
-                  <Lock className="mr-2 h-4 w-4" />
-                  Pay ${selectedPlan.price}/month
-                </>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={!stripe || isProcessing}
+                data-testid="button-complete-payment"
+              >
+                {isProcessing ? (
+                  "Processing..."
+                ) : (
+                  <>
+                    <Lock className="mr-2 h-4 w-4" />
+                    Pay ${selectedPlan.price}/month
+                  </>
+                )}
+              </Button>
+
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                Your payment is secure and encrypted. You can cancel anytime.
+              </p>
+            </form>
+          ) : (
+            <div className="space-y-6">
+              <PayPalButtons
+                createSubscription={handlePayPalCreateSubscription}
+                onApprove={handlePayPalApprove}
+                onError={handlePayPalError}
+                style={{
+                  layout: 'vertical',
+                  color: 'blue',
+                  shape: 'rect',
+                  label: 'paypal'
+                }}
+              />
+              {isProcessing && (
+                <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+                  Processing your payment...
+                </p>
               )}
-            </Button>
-
-            <p className="text-xs text-center text-gray-500 dark:text-gray-400">
-              Your payment is secure and encrypted. You can cancel anytime.
-            </p>
-          </form>
+              <p className="text-xs text-center text-gray-500 dark:text-gray-400">
+                Your payment is secure and encrypted. You can cancel anytime.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -270,9 +395,13 @@ function CheckoutForm() {
 }
 
 export default function Checkout() {
+  const paypalClientId = import.meta.env.VITE_PAYPAL_CLIENT_ID || 'sb';
+
   return (
     <Elements stripe={stripePromise}>
-      <CheckoutForm />
+      <PayPalScriptProvider options={{ clientId: paypalClientId, currency: 'USD', intent: 'subscription', vault: true, }}>
+        <CheckoutForm />
+      </PayPalScriptProvider>
     </Elements>
   );
 }

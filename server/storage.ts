@@ -227,6 +227,7 @@ export class DatabaseStorage implements IStorage {
     const [user] = await db
       .update(users)
       .set({
+        subscriptionProvider: "stripe",
         stripeCustomerId,
         stripeSubscriptionId,
         updatedAt: new Date(),

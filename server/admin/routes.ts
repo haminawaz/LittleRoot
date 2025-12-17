@@ -262,6 +262,7 @@ export function registerAdminRoutes(app: Express) {
             id: body.id,
             name: body.name,
             priceCents,
+            discountPercentage: body.discountPercentage ?? 0,
             booksPerMonth: body.booksPerMonth ?? 0,
             templateBooks: body.templateBooks ?? 0,
             bonusVariations: body.bonusVariations ?? 0,

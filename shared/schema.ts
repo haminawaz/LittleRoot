@@ -160,6 +160,7 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey(),
   name: text("name").notNull(),
   priceCents: integer("price_cents").notNull().default(0),
+  discountPercentage: integer("discount_percentage").notNull().default(0),
   booksPerMonth: integer("books_per_month").notNull().default(0),
   templateBooks: integer("template_books").notNull().default(0),
   bonusVariations: integer("bonus_variations").notNull().default(0),

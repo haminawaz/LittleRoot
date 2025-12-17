@@ -20,6 +20,7 @@ type SelectedPlan = {
   id: string;
   name: string;
   price: number;
+  discountPercentage?: number;
   paypalPlanId?: string | null;
 };
 
@@ -35,6 +36,11 @@ function CheckoutForm() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUpgrade, setIsUpgrade] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'paypal'>('stripe');
+
+  const hasDiscount = selectedPlan?.discountPercentage !== undefined && selectedPlan.discountPercentage > 0;
+  const discountedPrice = hasDiscount && selectedPlan
+    ? selectedPlan.price * (1 - (selectedPlan.discountPercentage || 0) / 100)
+    : selectedPlan?.price || 0;
 
   useEffect(() => {
     // Retrieve plan and check if this is an upgrade
@@ -272,10 +278,28 @@ function CheckoutForm() {
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">{selectedPlan.name}</p>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-purple-600">
-                  ${selectedPlan.price}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">per month</p>
+                {hasDiscount ? (
+                  <div>
+                    <div className="flex items-center justify-end gap-2">
+                      <p className="text-2xl font-bold text-purple-600">
+                        ${discountedPrice.toFixed(2)}
+                      </p>
+                      <p className="text-lg line-through text-gray-400">
+                        ${selectedPlan.price.toFixed(2)}
+                      </p>
+                    </div>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      per month • {selectedPlan.discountPercentage}% off
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-2xl font-bold text-purple-600">
+                      ${selectedPlan.price.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">per month</p>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -359,7 +383,7 @@ function CheckoutForm() {
                 ) : (
                   <>
                     <Lock className="mr-2 h-4 w-4" />
-                    Pay ${selectedPlan.price}/month
+                    Pay ${discountedPrice.toFixed(2)}/month
                   </>
                 )}
               </Button>

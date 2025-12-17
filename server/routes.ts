@@ -1319,6 +1319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id: plan.id,
         name: plan.name,
         price: (plan.priceCents || 0) / 100,
+        discountPercentage: plan.discountPercentage,
         booksPerMonth: plan.booksPerMonth,
         templateBooks: plan.templateBooks,
         bonusVariations: plan.bonusVariations,
@@ -1395,6 +1396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ error: "Amount required for PayPal" });
         }
 
+        const discount = plan.discountPercentage || 0;
+        const finalAmount = discount > 0 
+          ? amount * (1 - discount / 100)
+          : amount;
+
         const paypalClientId = process.env.PAYPAL_CLIENT_ID;
         const paypalSecret = process.env.PAYPAL_SECRET;
         const paypalBaseUrl =
@@ -1436,9 +1442,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 {
                   amount: {
                     currency_code: "USD",
-                    value: amount.toString(),
+                    value: finalAmount.toString(),
                   },
-                  description: `LittleRoot ${plan.name} Subscription`,
+                  description: `LittleRoot ${plan.name} Subscription${discount > 0 ? ` (${discount}% off)` : ''}`,
                 },
               ],
             }),
@@ -1550,7 +1556,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          const newSubscription = await stripe.subscriptions.create({
+          let couponId: string | undefined;
+          const discount = plan.discountPercentage || 0;
+          console.log("discount", discount);
+          if (discount > 0) {
+            try {
+              const coupons = await stripe.coupons.list({ limit: 100 });
+              const existingCoupon = coupons.data.find(
+                (c) => c.percent_off === discount && c.valid
+              );
+              
+              if (existingCoupon) {
+                couponId = existingCoupon.id;
+              } else {
+                const coupon = await stripe.coupons.create({
+                  percent_off: discount,
+                  duration: 'forever',
+                  name: `${discount}% off`,
+                });
+                couponId = coupon.id;
+              }
+            } catch (couponError: any) {
+              console.error("Error creating/finding coupon:", couponError);
+            }
+          }
+
+          const subscriptionData: any = {
             customer: customerId,
             items: [{ price: plan.stripePriceId! }],
             default_payment_method: paymentMethodId,
@@ -1558,7 +1589,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payment_method_types: ["card"],
               save_default_payment_method: "on_subscription",
             },
-          });
+          };
+
+          if (couponId) {
+            subscriptionData.coupon = couponId;
+          }
+          const newSubscription = await stripe.subscriptions.create(subscriptionData);
 
           const subscription = await stripe.subscriptions.retrieve(
             newSubscription.id
@@ -1654,7 +1690,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
               metadata: { userId: user.id },
             });
 
-            const newSubscription = await stripe.subscriptions.create({
+            let couponId: string | undefined;
+            const discount = plan.discountPercentage || 0;
+            if (discount > 0) {
+              try {
+                const coupons = await stripe.coupons.list({ limit: 100 });
+                const existingCoupon = coupons.data.find(
+                  (c) => c.percent_off === discount && c.valid
+                );
+                
+                if (existingCoupon) {
+                  couponId = existingCoupon.id;
+                } else {
+                  const coupon = await stripe.coupons.create({
+                    percent_off: discount,
+                    duration: 'forever',
+                    name: `${discount}% off`,
+                  });
+                  couponId = coupon.id;
+                }
+              } catch (couponError: any) {
+                console.error("Error creating/finding coupon:", couponError);
+              }
+            }
+
+            const subscriptionData: any = {
               customer: customer.id,
               items: [{ price: plan.stripePriceId! }],
               payment_settings: {
@@ -1662,7 +1722,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 save_default_payment_method: "on_subscription",
               },
               expand: ["latest_invoice.payment_intent"],
-            });
+            };
+
+            if (couponId) {
+              subscriptionData.coupon = couponId;
+            }
+
+            const newSubscription = await stripe.subscriptions.create(subscriptionData);
 
             const subscription = await stripe.subscriptions.retrieve(
               newSubscription.id

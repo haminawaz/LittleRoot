@@ -35,6 +35,7 @@ interface AdminSubscriptionPlan {
   id: string;
   name: string;
   priceCents: number;
+  discountPercentage: number;
   booksPerMonth: number;
   templateBooks: number;
   bonusVariations: number;
@@ -52,6 +53,7 @@ type PlanFormState = {
   id: string;
   name: string;
   price: string;
+  discountPercentage: string;
   booksPerMonth: string;
   templateBooks: string;
   bonusVariations: string;
@@ -81,6 +83,7 @@ export default function AdminPlans() {
     id: "",
     name: "",
     price: "",
+    discountPercentage: "0",
     booksPerMonth: "",
     templateBooks: "",
     bonusVariations: "",
@@ -123,6 +126,7 @@ export default function AdminPlans() {
         id: formState.id.trim(),
         name: formState.name.trim(),
         priceCents: Math.round(Number(formState.price || "0") * 100),
+        discountPercentage: Number(formState.discountPercentage || "0"),
         booksPerMonth: Number(formState.booksPerMonth || "0"),
         templateBooks: Number(formState.templateBooks || "0"),
         bonusVariations: Number(formState.bonusVariations || "0"),
@@ -193,6 +197,7 @@ export default function AdminPlans() {
       id: "",
       name: "",
       price: "",
+      discountPercentage: "0",
       booksPerMonth: "",
       templateBooks: "",
       bonusVariations: "",
@@ -214,6 +219,7 @@ export default function AdminPlans() {
       id: plan.id,
       name: plan.name,
       price: (plan.priceCents / 100).toString(),
+      discountPercentage: plan.discountPercentage.toString(),
       booksPerMonth: plan.booksPerMonth.toString(),
       templateBooks: plan.templateBooks.toString(),
       bonusVariations: plan.bonusVariations.toString(),
@@ -298,6 +304,7 @@ export default function AdminPlans() {
                             <TableHead>ID</TableHead>
                             <TableHead>Name</TableHead>
                             <TableHead>Price</TableHead>
+                            <TableHead>Discount</TableHead>
                             <TableHead>Books / Month</TableHead>
                             <TableHead>Template Books</TableHead>
                             <TableHead>Bonus Variations</TableHead>
@@ -316,6 +323,9 @@ export default function AdminPlans() {
                               <TableCell>{plan.name}</TableCell>
                               <TableCell>
                                 ${(plan.priceCents / 100).toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                {plan.discountPercentage > 0 ? `${plan.discountPercentage}%` : "-"}
                               </TableCell>
                               <TableCell>{plan.booksPerMonth}</TableCell>
                               <TableCell>{plan.templateBooks}</TableCell>
@@ -431,7 +441,7 @@ export default function AdminPlans() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="plan-price">
                             Price (USD / month)
@@ -444,6 +454,21 @@ export default function AdminPlans() {
                             value={formState.price}
                             onChange={(e) =>
                               handleFormChange("price", e.target.value)
+                            }
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="plan-discount">
+                            Discount (%)
+                          </Label>
+                          <Input
+                            id="plan-discount"
+                            type="number"
+                            min="0"
+                            max="100"
+                            value={formState.discountPercentage}
+                            onChange={(e) =>
+                              handleFormChange("discountPercentage", e.target.value)
                             }
                           />
                         </div>

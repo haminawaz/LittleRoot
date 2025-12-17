@@ -37,11 +37,15 @@ export default function Subscription() {
     id: string;
     name: string;
     price: number;
+    discountPercentage: number;
     booksPerMonth: number;
     templateBooks: number;
     bonusVariations: number;
     pagesPerBook: number;
     paypalPlanId?: string | null;
+    commercialRights?: boolean;
+    resellRights?: boolean;
+    allFormattingOptions?: boolean;
   }[]>({
     queryKey: ["/api/subscription/plans"],
   });
@@ -77,6 +81,38 @@ export default function Subscription() {
   const currentPlan = user?.subscriptionPlan ? getPlanDetails(user.subscriptionPlan) : null;
   const isTrial = user?.subscriptionPlan === 'trial';
 
+  const getPlanStyle = (planId: string) => {
+    const isCurrentPlan = user?.subscriptionPlan === planId;
+    const styles: Record<string, { 
+      borderColor: string; 
+      gradientClasses: string; 
+      textColor: string;
+      gradientBarClasses: string;
+    }> = {
+      hobbyist: {
+        borderColor: isCurrentPlan ? 'border-violet-600 border-[3px]' : 'border-violet-500 border-2',
+        gradientClasses: 'bg-gradient-to-b from-violet-50 to-white dark:from-violet-950/20 dark:to-gray-900',
+        textColor: 'text-violet-600',
+        gradientBarClasses: 'bg-gradient-to-r from-violet-400 via-violet-500 to-violet-600',
+      },
+      pro: {
+        borderColor: isCurrentPlan ? 'border-purple-600 border-[3px]' : 'border-purple-500 border-2',
+        gradientClasses: 'bg-gradient-to-b from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900',
+        textColor: 'text-purple-600',
+        gradientBarClasses: 'bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600',
+      },
+      reseller: {
+        borderColor: isCurrentPlan ? 'border-orange-600 border-[3px]' : 'border-orange-500 border-2',
+        gradientClasses: 'bg-gradient-to-b from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900',
+        textColor: 'text-orange-600',
+        gradientBarClasses: 'bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600',
+      },
+    };
+    return styles[planId] || styles.hobbyist;
+  };
+
+  const availablePlans = plans?.filter((plan) => plan.id !== 'trial') || [];
+
   const handleChoosePlan = (planId: string) => {
     const plan = getPlanDetails(planId);
     if (!plan) return;
@@ -86,6 +122,7 @@ export default function Subscription() {
       id: plan.id,
       name: plan.name,
       price: plan.price,
+      discountPercentage: plan.discountPercentage || 0,
       paypalPlanId: plan.paypalPlanId,
     }));
     
@@ -422,159 +459,115 @@ export default function Subscription() {
                 {isTrial ? "Upgrade Your Plan" : "Other Available Plans"}
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* Hobbyist Plan */}
-                <Card className={`${user?.subscriptionPlan === 'hobbyist' ? 'border-violet-600 border-[3px]' : 'border-violet-500 border-2'} bg-gradient-to-b from-violet-50 to-white dark:from-violet-950/20 dark:to-gray-900 flex flex-col shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden group`} data-testid="card-plan-hobbyist">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-400 via-violet-500 to-violet-600"></div>
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold">Hobbyist</CardTitle>
-                    <CardDescription>
-                      <span className="text-3xl font-bold text-violet-600">$19.99</span>
-                      <span className="text-muted-foreground">/month</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <ul className="space-y-3 mb-6 flex-1">
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">144 Illustrations (6+ Books)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">3 Template Books</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Up to 24 Pages Each</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">10 Bonus Illustration Variations</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Full Commercial Rights (personal publishing)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">PDF Export</span>
-                      </li>
-                    </ul>
-                    {user?.subscriptionPlan === 'hobbyist' ? (
-                      <Badge variant="default" className="w-full justify-center py-2">Current Plan</Badge>
-                    ) : (
-                      <Button 
-                        className="w-full shadow-md hover:shadow-lg transition-all duration-300" 
-                        onClick={() => handleChoosePlan('hobbyist', 'Hobbyist', 19.99)}
-                        data-testid="button-upgrade-hobbyist"
-                      >
-                        Choose Plan
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                {availablePlans.map((plan) => {
+                  const style = getPlanStyle(plan.id);
+                  const isCurrentPlan = user?.subscriptionPlan === plan.id;
+                  const illustrations = plan.booksPerMonth && plan.pagesPerBook 
+                    ? plan.booksPerMonth * plan.pagesPerBook 
+                    : null;
+                  const templateBooks = plan.templateBooks ?? null;
+                  const bonusVariations = plan.bonusVariations ?? null;
+                  const pagesPerBook = plan.pagesPerBook ?? 24;
+                  let commercialRightsText = "No commercial rights";
+                  if (plan.resellRights) {
+                    commercialRightsText = "Full Commercial Rights (publishing & selling)";
+                  } else if (plan.commercialRights) {
+                    commercialRightsText = "Full Commercial Rights (personal publishing)";
+                  }
 
-                {/* Pro Plan */}
-                <Card className={`${user?.subscriptionPlan === 'pro' ? 'border-purple-600 border-[3px]' : 'border-purple-500 border-2'} bg-gradient-to-b from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900 flex flex-col shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden group`} data-testid="card-plan-pro">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600"></div>
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold">Pro</CardTitle>
-                    <CardDescription>
-                      <span className="text-3xl font-bold text-purple-600">$39.99</span>
-                      <span className="text-muted-foreground">/month</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <ul className="space-y-3 mb-6 flex-1">
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">360 Illustrations (15+ Books)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">15 Template Books</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Up to 24 Pages Each</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">25 Bonus Illustration Variations</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Full Commercial Rights (publishing & selling)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">PDF Export</span>
-                      </li>
-                    </ul>
-                    {user?.subscriptionPlan === 'pro' ? (
-                      <Badge variant="default" className="w-full justify-center py-2">Current Plan</Badge>
-                    ) : (
-                      <Button 
-                        className="w-full shadow-md hover:shadow-lg transition-all duration-300" 
-                        onClick={() => handleChoosePlan('pro', 'Pro', 39.99)}
-                        data-testid="button-upgrade-pro"
-                      >
-                        Choose Plan
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                  const hasDiscount = plan.discountPercentage > 0;
+                  const discountedPrice = hasDiscount 
+                    ? plan.price * (1 - plan.discountPercentage / 100)
+                    : plan.price;
 
-                {/* Business Plan */}
-                <Card className={`${user?.subscriptionPlan === 'reseller' ? 'border-orange-600 border-[3px]' : 'border-orange-500 border-2'} bg-gradient-to-b from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900 flex flex-col shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden group`} data-testid="card-plan-reseller">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600"></div>
-                  <CardHeader>
-                    <CardTitle className="text-xl font-bold">Business</CardTitle>
-                    <CardDescription>
-                      <span className="text-3xl font-bold text-orange-600">$74.99</span>
-                      <span className="text-muted-foreground">/month</span>
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex-1 flex flex-col">
-                    <ul className="space-y-3 mb-6 flex-1">
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">600 Illustrations (25+ Books)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">30 Template Books</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Up to 24 Pages Each</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">75 Bonus Illustration Variations</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">Full Commercial Rights (publishing & selling)</span>
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                        <span className="text-sm">PDF Export</span>
-                      </li>
-                    </ul>
-                    {user?.subscriptionPlan === 'reseller' ? (
-                      <Badge variant="default" className="w-full justify-center py-2">Current Plan</Badge>
-                    ) : (
-                      <Button 
-                        className="w-full shadow-md hover:shadow-lg transition-all duration-300" 
-                        onClick={() => handleChoosePlan('reseller', 'Business', 74.99)}
-                        data-testid="button-upgrade-reseller"
-                      >
-                        Choose Plan
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+                  return (
+                    <Card 
+                      key={plan.id}
+                      className={`${style.borderColor} ${style.gradientClasses} flex flex-col shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden group`} 
+                      data-testid={`card-plan-${plan.id}`}
+                    >
+                      <div className={`absolute top-0 left-0 w-full h-1 ${style.gradientBarClasses}`}></div>
+                      <CardHeader>
+                        <CardTitle className="text-xl font-bold">{plan.name}</CardTitle>
+                        <CardDescription>
+                          {hasDiscount ? (
+                            <div className="flex flex-col items-start gap-2">
+                              <span className="text-lg line-through text-muted-foreground">
+                                ${plan.price.toFixed(2)}
+                              </span>
+                            <div className="flex justify-start items-center gap-2">
+                              <span className={`text-3xl font-bold ${style.textColor}`}>
+                                ${discountedPrice.toFixed(2)}
+                              </span>
+                              <span className="text-muted-foreground">/month</span>
+                            </div>
+                            </div>
+                          ) : (
+                            <>
+                              <span className={`text-3xl font-bold ${style.textColor}`}>${plan.price.toFixed(2)}</span>
+                              <span className="text-muted-foreground">/month</span>
+                            </>
+                          )}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="flex-1 flex flex-col">
+                        <ul className="space-y-3 mb-6 flex-1">
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">
+                              {illustrations 
+                                ? `${illustrations} Illustrations (${plan.booksPerMonth}+ Books)`
+                                : plan.booksPerMonth 
+                                  ? `${plan.booksPerMonth} Books per Month`
+                                  : "Books per Month"}
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">
+                              {templateBooks !== null 
+                                ? `${templateBooks} Template Books`
+                                : "Template Books"}
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">
+                              Up to {pagesPerBook} Pages Each
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">
+                              {bonusVariations !== null 
+                                ? `${bonusVariations} Bonus Illustration Variations`
+                                : "Bonus Illustration Variations"}
+                            </span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">{commercialRightsText}</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
+                            <span className="text-sm">PDF Export</span>
+                          </li>
+                        </ul>
+                        {isCurrentPlan ? (
+                          <Badge variant="default" className="w-full justify-center py-2">Current Plan</Badge>
+                        ) : (
+                          <Button 
+                            className="w-full shadow-md hover:shadow-lg transition-all duration-300" 
+                            onClick={() => handleChoosePlan(plan.id)}
+                            data-testid={`button-upgrade-${plan.id}`}
+                          >
+                            Choose Plan
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
 

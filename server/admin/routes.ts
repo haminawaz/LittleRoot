@@ -3,7 +3,14 @@ import passport from "passport";
 import { isAdminAuthenticated } from "./middleware";
 import { setupAdminAuth } from "./auth";
 import { db } from "../db";
-import { users, stories, pages, earlyAccessSignups } from "@shared/schema";
+import {
+  users,
+  stories,
+  pages,
+  earlyAccessSignups,
+  subscriptionPlans,
+  type SubscriptionPlan,
+} from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
 import Stripe from "stripe";
@@ -211,6 +218,143 @@ export function registerAdminRoutes(app: Express) {
         res
           .status(500)
           .json({ message: "Failed to fetch early access signups" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (_req, res) => {
+      try {
+        const plans = await db
+          .select()
+          .from(subscriptionPlans)
+          .orderBy(subscriptionPlans.sortOrder);
+        res.json(plans);
+      } catch (error) {
+        console.error("Error fetching subscription plans:", error);
+        res.status(500).json({ message: "Failed to fetch subscription plans" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!body.id || !body.name) {
+          return res.status(400).json({ 
+            message: "Plan id and name are required"
+          });
+        }
+
+        const priceCents =
+          typeof body.priceCents === "number"
+            ? body.priceCents
+            : Math.round((Number((body as any).price) || 0) * 100);
+
+        const [plan] = await db
+          .insert(subscriptionPlans)
+          .values({
+            id: body.id,
+            name: body.name,
+            priceCents,
+            booksPerMonth: body.booksPerMonth ?? 0,
+            templateBooks: body.templateBooks ?? 0,
+            bonusVariations: body.bonusVariations ?? 0,
+            pagesPerBook: body.pagesPerBook ?? 24,
+            stripePriceId: body.stripePriceId ?? null,
+            paypalPlanId: body.paypalPlanId ?? null,
+            commercialRights: body.commercialRights ?? false,
+            resellRights: body.resellRights ?? false,
+            allFormattingOptions: body.allFormattingOptions ?? false,
+            sortOrder: body.sortOrder ?? 0,
+            isActive: body.isActive ?? true,
+          })
+          .returning();
+
+        res.status(201).json(plan);
+      } catch (error: any) {
+        console.error("Error creating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to create plan"
+        });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+
+        const { id: _ignoredId, ...updates } = body as any;
+        if ((updates as any).price !== undefined) {
+          (updates as any).priceCents = Math.round(
+            Number((updates as any).price) * 100
+          );
+          delete (updates as any).price;
+        }
+
+        const [plan] = await db
+          .update(subscriptionPlans)
+          .set(updates)
+          .where(eq(subscriptionPlans.id, id))
+          .returning();
+
+        if (!plan) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        res.json(plan);
+      } catch (error: any) {
+        console.error("Error updating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to update plan"
+        });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+        if (id === "trial") {
+          return res.status(400).json({ 
+            message: "Trial plan cannot be deleted"
+          });
+        }
+
+        const result = await db
+          .delete(subscriptionPlans)
+          .where(eq(subscriptionPlans.id, id));
+
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to delete plan"
+        });
       }
     }
   );

@@ -399,7 +399,7 @@ export default function Checkout() {
 
   return (
     <Elements stripe={stripePromise}>
-      <PayPalScriptProvider options={{ clientId: paypalClientId, currency: 'USD', intent: 'subscription' }}>
+      <PayPalScriptProvider options={{ clientId: paypalClientId, currency: 'USD', intent: 'subscription', vault: true, }}>
         <CheckoutForm />
       </PayPalScriptProvider>
     </Elements>

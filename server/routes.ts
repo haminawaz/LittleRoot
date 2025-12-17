@@ -5,7 +5,18 @@ import passport from "passport";
 import { storage } from "./storage";
 import { db } from "./db";
 import { users } from "@shared/schema";
-import { insertStorySchema, insertPageSchema, insertSupportTicketSchema, insertSupportMessageSchema, insertEarlyAccessSignupSchema, type GenerateBookRequest, type Page, type UserWithSubscriptionInfo, SUBSCRIPTION_PLANS, earlyAccessSignups } from "@shared/schema";
+import {
+  insertStorySchema,
+  insertPageSchema,
+  insertSupportTicketSchema,
+  insertSupportMessageSchema,
+  insertEarlyAccessSignupSchema,
+  type GenerateBookRequest,
+  type Page,
+  type UserWithSubscriptionInfo,
+  type SubscriptionPlan,
+  earlyAccessSignups,
+} from "@shared/schema";
 import { eq, and, gte } from "drizzle-orm";
 import { generateIllustration, splitStoryIntoPages, generateImagePrompt, generateBookIllustrations, generateCoverIllustration } from "./gemini";
 import { ObjectStorageService } from "./objectStorage";
@@ -225,8 +236,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(' ');
 
-      // Get plan details
-      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.trial;
+      let plan: SubscriptionPlan | undefined;
+      if (planId) {
+        plan = await storage.getSubscriptionPlanById(planId);
+      }
+      if (!plan) {
+        plan = await storage.getSubscriptionPlanById("trial");
+      }
+      if (!plan) {
+        return res.status(500).json({ message: "Subscription plans are not configured" });
+      }
 
       let userData: any = {
         email,
@@ -237,7 +256,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionStatus: 'active',
         booksLimitPerMonth: plan.booksPerMonth,
         booksUsedThisMonth: 0,
-        illustrationsLimitPerMonth: (planId === 'trial' || !planId) ? 0 : plan.booksPerMonth * plan.pagesPerBook,
+        illustrationsLimitPerMonth:
+          planId === "trial" || !planId ? 0 : plan.booksPerMonth * plan.pagesPerBook,
         illustrationsUsedThisMonth: 0,
         templateBooksLimit: plan.templateBooks,
         templateBooksUsed: 0,
@@ -772,9 +792,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user.emailVerified) {
         return res.status(400).json({ message: "Email has already been verified" });
       }
-
-      const plan = SUBSCRIPTION_PLANS[user.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS] || SUBSCRIPTION_PLANS.trial;
-      const planName = plan.name;
+      let planName = "Free Trial";
+      if (user.subscriptionPlan) {
+        const plan = await storage.getSubscriptionPlanById(user.subscriptionPlan);
+        planName = plan?.name || planName;
+      }
 
       await storage.updateUserSubscription(user.id, {
         emailVerified: true,
@@ -1264,7 +1286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const updateUserSubscriptionData = async (
     userId: string,
     planId: string,
-    plan: any,
+    plan: SubscriptionPlan,
     subscriptionData?: any
   ) => {
     await storage.updateUserSubscription(userId, {
@@ -1290,6 +1312,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   };
 
+  app.get("/api/subscription/plans", async (_req, res) => {
+    try {
+      const plans = await storage.getAllSubscriptionPlans();
+      const result = plans.map((plan) => ({
+        id: plan.id,
+        name: plan.name,
+        price: (plan.priceCents || 0) / 100,
+        booksPerMonth: plan.booksPerMonth,
+        templateBooks: plan.templateBooks,
+        bonusVariations: plan.bonusVariations,
+        pagesPerBook: plan.pagesPerBook,
+        stripePriceId: plan.stripePriceId,
+        paypalPlanId: plan.paypalPlanId,
+        commercialRights: plan.commercialRights,
+        resellRights: plan.resellRights,
+        allFormattingOptions: plan.allFormattingOptions,
+      }));
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to load subscription plans" });
+    }
+  });
+
   app.post("/api/payment/create-order", async (req: any, res) => {
     try {
       const { paymentMethod, planId, amount, isUpgrade } = req.body;
@@ -1305,15 +1351,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
       }
 
-      if (
-        !planId ||
-        !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
-      ) {
-        return res.status(400).json({ error: "Invalid plan" });
+      if (!planId) {
+        return res.status(400).json({ error: "Plan ID is required" });
       }
 
-      const plan =
-        SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+      const plan = await storage.getSubscriptionPlanById(planId);
+      if (!plan) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
 
       if (paymentMethod === "stripe") {
         if (!stripe) {
@@ -1427,15 +1472,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      if (
-        !planId ||
-        !SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
-      ) {
-        return res.status(400).json({ error: "Invalid plan" });
+      if (!planId) {
+        return res.status(400).json({ error: "Plan ID is required" });
       }
 
-      const plan =
-        SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS];
+      const plan = await storage.getSubscriptionPlanById(planId);
+      if (!plan) {
+        return res.status(400).json({ error: "Invalid plan" });
+      }
 
       if (paymentMethod === "stripe") {
         if (!stripe) {

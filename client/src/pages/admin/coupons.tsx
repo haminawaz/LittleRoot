@@ -33,7 +33,6 @@ interface AdminCoupon {
   code: string;
   discountPercent: number;
   planIds: string[];
-  isActive: boolean;
 }
 
 interface AdminSubscriptionPlan {
@@ -46,7 +45,6 @@ type CouponFormState = {
   code: string;
   discountPercent: string;
   planIds: string[];
-  isActive: boolean;
 };
 
 export default function AdminCoupons() {
@@ -70,7 +68,6 @@ export default function AdminCoupons() {
     code: "",
     discountPercent: "",
     planIds: [],
-    isActive: true,
   });
 
   const { data: coupons, isLoading: couponsLoading } = useQuery<AdminCoupon[]>({
@@ -133,7 +130,6 @@ export default function AdminCoupons() {
         code: formState.code.trim(),
         discountPercent: result.data.discountPercentage,
         planIds: formState.planIds,
-        isActive: formState.isActive,
       };
 
       const method = editingCoupon ? "PUT" : "POST";
@@ -195,7 +191,6 @@ export default function AdminCoupons() {
       code: "",
       discountPercent: "",
       planIds: [],
-      isActive: true,
     });
     setIsFormOpen(true);
   };
@@ -207,7 +202,6 @@ export default function AdminCoupons() {
       code: coupon.code,
       discountPercent: coupon.discountPercent.toString(),
       planIds: coupon.planIds || [],
-      isActive: coupon.isActive,
     });
     setIsFormOpen(true);
   };
@@ -303,17 +297,6 @@ export default function AdminCoupons() {
                                 </TableCell>
                                 <TableCell>{coupon.discountPercent}%</TableCell>
                                 <TableCell>{planNames}</TableCell>
-                                <TableCell>
-                                  {coupon.isActive ? (
-                                    <span className="inline-flex px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs">
-                                      Active
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs">
-                                      Inactive
-                                    </span>
-                                  )}
-                                </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-2">
                                     <Button
@@ -468,19 +451,6 @@ export default function AdminCoupons() {
                             </p>
                           )}
                         </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Status</Label>
-                        <label className="flex items-center gap-2 text-sm">
-                          <Checkbox
-                            checked={formState.isActive}
-                            onCheckedChange={(v) =>
-                              handleFormChange("isActive", Boolean(v))
-                            }
-                          />
-                          <span>Active</span>
-                        </label>
                       </div>
                     </div>
                   </motion.div>

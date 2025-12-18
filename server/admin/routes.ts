@@ -407,7 +407,6 @@ export function registerAdminRoutes(app: Express) {
             code: body.code.trim(),
             discountPercent,
             planIds: cleanedPlanIds,
-            isActive: body.isActive ?? true,
           })
           .returning();
 
@@ -454,9 +453,6 @@ export function registerAdminRoutes(app: Express) {
         }
         if (body.planIds !== undefined) {
           updates.planIds = body.planIds.map((id) => id.trim()).filter(Boolean);
-        }
-        if (body.isActive !== undefined) {
-          updates.isActive = body.isActive;
         }
 
         const [coupon] = await db

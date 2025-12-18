@@ -180,7 +180,6 @@ export const coupons = pgTable(
     code: varchar("code").notNull(),
     discountPercent: integer("discount_percent").notNull(),
     planIds: varchar("plan_ids").array().notNull(),
-    isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },

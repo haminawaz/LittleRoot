@@ -19,8 +19,8 @@ import {
   type EarlyAccessSignup,
   type InsertEarlyAccessSignup,
   type SubscriptionPlan,
-  type Coupon,
-  type InsertCoupon,
+  type Promotion,
+  type InsertPromotion,
   stories,
   pages,
   users,
@@ -30,7 +30,7 @@ import {
   socialAccounts,
   earlyAccessSignups,
   subscriptionPlans,
-  coupons,
+  promotions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -105,11 +105,11 @@ export interface IStorage {
   getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | undefined>;
   getAllSubscriptionPlans(): Promise<SubscriptionPlan[]>;
 
-  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
-  getCoupon(id: string): Promise<Coupon | undefined>;
-  getCoupons(): Promise<Coupon[]>;
-  updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | undefined>;
-  deleteCoupon(id: string): Promise<boolean>;
+  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
+  getPromotion(id: string): Promise<Promotion | undefined>;
+  getPromotions(): Promise<Promotion[]>;
+  updatePromotion(id: string, updates: Partial<Promotion>): Promise<Promotion | undefined>;
+  deletePromotion(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -856,43 +856,43 @@ export class DatabaseStorage implements IStorage {
       .orderBy(subscriptionPlans.sortOrder);
   }
 
-  async createCoupon(insertCoupon: InsertCoupon): Promise<Coupon> {
-    const [coupon] = await db.insert(coupons).values(insertCoupon).returning();
-    return coupon;
+  async createPromotion(insertPromotion: InsertPromotion): Promise<Promotion> {
+    const [promotion] = await db.insert(promotions).values(insertPromotion).returning();
+    return promotion;
   }
 
-  async getCoupon(id: string): Promise<Coupon | undefined> {
-    const [coupon] = await db
+  async getPromotion(id: string): Promise<Promotion | undefined> {
+    const [promotion] = await db
       .select()
-      .from(coupons)
-      .where(eq(coupons.id, id));
-    return coupon || undefined;
+      .from(promotions)
+      .where(eq(promotions.id, id));
+    return promotion || undefined;
   }
 
-  async getCoupons(): Promise<Coupon[]> {
+  async getPromotions(): Promise<Promotion[]> {
     return await db
       .select()
-      .from(coupons)
-      .orderBy(desc(coupons.createdAt));
+      .from(promotions)
+      .orderBy(desc(promotions.createdAt));
   }
 
-  async updateCoupon(
+  async updatePromotion(
     id: string,
-    updates: Partial<Coupon>,
-  ): Promise<Coupon | undefined> {
-    const [coupon] = await db
-      .update(coupons)
+    updates: Partial<Promotion>,
+  ): Promise<Promotion | undefined> {
+    const [promotion] = await db
+      .update(promotions)
       .set({
         ...updates,
         updatedAt: new Date(),
       })
-      .where(eq(coupons.id, id))
+      .where(eq(promotions.id, id))
       .returning();
-    return coupon || undefined;
+    return promotion || undefined;
   }
 
-  async deleteCoupon(id: string): Promise<boolean> {
-    const result = await db.delete(coupons).where(eq(coupons.id, id));
+  async deletePromotion(id: string): Promise<boolean> {
+    const result = await db.delete(promotions).where(eq(promotions.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }

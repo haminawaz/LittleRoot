@@ -173,19 +173,20 @@ export const subscriptionPlans = pgTable("subscription_plans", {
   isActive: boolean("is_active").notNull().default(true),
 });
 
-export const coupons = pgTable(
-  "coupons",
+export const promotions = pgTable(
+  "promotions",
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    code: varchar("code").notNull(),
+    couponCode: varchar("coupon_code").notNull(),
     discountPercent: integer("discount_percent").notNull(),
     planIds: varchar("plan_ids").array().notNull(),
+    banner: text("banner").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),
   },
   (table) => [
-    index("IDX_coupons_code").on(table.code),
-    index("IDX_coupons_plan_ids").on(table.planIds),
+    index("IDX_promotions_coupon_code").on(table.couponCode),
+    index("IDX_promotions_plan_ids").on(table.planIds),
   ],
 );
 
@@ -296,7 +297,7 @@ export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans
   id: true,
 });
 
-export const insertCouponSchema = createInsertSchema(coupons).omit({
+export const insertPromotionSchema = createInsertSchema(promotions).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -324,8 +325,8 @@ export type EarlyAccessSignup = typeof earlyAccessSignups.$inferSelect;
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type SubscriptionPlanId = SubscriptionPlan["id"];
-export type InsertCoupon = z.infer<typeof insertCouponSchema>;
-export type Coupon = typeof coupons.$inferSelect;
+export type InsertPromotion = z.infer<typeof insertPromotionSchema>;
+export type Promotion = typeof promotions.$inferSelect;
 
 // Extended interfaces
 export interface StoryWithPages extends Story {

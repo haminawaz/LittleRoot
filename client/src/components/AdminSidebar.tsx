@@ -16,7 +16,7 @@ const navLinks = [
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/early-access", label: "Early Access", icon: Sparkles },
   { path: "/admin/plans", label: "Subscription Plans", icon: DollarSign },
-  { path: "/admin/coupons", label: "Coupons", icon: Percent },
+  { path: "/admin/promotions", label: "Promotions", icon: Percent },
   //   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
   //   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/settings", label: "Settings", icon: Settings },

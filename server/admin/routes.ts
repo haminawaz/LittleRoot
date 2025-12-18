@@ -9,9 +9,9 @@ import {
   pages,
   earlyAccessSignups,
   subscriptionPlans,
-  coupons,
+  promotions,
   type SubscriptionPlan,
-  type Coupon,
+  type Promotion,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
@@ -362,33 +362,33 @@ export function registerAdminRoutes(app: Express) {
   );
 
   app.get(
-    "/api/admin/coupons",
+    "/api/admin/promotions",
     isAdminAuthenticated,
     async (_req, res) => {
       try {
-        const allCoupons = await db
+        const allPromotions = await db
           .select()
-          .from(coupons)
-          .orderBy(desc(coupons.createdAt));
-        res.json(allCoupons);
+          .from(promotions)
+          .orderBy(desc(promotions.createdAt));
+        res.json(allPromotions);
       } catch (error) {
-        console.error("Error fetching coupons:", error);
-        res.status(500).json({ message: "Failed to fetch coupons" });
+        console.error("Error fetching promotions:", error);
+        res.status(500).json({ message: "Failed to fetch promotions" });
       }
     },
   );
 
   app.post(
-    "/api/admin/coupons",
+    "/api/admin/promotions",
     isAdminAuthenticated,
     async (req: any, res) => {
       try {
-        const body = req.body as Partial<Coupon> & {
+        const body = req.body as Partial<Promotion> & {
           planIds?: string[];
         };
-        if (!body.code || !body.discountPercent || !body.planIds || body.planIds.length === 0) {
+        if (!body.couponCode || !body.discountPercent || !body.planIds || body.planIds.length === 0 || !body.banner) {
           return res.status(400).json({
-            message: "Coupon code, discountPercent, and at least one planId are required",
+            message: "Coupon code, discountPercent, banner, and at least one planId are required",
           });
         }
 
@@ -399,44 +399,51 @@ export function registerAdminRoutes(app: Express) {
             .json({ message: "discountPercent must be between 1 and 100" });
         }
 
+        if (body.banner.length > 120) {
+          return res
+            .status(400)
+            .json({ message: "Banner must not exceed 120 characters" });
+        }
+
         const cleanedPlanIds = body.planIds.map((id) => id.trim()).filter(Boolean);
 
-        const [coupon] = await db
-          .insert(coupons)
+        const [promotion] = await db
+          .insert(promotions)
           .values({
-            code: body.code.trim(),
+            couponCode: body.couponCode.trim(),
             discountPercent,
             planIds: cleanedPlanIds,
+            banner: body.banner,
           })
           .returning();
 
-        res.status(201).json(coupon);
+        res.status(201).json(promotion);
       } catch (error: any) {
-        console.error("Error creating coupon:", error);
+        console.error("Error creating promotion:", error);
         res.status(500).json({
-          message: error.message || "Failed to create coupon",
+          message: error.message || "Failed to create promotion",
         });
       }
     },
   );
 
   app.put(
-    "/api/admin/coupons/:id",
+    "/api/admin/promotions/:id",
     isAdminAuthenticated,
     async (req: any, res) => {
       try {
         const { id } = req.params;
-        const body = req.body as Partial<Coupon> & {
+        const body = req.body as Partial<Promotion> & {
           planIds?: string[];
         };
 
         if (!id) {
-          return res.status(400).json({ message: "Coupon id is required" });
+          return res.status(400).json({ message: "Promotion id is required" });
         }
 
-        const updates: Partial<Coupon> = {};
-        if (body.code !== undefined) {
-          updates.code = body.code.trim();
+        const updates: Partial<Promotion> = {};
+        if (body.couponCode !== undefined) {
+          updates.couponCode = body.couponCode.trim();
         }
         if (body.discountPercent !== undefined) {
           const discountPercent = Number(body.discountPercent);
@@ -454,50 +461,58 @@ export function registerAdminRoutes(app: Express) {
         if (body.planIds !== undefined) {
           updates.planIds = body.planIds.map((id) => id.trim()).filter(Boolean);
         }
+        if (body.banner !== undefined) {
+          if (body.banner.length > 120) {
+            return res
+              .status(400)
+              .json({ message: "Banner must not exceed 120 characters" });
+          }
+          updates.banner = body.banner;
+        }
 
-        const [coupon] = await db
-          .update(coupons)
+        const [promotion] = await db
+          .update(promotions)
           .set({
             ...updates,
             updatedAt: new Date(),
           })
-          .where(eq(coupons.id, id))
+          .where(eq(promotions.id, id))
           .returning();
 
-        if (!coupon) {
-          return res.status(404).json({ message: "Coupon not found" });
+        if (!promotion) {
+          return res.status(404).json({ message: "Promotion not found" });
         }
 
-        res.json(coupon);
+        res.json(promotion);
       } catch (error: any) {
-        console.error("Error updating coupon:", error);
+        console.error("Error updating promotion:", error);
         res.status(500).json({
-          message: error.message || "Failed to update coupon",
+          message: error.message || "Failed to update promotion",
         });
       }
     },
   );
 
   app.delete(
-    "/api/admin/coupons/:id",
+    "/api/admin/promotions/:id",
     isAdminAuthenticated,
     async (req: any, res) => {
       try {
         const { id } = req.params;
         if (!id) {
-          return res.status(400).json({ message: "Coupon id is required" });
+          return res.status(400).json({ message: "Promotion id is required" });
         }
 
-        const result = await db.delete(coupons).where(eq(coupons.id, id));
+        const result = await db.delete(promotions).where(eq(promotions.id, id));
         if ((result.rowCount || 0) === 0) {
-          return res.status(404).json({ message: "Coupon not found" });
+          return res.status(404).json({ message: "Promotion not found" });
         }
 
         res.json({ success: true });
       } catch (error: any) {
-        console.error("Error deleting coupon:", error);
+        console.error("Error deleting promotion:", error);
         res.status(500).json({
-          message: error.message || "Failed to delete coupon",
+          message: error.message || "Failed to delete promotion",
         });
       }
     },

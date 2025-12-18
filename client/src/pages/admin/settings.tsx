@@ -19,7 +19,7 @@ export default function AdminSettings() {
         <CardHeader>
           <CardTitle>System Settings</CardTitle>
           <CardDescription>
-            Configure global settings, coupons, and announcements
+            Configure global settings, promotions, and announcements
           </CardDescription>
         </CardHeader>
         <CardContent>

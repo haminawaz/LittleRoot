@@ -24,15 +24,17 @@ import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/AdminLayout";
 import { Edit2, Trash2, Plus } from "lucide-react";
 import {
-  adminCouponSchema,
-  type AdminCouponInput,
-} from "@/validation/adminCoupon";
+  adminPromotionSchema,
+  type AdminPromotionInput,
+} from "@/validation/adminPromotion";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
-interface AdminCoupon {
+interface AdminPromotion {
   id: string;
-  code: string;
+  couponCode: string;
   discountPercent: number;
   planIds: string[];
+  banner: string;
 }
 
 interface AdminSubscriptionPlan {
@@ -40,42 +42,47 @@ interface AdminSubscriptionPlan {
   name: string;
 }
 
-type CouponFormState = {
+type PromotionFormState = {
   id: string;
-  code: string;
+  couponCode: string;
   discountPercent: string;
   planIds: string[];
+  banner: string;
 };
 
-export default function AdminCoupons() {
+export default function AdminPromotions() {
   const { isAdminAuthenticated, adminLoading } = useAuth();
   const queryClient = useQueryClient();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [editingCoupon, setEditingCoupon] = useState<AdminCoupon | null>(null);
-  const [couponToDelete, setCouponToDelete] = useState<AdminCoupon | null>(
-    null
-  );
+  const [editingPromotion, setEditingPromotion] =
+    useState<AdminPromotion | null>(null);
+  const [promotionToDelete, setPromotionToDelete] =
+    useState<AdminPromotion | null>(null);
   const [formError, setFormError] = useState<{
     couponCode?: string;
     discountPercentage?: string;
     subscriptionPlans?: string;
+    banner?: string;
   }>({});
 
-  const [formState, setFormState] = useState<CouponFormState>({
+  const [formState, setFormState] = useState<PromotionFormState>({
     id: "",
-    code: "",
+    couponCode: "",
     discountPercent: "",
     planIds: [],
+    banner: "",
   });
 
-  const { data: coupons, isLoading: couponsLoading } = useQuery<AdminCoupon[]>({
-    queryKey: ["/api/admin/coupons"],
+  const { data: promotions, isLoading: promotionsLoading } = useQuery<
+    AdminPromotion[]
+  >({
+    queryKey: ["/api/admin/promotions"],
     queryFn: async () => {
-      const res = await fetch("/api/admin/coupons");
+      const res = await fetch("/api/admin/promotions");
       if (!res.ok) {
-        throw new Error("Failed to fetch coupons");
+        throw new Error("Failed to fetch promotions");
       }
       return res.json();
     },
@@ -94,32 +101,34 @@ export default function AdminCoupons() {
     enabled: isAdminAuthenticated,
   });
 
-  const sortedCoupons = useMemo(
+  const sortedPromotions = useMemo(
     () =>
-      (coupons || []).slice().sort((a, b) => {
-        if (a.code === b.code) {
+      (promotions || []).slice().sort((a, b) => {
+        if (a.couponCode === b.couponCode) {
           return a.id.localeCompare(b.id);
         }
-        return a.code.localeCompare(b.code);
+        return a.couponCode.localeCompare(b.couponCode);
       }),
-    [coupons]
+    [promotions]
   );
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
-      const toValidate: AdminCouponInput = {
-        couponCode: formState.code,
+      const toValidate: AdminPromotionInput = {
+        couponCode: formState.couponCode,
         discountPercentage: Number(formState.discountPercent || "0"),
         subscriptionPlans: formState.planIds,
+        banner: formState.banner,
       };
 
-      const result = adminCouponSchema.safeParse(toValidate);
+      const result = adminPromotionSchema.safeParse(toValidate);
       if (!result.success) {
         const fieldErrors = result.error.flatten().fieldErrors;
         setFormError({
           couponCode: fieldErrors.couponCode?.[0],
           discountPercentage: fieldErrors.discountPercentage?.[0],
           subscriptionPlans: fieldErrors.subscriptionPlans?.[0],
+          banner: fieldErrors.banner?.[0],
         });
         throw new Error("Validation failed");
       }
@@ -127,15 +136,16 @@ export default function AdminCoupons() {
       setFormError({});
 
       const payload: any = {
-        code: formState.code.trim(),
+        couponCode: formState.couponCode.trim(),
         discountPercent: result.data.discountPercentage,
         planIds: formState.planIds,
+        banner: result.data.banner,
       };
 
-      const method = editingCoupon ? "PUT" : "POST";
-      const url = editingCoupon
-        ? `/api/admin/coupons/${encodeURIComponent(editingCoupon.id)}`
-        : "/api/admin/coupons";
+      const method = editingPromotion ? "PUT" : "POST";
+      const url = editingPromotion
+        ? `/api/admin/promotions/${encodeURIComponent(editingPromotion.id)}`
+        : "/api/admin/promotions";
 
       const res = await fetch(url, {
         method,
@@ -145,7 +155,7 @@ export default function AdminCoupons() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Failed to save coupon");
+        throw new Error(data.message || "Failed to save promotion");
       }
 
       return data;
@@ -153,66 +163,68 @@ export default function AdminCoupons() {
     onSuccess: () => {
       setFormError({});
       queryClient.invalidateQueries({
-        queryKey: ["/api/admin/coupons"],
+        queryKey: ["/api/admin/promotions"],
       });
       setIsFormOpen(false);
-      setEditingCoupon(null);
+      setEditingPromotion(null);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!couponToDelete) return;
+      if (!promotionToDelete) return;
       const res = await fetch(
-        `/api/admin/coupons/${encodeURIComponent(couponToDelete.id)}`,
+        `/api/admin/promotions/${encodeURIComponent(promotionToDelete.id)}`,
         {
           method: "DELETE",
         }
       );
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Failed to delete coupon");
+        throw new Error(data.message || "Failed to delete promotion");
       }
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["/api/admin/coupons"],
+        queryKey: ["/api/admin/promotions"],
       });
       setIsDeleteOpen(false);
-      setCouponToDelete(null);
+      setPromotionToDelete(null);
     },
   });
 
   const openCreateForm = () => {
-    setEditingCoupon(null);
+    setEditingPromotion(null);
     setFormState({
       id: "",
-      code: "",
+      couponCode: "",
       discountPercent: "",
       planIds: [],
+      banner: "",
     });
     setIsFormOpen(true);
   };
 
-  const openEditForm = (coupon: AdminCoupon) => {
-    setEditingCoupon(coupon);
+  const openEditForm = (promotion: AdminPromotion) => {
+    setEditingPromotion(promotion);
     setFormState({
-      id: coupon.id,
-      code: coupon.code,
-      discountPercent: coupon.discountPercent.toString(),
-      planIds: coupon.planIds || [],
+      id: promotion.id,
+      couponCode: promotion.couponCode,
+      discountPercent: promotion.discountPercent.toString(),
+      planIds: promotion.planIds || [],
+      banner: promotion.banner || "",
     });
     setIsFormOpen(true);
   };
 
-  const openDeleteDialog = (coupon: AdminCoupon) => {
-    setCouponToDelete(coupon);
+  const openDeleteDialog = (promotion: AdminPromotion) => {
+    setPromotionToDelete(promotion);
     setIsDeleteOpen(true);
   };
 
   const handleFormChange = (
-    field: keyof CouponFormState,
+    field: keyof PromotionFormState,
     value: string | boolean | string[]
   ) => {
     setFormState((prev) => ({
@@ -231,9 +243,9 @@ export default function AdminCoupons() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Coupons</CardTitle>
+              <CardTitle>Promotions</CardTitle>
               <CardDescription>
-                View, create, edit, and delete coupon codes.
+                View, create, edit, and delete promotion codes.
               </CardDescription>
             </div>
             <Button
@@ -242,7 +254,7 @@ export default function AdminCoupons() {
               className={`${isFormOpen ? "hidden" : ""}`}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Create Coupon
+              Create Promotion
             </Button>
           </div>
         </CardHeader>
@@ -251,51 +263,52 @@ export default function AdminCoupons() {
             <AnimatePresence initial={false} mode="wait">
               {!isFormOpen && (
                 <motion.div
-                  key="coupons-table"
+                  key="promotions-table"
                   initial={{ x: 0, opacity: 0 }}
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -40, opacity: 0 }}
                   transition={{ duration: 0.32, ease: [0.22, 0.61, 0.36, 1] }}
                   className="space-y-4"
                 >
-                  {couponsLoading ? (
+                  {promotionsLoading ? (
                     <div className="flex items-center justify-center h-64">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
                     </div>
-                  ) : sortedCoupons.length === 0 ? (
+                  ) : sortedPromotions.length === 0 ? (
                     <p className="text-muted-foreground text-center py-8">
-                      No coupons found. Click &quot;Create Coupon&quot; to add
-                      one.
+                      No promotions found. Click &quot;Create Promotion&quot; to
+                      add one.
                     </p>
                   ) : (
                     <div className="rounded-xl border bg-card/60 backdrop-blur-sm shadow-sm">
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Code</TableHead>
+                            <TableHead>Coupon Code</TableHead>
                             <TableHead>Discount %</TableHead>
                             <TableHead>Plan</TableHead>
-                            <TableHead>Status</TableHead>
                             <TableHead className="w-[100px] text-right">
                               Actions
                             </TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sortedCoupons.map((coupon) => {
+                          {sortedPromotions.map((promotion) => {
                             const planNames =
-                              coupon.planIds
+                              promotion.planIds
                                 .map((id) => {
                                   const plan = plans?.find((p) => p.id === id);
                                   return plan ? plan.name : id;
                                 })
                                 .join(", ") || "—";
                             return (
-                              <TableRow key={coupon.id}>
+                              <TableRow key={promotion.id}>
                                 <TableCell className="font-mono text-xs">
-                                  {coupon.code}
+                                  {promotion.couponCode}
                                 </TableCell>
-                                <TableCell>{coupon.discountPercent}%</TableCell>
+                                <TableCell>
+                                  {promotion.discountPercent}%
+                                </TableCell>
                                 <TableCell>{planNames}</TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-2">
@@ -303,7 +316,7 @@ export default function AdminCoupons() {
                                       variant="outline"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={() => openEditForm(coupon)}
+                                      onClick={() => openEditForm(promotion)}
                                     >
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
@@ -311,7 +324,9 @@ export default function AdminCoupons() {
                                       variant="outline"
                                       size="icon"
                                       className="h-8 w-8 text-red-600"
-                                      onClick={() => openDeleteDialog(coupon)}
+                                      onClick={() =>
+                                        openDeleteDialog(promotion)
+                                      }
                                     >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
@@ -330,7 +345,7 @@ export default function AdminCoupons() {
               {isFormOpen && (
                 <>
                   <motion.div
-                    key="coupon-form"
+                    key="promotion-form"
                     initial={{ x: 56, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 56, opacity: 0 }}
@@ -339,12 +354,14 @@ export default function AdminCoupons() {
                   >
                     <div className="space-y-1">
                       <h2 className="text-xl font-semibold tracking-tight">
-                        {editingCoupon ? "Edit Coupon" : "Create Coupon"}
+                        {editingPromotion
+                          ? "Edit Promotion"
+                          : "Create Promotion"}
                       </h2>
                       <p className="text-sm text-muted-foreground">
-                        {editingCoupon
-                          ? "Update the coupon details below."
-                          : "Fill in the details to create a new coupon."}
+                        {editingPromotion
+                          ? "Update the promotion details below."
+                          : "Fill in the details to create a new promotion."}
                       </p>
                     </div>
 
@@ -353,14 +370,33 @@ export default function AdminCoupons() {
                         <Label htmlFor="coupon-code">Coupon Code</Label>
                         <Input
                           id="coupon-code"
-                          value={formState.code}
+                          value={formState.couponCode}
                           onChange={(e) =>
-                            handleFormChange("code", e.target.value)
+                            handleFormChange("couponCode", e.target.value)
                           }
                         />
                         {formError.couponCode && (
                           <p className="text-xs text-red-600">
                             {formError.couponCode}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="banner">
+                          Banner <span className="text-red-600">*</span>
+                        </Label>
+                        <RichTextEditor
+                          value={formState.banner}
+                          onChange={(value) =>
+                            handleFormChange("banner", value)
+                          }
+                          maxLength={120}
+                          placeholder="Enter banner text with formatting (bold, underline, italic)..."
+                        />
+                        {formError.banner && (
+                          <p className="text-xs text-red-600">
+                            {formError.banner}
                           </p>
                         )}
                       </div>
@@ -459,7 +495,7 @@ export default function AdminCoupons() {
                       variant="outline"
                       onClick={() => {
                         setIsFormOpen(false);
-                        setEditingCoupon(null);
+                        setEditingPromotion(null);
                       }}
                     >
                       Cancel
@@ -470,9 +506,9 @@ export default function AdminCoupons() {
                     >
                       {upsertMutation.isPending
                         ? "Saving..."
-                        : editingCoupon
+                        : editingPromotion
                         ? "Save changes"
-                        : "Create coupon"}
+                        : "Create promotion"}
                     </Button>
                   </div>
                 </>
@@ -486,11 +522,11 @@ export default function AdminCoupons() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-background rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
             <div>
-              <h2 className="text-lg font-semibold">Delete coupon</h2>
+              <h2 className="text-lg font-semibold">Delete promotion</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Are you sure you want to delete the coupon
-                {couponToDelete ? ` "${couponToDelete.code}"` : ""}? This action
-                cannot be undone.
+                Are you sure you want to delete the promotion
+                {promotionToDelete ? ` "${promotionToDelete.couponCode}"` : ""}?
+                This action cannot be undone.
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -498,7 +534,7 @@ export default function AdminCoupons() {
                 variant="outline"
                 onClick={() => {
                   setIsDeleteOpen(false);
-                  setCouponToDelete(null);
+                  setPromotionToDelete(null);
                 }}
               >
                 Cancel

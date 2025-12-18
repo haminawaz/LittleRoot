@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize Stripe - use test keys in development
   let stripe: Stripe | null = null;
-  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+  const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY2;
   
   if (stripeSecretKey) {
     stripe = new Stripe(stripeSecretKey, {
@@ -1331,13 +1331,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allFormattingOptions: plan.allFormattingOptions,
       }));
 
-      let activePromotion: {
-        id: string;
-        couponCode: string;
-        discountPercent: number;
-        planIds: string[];
-        banner: string;
-      } | null = null;
+      let activePromotion:
+        | {
+            id: string;
+            couponCode: string;
+            discountPercent: number;
+            planIds: string[];
+            banner: string;
+          }
+        | null = null;
 
       try {
         const allAdmins = await db.select().from(admins);
@@ -1360,7 +1362,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       } catch (promoError) {
-        console.error("Error fetching active promotion for subscription plans:", promoError);
+        console.error(
+          "Error fetching active promotion for subscription plans:",
+          promoError,
+        );
       }
 
       res.json({
@@ -1370,6 +1375,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Error fetching subscription plans:", error);
       res.status(500).json({ message: "Failed to load subscription plans" });
+    }
+  });
+
+  app.post("/api/subscription/validate-coupon", async (req: any, res) => {
+    try {
+      const { planId, couponCode } = req.body as {
+        planId?: string;
+        couponCode?: string;
+      };
+
+      if (!planId || !couponCode) {
+        return res
+          .status(400)
+          .json({ message: "Plan ID and coupon code are required" });
+      }
+
+      const plan = await storage.getSubscriptionPlanById(planId);
+      if (!plan) {
+        return res.status(400).json({ message: "Invalid plan" });
+      }
+
+      const allAdmins = await db.select().from(admins);
+      const adminWithPromotion = allAdmins.find((a) => a.promotionId);
+
+      if (!adminWithPromotion?.promotionId) {
+        return res.status(400).json({ message: "Code is not valid" });
+      }
+
+      const [promotion] = await db
+        .select()
+        .from(promotions)
+        .where(eq(promotions.id, adminWithPromotion.promotionId));
+
+      if (
+        !promotion ||
+        promotion.couponCode.trim().toLowerCase() !==
+          couponCode.trim().toLowerCase() ||
+        !promotion.planIds.includes(planId)
+      ) {
+        return res.status(400).json({ message: "Code is not valid" });
+      }
+
+      const originalPriceCents = plan.priceCents;
+      const discountedPriceCents = Math.round(
+        originalPriceCents * (1 - promotion.discountPercent / 100),
+      );
+
+      return res.json({
+        valid: true,
+        discountPercent: promotion.discountPercent,
+        planId,
+        couponCode: promotion.couponCode,
+        originalPriceCents,
+        discountedPriceCents,
+      });
+    } catch (error: any) {
+      console.error("Error validating coupon:", error);
+      res.status(500).json({
+        message: error.message || "Failed to validate coupon code",
+      });
     }
   });
 

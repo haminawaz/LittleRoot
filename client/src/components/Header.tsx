@@ -53,7 +53,15 @@ export default function Header({
     });
 
   const { data: subscriptionPlans } = useQuery<
-    { id: string; name: string }[]
+    {
+      plans: { id: string; name: string }[];
+      promotion: {
+        id: string;
+        discountPercent: number;
+        planIds: string[];
+        banner: string;
+      } | null;
+    }
   >({
     queryKey: ["/api/subscription/plans"],
   });
@@ -346,7 +354,7 @@ export default function Header({
                           {userLoading ? (
                             <div className="h-3 bg-muted rounded animate-pulse w-20" />
                           ) : userWithSubscription?.subscriptionPlan ? (
-                            subscriptionPlans?.find(
+                            subscriptionPlans?.plans?.find(
                               (p) => p.id === userWithSubscription.subscriptionPlan,
                             )?.name || "Free Trial"
                           ) : (

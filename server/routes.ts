@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import passport from "passport";
 import { storage } from "./storage";
 import { db } from "./db";
-import { users } from "@shared/schema";
+import { users, admins, promotions } from "@shared/schema";
 import {
   insertStorySchema,
   insertPageSchema,
@@ -1315,7 +1315,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/subscription/plans", async (_req, res) => {
     try {
       const plans = await storage.getAllSubscriptionPlans();
-      const result = plans.map((plan) => ({
+
+      const serializedPlans = plans.map((plan) => ({
         id: plan.id,
         name: plan.name,
         price: (plan.priceCents || 0) / 100,
@@ -1329,7 +1330,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         resellRights: plan.resellRights,
         allFormattingOptions: plan.allFormattingOptions,
       }));
-      res.json(result);
+
+      let activePromotion: {
+        id: string;
+        couponCode: string;
+        discountPercent: number;
+        planIds: string[];
+        banner: string;
+      } | null = null;
+
+      try {
+        const allAdmins = await db.select().from(admins);
+        const adminWithPromotion = allAdmins.find((a) => a.promotionId);
+
+        if (adminWithPromotion?.promotionId) {
+          const [promotion] = await db
+            .select()
+            .from(promotions)
+            .where(eq(promotions.id, adminWithPromotion.promotionId));
+
+          if (promotion) {
+            activePromotion = {
+              id: promotion.id,
+              couponCode: promotion.couponCode,
+              discountPercent: promotion.discountPercent,
+              planIds: promotion.planIds,
+              banner: promotion.banner,
+            };
+          }
+        }
+      } catch (promoError) {
+        console.error("Error fetching active promotion for subscription plans:", promoError);
+      }
+
+      res.json({
+        plans: serializedPlans,
+        promotion: activePromotion,
+      });
     } catch (error: any) {
       console.error("Error fetching subscription plans:", error);
       res.status(500).json({ message: "Failed to load subscription plans" });

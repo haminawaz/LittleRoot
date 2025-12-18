@@ -1,8 +1,8 @@
-import { 
-  type Story, 
-  type InsertStory, 
-  type Page, 
-  type InsertPage, 
+import {
+  type Story,
+  type InsertStory,
+  type Page,
+  type InsertPage,
   type StoryWithPages,
   type User,
   type UpsertUser,
@@ -18,15 +18,19 @@ import {
   type InsertSocialAccount,
   type EarlyAccessSignup,
   type InsertEarlyAccessSignup,
-  SUBSCRIPTION_PLANS,
-  stories, 
-  pages, 
+  type SubscriptionPlan,
+  type Coupon,
+  type InsertCoupon,
+  stories,
+  pages,
   users,
   templates,
   supportTickets,
   supportMessages,
   socialAccounts,
-  earlyAccessSignups
+  earlyAccessSignups,
+  subscriptionPlans,
+  coupons,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -97,6 +101,15 @@ export interface IStorage {
   createEarlyAccessSignup(signup: InsertEarlyAccessSignup): Promise<EarlyAccessSignup>;
   getEarlyAccessSignupsPaginated(page: number, limit: number): Promise<EarlyAccessSignup[]>;
   getEarlyAccessSignupsCount(): Promise<number>;
+
+  getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | undefined>;
+  getAllSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+
+  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
+  getCoupon(id: string): Promise<Coupon | undefined>;
+  getCoupons(): Promise<Coupon[]>;
+  updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -144,12 +157,12 @@ export class DatabaseStorage implements IStorage {
     // BACKFILL: For existing paid users, calculate illustration limits if not set
     let illustrationsLimit = user.illustrationsLimitPerMonth ?? 0;
     if (user.subscriptionPlan !== "trial" && illustrationsLimit === 0) {
-      const planInfo = SUBSCRIPTION_PLANS[user.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS];
+      const planInfo = await this.getSubscriptionPlanById(user.subscriptionPlan || "");
       if (planInfo) {
         illustrationsLimit = planInfo.booksPerMonth * planInfo.pagesPerBook;
         // Update the database with the calculated limit
         await this.updateUserSubscription(id, {
-          illustrationsLimitPerMonth: illustrationsLimit
+          illustrationsLimitPerMonth: illustrationsLimit,
         });
       }
     }
@@ -176,35 +189,40 @@ export class DatabaseStorage implements IStorage {
       }
     } else {
       // Paid plans: Check if subscription period is still valid
-      const periodActive = !user.currentPeriodEnd || new Date(user.currentPeriodEnd) > now;
-      
+      const periodActive =
+        !user.currentPeriodEnd || new Date(user.currentPeriodEnd) > now;
+
+      const planInfo = user.subscriptionPlan
+        ? await this.getSubscriptionPlanById(user.subscriptionPlan)
+        : undefined;
+      const planName = planInfo?.name || user.subscriptionPlan || "Plan";
+
       // User retains access until currentPeriodEnd, even if payment failed (past_due)
       // Only lose access if period has ended AND status is not active
       if (periodActive) {
         // Period is still active - user has access
         isPlanActive = true;
-        const planInfo = SUBSCRIPTION_PLANS[user.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS];
-        
+
         if (user.subscriptionStatus === "past_due") {
-          subscriptionStatusText = `${planInfo.name} - Payment failed (access until period ends) - ${booksUsed}/${booksLimit} books used`;
+          subscriptionStatusText = `${planName} - Payment failed (access until period ends) - ${booksUsed}/${booksLimit} books used`;
         } else if (user.cancelAtPeriodEnd) {
-          subscriptionStatusText = `${planInfo.name} - Cancels at period end - ${booksUsed}/${booksLimit} books used`;
+          subscriptionStatusText = `${planName} - Cancels at period end - ${booksUsed}/${booksLimit} books used`;
         } else {
-          subscriptionStatusText = `${planInfo.name} - ${booksUsed}/${booksLimit} books used`;
+          subscriptionStatusText = `${planName} - ${booksUsed}/${booksLimit} books used`;
         }
       } else {
         // Period has ended - check if subscription should continue
         if (user.subscriptionStatus === "active") {
           // Period ended but subscription is active (shouldn't normally happen, but keep access)
           isPlanActive = true;
-          const planInfo = SUBSCRIPTION_PLANS[user.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS];
-          subscriptionStatusText = `${planInfo.name} - ${booksUsed}/${booksLimit} books used`;
+          subscriptionStatusText = `${planName} - ${booksUsed}/${booksLimit} books used`;
         } else {
           // Period ended and subscription is not active
           isPlanActive = false;
-          subscriptionStatusText = user.subscriptionStatus === "past_due" 
-            ? "Payment failed - please update payment method"
-            : "Subscription ended - resubscribe to continue";
+          subscriptionStatusText =
+            user.subscriptionStatus === "past_due"
+              ? "Payment failed - please update payment method"
+              : "Subscription ended - resubscribe to continue";
         }
       }
     }
@@ -814,6 +832,68 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`COUNT(*)` })
       .from(earlyAccessSignups);
     return Number(result[0]?.count || 0);
+  }
+
+  async getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | undefined> {
+    if (!id) return undefined;
+    const [plan] = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(
+        and(
+          eq(subscriptionPlans.id, id),
+          eq(subscriptionPlans.isActive, true),
+        ),
+      );
+    return plan;
+  }
+
+  async getAllSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db
+      .select()
+      .from(subscriptionPlans)
+      .where(eq(subscriptionPlans.isActive, true))
+      .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async createCoupon(insertCoupon: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values(insertCoupon).returning();
+    return coupon;
+  }
+
+  async getCoupon(id: string): Promise<Coupon | undefined> {
+    const [coupon] = await db
+      .select()
+      .from(coupons)
+      .where(eq(coupons.id, id));
+    return coupon || undefined;
+  }
+
+  async getCoupons(): Promise<Coupon[]> {
+    return await db
+      .select()
+      .from(coupons)
+      .orderBy(desc(coupons.createdAt));
+  }
+
+  async updateCoupon(
+    id: string,
+    updates: Partial<Coupon>,
+  ): Promise<Coupon | undefined> {
+    const [coupon] = await db
+      .update(coupons)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(coupons.id, id))
+      .returning();
+    return coupon || undefined;
+  }
+
+  async deleteCoupon(id: string): Promise<boolean> {
+    const result = await db.delete(coupons).where(eq(coupons.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

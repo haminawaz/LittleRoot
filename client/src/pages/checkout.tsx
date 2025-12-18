@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
-import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, CreditCard, Lock, Wallet } from "lucide-react";
@@ -17,13 +16,20 @@ const stripePublicKey = isDevelopment
   : import.meta.env.VITE_STRIPE_PUBLIC_KEY;
 const stripePromise = loadStripe(stripePublicKey || '');
 
+type SelectedPlan = {
+  id: string;
+  name: string;
+  price: number;
+  paypalPlanId?: string | null;
+};
+
 function CheckoutForm() {
   const stripe = useStripe();
   const elements = useElements();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
-  const [selectedPlan, setSelectedPlan] = useState<{id: string; name: string; price: number} | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlan | null>(null);
   const [signupData, setSignupData] = useState<{name: string; email: string; planId: string} | null>(null);
   const [password, setPassword] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -32,16 +38,16 @@ function CheckoutForm() {
 
   useEffect(() => {
     // Retrieve plan and check if this is an upgrade
-    const planData = localStorage.getItem('selectedPlan');
-    const upgradeFlag = localStorage.getItem('isUpgrade');
+    const planData = localStorage.getItem("selectedPlan");
+    const upgradeFlag = localStorage.getItem("isUpgrade");
     
     if (!planData) {
       toast({
         title: "Missing information",
         description: "Please select a plan first",
-        variant: "destructive"
+        variant: "destructive",
       });
-      setLocation('/');
+      setLocation("/");
       return;
     }
     
@@ -49,16 +55,16 @@ function CheckoutForm() {
     
     // Check if this is an upgrade or new signup
     // Priority: If we have signup data, treat as new signup (even if upgrade flag exists)
-    const userData = localStorage.getItem('signupData');
-    const userPassword = sessionStorage.getItem('signupPassword');
+    const userData = localStorage.getItem("signupData");
+    const userPassword = sessionStorage.getItem("signupPassword");
     
     if (userData && userPassword) {
       // This is a new signup - clear any stale upgrade flag
-      localStorage.removeItem('isUpgrade');
+      localStorage.removeItem("isUpgrade");
       setIsUpgrade(false);
       setSignupData(JSON.parse(userData));
       setPassword(userPassword);
-    } else if (upgradeFlag === 'true') {
+    } else if (upgradeFlag === "true") {
       // This is an upgrade
       setIsUpgrade(true);
     } else {
@@ -66,9 +72,9 @@ function CheckoutForm() {
       toast({
         title: "Missing information",
         description: "Please select a plan and complete signup first",
-        variant: "destructive"
+        variant: "destructive",
       });
-      setLocation('/');
+      setLocation("/");
       return;
     }
   }, [setLocation, toast]);
@@ -78,15 +84,12 @@ function CheckoutForm() {
       throw new Error("No plan selected");
     }
 
-    const plans: any = SUBSCRIPTION_PLANS;
-    const planConfig = plans[selectedPlan.id] || plans.trial;
-
-    if (!planConfig.paypalPlanId) {
+    if (!selectedPlan.paypalPlanId) {
       throw new Error("PayPal plan is not configured for this subscription");
     }
 
     return actions.subscription.create({
-      plan_id: planConfig.paypalPlanId,
+      plan_id: selectedPlan.paypalPlanId,
     });
   };
 

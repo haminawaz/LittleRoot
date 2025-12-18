@@ -7,8 +7,11 @@ import {
   users,
   stories,
   pages,
-  SUBSCRIPTION_PLANS,
   earlyAccessSignups,
+  subscriptionPlans,
+  coupons,
+  type SubscriptionPlan,
+  type Coupon,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
@@ -219,5 +222,288 @@ export function registerAdminRoutes(app: Express) {
           .json({ message: "Failed to fetch early access signups" });
       }
     }
+  );
+
+  app.get(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (_req, res) => {
+      try {
+        const plans = await db
+          .select()
+          .from(subscriptionPlans)
+          .orderBy(subscriptionPlans.sortOrder);
+        res.json(plans);
+      } catch (error) {
+        console.error("Error fetching subscription plans:", error);
+        res.status(500).json({ message: "Failed to fetch subscription plans" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!body.id || !body.name) {
+          return res.status(400).json({ 
+            message: "Plan id and name are required"
+          });
+        }
+
+        const priceCents =
+          typeof body.priceCents === "number"
+            ? body.priceCents
+            : Math.round((Number((body as any).price) || 0) * 100);
+
+        const [plan] = await db
+          .insert(subscriptionPlans)
+          .values({
+            id: body.id,
+            name: body.name,
+            priceCents,
+            booksPerMonth: body.booksPerMonth ?? 0,
+            templateBooks: body.templateBooks ?? 0,
+            bonusVariations: body.bonusVariations ?? 0,
+            pagesPerBook: body.pagesPerBook ?? 24,
+            stripePriceId: body.stripePriceId ?? null,
+            paypalPlanId: body.paypalPlanId ?? null,
+            commercialRights: body.commercialRights ?? false,
+            resellRights: body.resellRights ?? false,
+            allFormattingOptions: body.allFormattingOptions ?? false,
+            sortOrder: body.sortOrder ?? 0,
+            isActive: body.isActive ?? true,
+          })
+          .returning();
+
+        res.status(201).json(plan);
+      } catch (error: any) {
+        console.error("Error creating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to create plan"
+        });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+
+        const { id: _ignoredId, ...updates } = body as any;
+        if ((updates as any).price !== undefined) {
+          (updates as any).priceCents = Math.round(
+            Number((updates as any).price) * 100
+          );
+          delete (updates as any).price;
+        }
+
+        const [plan] = await db
+          .update(subscriptionPlans)
+          .set(updates)
+          .where(eq(subscriptionPlans.id, id))
+          .returning();
+
+        if (!plan) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        res.json(plan);
+      } catch (error: any) {
+        console.error("Error updating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to update plan"
+        });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+        if (id === "trial") {
+          return res.status(400).json({ 
+            message: "Trial plan cannot be deleted"
+          });
+        }
+
+        const result = await db
+          .delete(subscriptionPlans)
+          .where(eq(subscriptionPlans.id, id));
+
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to delete plan"
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/coupons",
+    isAdminAuthenticated,
+    async (_req, res) => {
+      try {
+        const allCoupons = await db
+          .select()
+          .from(coupons)
+          .orderBy(desc(coupons.createdAt));
+        res.json(allCoupons);
+      } catch (error) {
+        console.error("Error fetching coupons:", error);
+        res.status(500).json({ message: "Failed to fetch coupons" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/coupons",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const body = req.body as Partial<Coupon> & {
+          planIds?: string[];
+        };
+        if (!body.code || !body.discountPercent || !body.planIds || body.planIds.length === 0) {
+          return res.status(400).json({
+            message: "Coupon code, discountPercent, and at least one planId are required",
+          });
+        }
+
+        const discountPercent = Number(body.discountPercent);
+        if (Number.isNaN(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+          return res
+            .status(400)
+            .json({ message: "discountPercent must be between 1 and 100" });
+        }
+
+        const cleanedPlanIds = body.planIds.map((id) => id.trim()).filter(Boolean);
+
+        const [coupon] = await db
+          .insert(coupons)
+          .values({
+            code: body.code.trim(),
+            discountPercent,
+            planIds: cleanedPlanIds,
+            isActive: body.isActive ?? true,
+          })
+          .returning();
+
+        res.status(201).json(coupon);
+      } catch (error: any) {
+        console.error("Error creating coupon:", error);
+        res.status(500).json({
+          message: error.message || "Failed to create coupon",
+        });
+      }
+    },
+  );
+
+  app.put(
+    "/api/admin/coupons/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const body = req.body as Partial<Coupon> & {
+          planIds?: string[];
+        };
+
+        if (!id) {
+          return res.status(400).json({ message: "Coupon id is required" });
+        }
+
+        const updates: Partial<Coupon> = {};
+        if (body.code !== undefined) {
+          updates.code = body.code.trim();
+        }
+        if (body.discountPercent !== undefined) {
+          const discountPercent = Number(body.discountPercent);
+          if (
+            Number.isNaN(discountPercent) ||
+            discountPercent <= 0 ||
+            discountPercent > 100
+          ) {
+            return res
+              .status(400)
+              .json({ message: "discountPercent must be between 1 and 100" });
+          }
+          updates.discountPercent = discountPercent;
+        }
+        if (body.planIds !== undefined) {
+          updates.planIds = body.planIds.map((id) => id.trim()).filter(Boolean);
+        }
+        if (body.isActive !== undefined) {
+          updates.isActive = body.isActive;
+        }
+
+        const [coupon] = await db
+          .update(coupons)
+          .set({
+            ...updates,
+            updatedAt: new Date(),
+          })
+          .where(eq(coupons.id, id))
+          .returning();
+
+        if (!coupon) {
+          return res.status(404).json({ message: "Coupon not found" });
+        }
+
+        res.json(coupon);
+      } catch (error: any) {
+        console.error("Error updating coupon:", error);
+        res.status(500).json({
+          message: error.message || "Failed to update coupon",
+        });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/admin/coupons/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          return res.status(400).json({ message: "Coupon id is required" });
+        }
+
+        const result = await db.delete(coupons).where(eq(coupons.id, id));
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "Coupon not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting coupon:", error);
+        res.status(500).json({
+          message: error.message || "Failed to delete coupon",
+        });
+      }
+    },
   );
 }

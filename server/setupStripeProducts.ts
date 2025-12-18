@@ -1,5 +1,7 @@
 import Stripe from "stripe";
-import { SUBSCRIPTION_PLANS } from "@shared/schema";
+import { eq, not } from "drizzle-orm";
+import { db } from "./db";
+import { subscriptionPlans } from "@shared/schema";
 
 async function setupStripeProducts() {
   const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY2;
@@ -16,19 +18,23 @@ async function setupStripeProducts() {
   console.log("Setting up Stripe products in TEST mode...\n");
 
   try {
-    // Skip Free Trial (it's $0, no Stripe product needed)
-    const planEntries = Object.entries(SUBSCRIPTION_PLANS).filter(([id]) => id !== 'trial');
+    const plans = await db
+      .select()
+      .from(subscriptionPlans)
+      .where(not(eq(subscriptionPlans.id, "trial")));
 
     console.log("📋 Creating the following plans:");
-    for (const [planId, plan] of planEntries) {
-      console.log(`  • ${plan.name}: $${plan.price}/month (${plan.booksPerMonth} books)`);
+    for (const plan of plans) {
+      console.log(
+        `  • ${plan.name}: $${(plan.priceCents || 0) / 100}/month (${plan.booksPerMonth} books)`,
+      );
     }
     console.log();
 
     const priceIds: Record<string, string> = {};
 
-    for (const [planId, plan] of planEntries) {
-      console.log(`Creating product for: ${plan.name} (${planId})`);
+    for (const plan of plans) {
+      console.log(`Creating product for: ${plan.name} (${plan.id})`);
       
       // Check if product already exists
       const existingProducts = await stripe.products.search({
@@ -41,7 +47,7 @@ async function setupStripeProducts() {
         console.log(`  ✓ Product already exists: ${product.id}`);
       } else {
         // Create product with detailed description
-        const features = [];
+        const features: string[] = [];
         features.push(`${plan.booksPerMonth} books per month`);
         features.push(`${plan.templateBooks} template books`);
         features.push(`${plan.bonusVariations} bonus illustration variations`);
@@ -51,7 +57,7 @@ async function setupStripeProducts() {
         
         product = await stripe.products.create({
           name: plan.name,
-          description: `${plan.name} subscription - ${features.join(', ')}`,
+          description: `${plan.name} subscription - ${features.join(", ")}`,
         });
         console.log(`  ✓ Created product: ${product.id}`);
       }
@@ -65,29 +71,27 @@ async function setupStripeProducts() {
       let price;
       if (existingPrices.data.length > 0) {
         price = existingPrices.data[0];
-        console.log(`  ✓ Price already exists: ${price.id} ($${plan.price}/month)`);
+        console.log(`  ✓ Price already exists: ${price.id} ($${(plan.priceCents || 0) / 100}/month)`);
       } else {
         // Create price
         price = await stripe.prices.create({
           product: product.id,
-          unit_amount: Math.round(plan.price * 100), // Convert to cents
-          currency: 'usd',
+          unit_amount: plan.priceCents,
+          currency: "usd",
           recurring: {
-            interval: 'month',
+            interval: "month",
           },
         });
-        console.log(`  ✓ Created price: ${price.id} ($${plan.price}/month)`);
+        console.log(
+          `  ✓ Created price: ${price.id} ($${(plan.priceCents || 0) / 100}/month)`,
+        );
       }
 
-      priceIds[planId] = price.id;
+      priceIds[plan.id] = price.id;
       console.log();
     }
 
     console.log("✅ All Stripe products and prices created successfully!");
-    console.log("\n📝 Update your shared/schema.ts with these price IDs:");
-    for (const [planId, priceId] of Object.entries(priceIds)) {
-      console.log(`  ${planId}: stripePriceId: "${priceId}",`);
-    }
     console.log("\n💳 You can now test payments with these test cards:");
     console.log("  • Success: 4242 4242 4242 4242");
     console.log("  • Decline: 4000 0000 0000 0002");

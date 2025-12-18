@@ -19,6 +19,8 @@ import {
   type EarlyAccessSignup,
   type InsertEarlyAccessSignup,
   type SubscriptionPlan,
+  type Coupon,
+  type InsertCoupon,
   stories,
   pages,
   users,
@@ -28,6 +30,7 @@ import {
   socialAccounts,
   earlyAccessSignups,
   subscriptionPlans,
+  coupons,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -101,6 +104,12 @@ export interface IStorage {
 
   getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | undefined>;
   getAllSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+
+  createCoupon(coupon: InsertCoupon): Promise<Coupon>;
+  getCoupon(id: string): Promise<Coupon | undefined>;
+  getCoupons(): Promise<Coupon[]>;
+  updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -845,6 +854,46 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.isActive, true))
       .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async createCoupon(insertCoupon: InsertCoupon): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values(insertCoupon).returning();
+    return coupon;
+  }
+
+  async getCoupon(id: string): Promise<Coupon | undefined> {
+    const [coupon] = await db
+      .select()
+      .from(coupons)
+      .where(eq(coupons.id, id));
+    return coupon || undefined;
+  }
+
+  async getCoupons(): Promise<Coupon[]> {
+    return await db
+      .select()
+      .from(coupons)
+      .orderBy(desc(coupons.createdAt));
+  }
+
+  async updateCoupon(
+    id: string,
+    updates: Partial<Coupon>,
+  ): Promise<Coupon | undefined> {
+    const [coupon] = await db
+      .update(coupons)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(coupons.id, id))
+      .returning();
+    return coupon || undefined;
+  }
+
+  async deleteCoupon(id: string): Promise<boolean> {
+    const result = await db.delete(coupons).where(eq(coupons.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

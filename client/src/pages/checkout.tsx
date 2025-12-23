@@ -304,6 +304,7 @@ function CheckoutForm() {
           paymentMethod: "stripe",
           planId: selectedPlan.id,
           paymentMethodId: paymentMethod.id,
+          couponCode: couponInfo?.code,
           isUpgrade,
           ...(isUpgrade
             ? {}

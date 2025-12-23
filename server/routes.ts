@@ -1564,7 +1564,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payment/capture-order", async (req: any, res) => {
     try {
-      const {paymentMethod, planId, isUpgrade, name, email, password, paymentMethodId, subscriptionId} = req.body;
+      const {
+        paymentMethod,
+        planId,
+        isUpgrade,
+        name,
+        email,
+        password,
+        paymentMethodId,
+        subscriptionId,
+        couponCode,
+      } = req.body;
       if (
         !paymentMethod ||
         (paymentMethod !== "stripe" && paymentMethod !== "paypal")
@@ -1652,7 +1662,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
-          const newSubscription = await stripe.subscriptions.create({
+          let stripeCouponId = undefined;
+
+          if (couponCode) {
+            const allAdmins = await db.select().from(admins);
+            const adminWithPromotion = allAdmins.find((a) => a.promotionId);
+
+            if (adminWithPromotion?.promotionId) {
+              const [promotion] = await db
+                .select()
+                .from(promotions)
+                .where(eq(promotions.id, adminWithPromotion.promotionId));
+
+              if (
+                promotion &&
+                promotion.couponCode.trim().toLowerCase() ===
+                  couponCode.trim().toLowerCase() &&
+                promotion.planIds.includes(planId)
+              ) {
+                const couponName = `OFF_${promotion.discountPercent}`;
+                try {
+                  await stripe.coupons.retrieve(couponName);
+                  stripeCouponId = couponName;
+                } catch (err) {
+                  try {
+                    const newCoupon = await stripe.coupons.create({
+                      percent_off: promotion.discountPercent,
+                      duration: "forever",
+                      id: couponName,
+                      name: `${promotion.discountPercent}% Off`,
+                    });
+                    stripeCouponId = newCoupon.id;
+                  } catch (createErr: any) {
+                    console.error("Error creating stripe coupon:", createErr);
+                    if (createErr.code === "resource_already_exists") {
+                      stripeCouponId = couponName;
+                    }
+                  }
+                }
+              }
+            }
+          }
+
+          const subscriptionParams: Stripe.SubscriptionCreateParams = {
             customer: customerId,
             items: [{ price: plan.stripePriceId! }],
             default_payment_method: paymentMethodId,
@@ -1660,7 +1712,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               payment_method_types: ["card"],
               save_default_payment_method: "on_subscription",
             },
-          });
+          };
+
+          if (stripeCouponId) {
+            subscriptionParams.discounts = [{ coupon: stripeCouponId }];
+          }
+
+          const newSubscription =
+            await stripe.subscriptions.create(subscriptionParams);
 
           const subscription = await stripe.subscriptions.retrieve(
             newSubscription.id
@@ -1756,7 +1815,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
               metadata: { userId: user.id },
             });
 
-            const newSubscription = await stripe.subscriptions.create({
+            let stripeCouponId = undefined;
+
+            if (couponCode) {
+              const allAdmins = await db.select().from(admins);
+              const adminWithPromotion = allAdmins.find((a) => a.promotionId);
+
+              if (adminWithPromotion?.promotionId) {
+                const [promotion] = await db
+                  .select()
+                  .from(promotions)
+                  .where(eq(promotions.id, adminWithPromotion.promotionId));
+
+                if (
+                  promotion &&
+                  promotion.couponCode.trim().toLowerCase() ===
+                    couponCode.trim().toLowerCase() &&
+                  promotion.planIds.includes(planId)
+                ) {
+                  const couponName = `OFF_${promotion.discountPercent}`;
+                  try {
+                    await stripe.coupons.retrieve(couponName);
+                    stripeCouponId = couponName;
+                  } catch (err) {
+                    try {
+                      const newCoupon = await stripe.coupons.create({
+                        percent_off: promotion.discountPercent,
+                        duration: "forever",
+                        id: couponName,
+                        name: `${promotion.discountPercent}% Off`,
+                      });
+                      stripeCouponId = newCoupon.id;
+                    } catch (createErr: any) {
+                      console.error("Error creating stripe coupon:", createErr);
+                      if (createErr.code === "resource_already_exists") {
+                        stripeCouponId = couponName;
+                      }
+                    }
+                  }
+                }
+              }
+            }
+
+            const subscriptionParams: Stripe.SubscriptionCreateParams = {
               customer: customer.id,
               items: [{ price: plan.stripePriceId! }],
               payment_settings: {
@@ -1764,7 +1865,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 save_default_payment_method: "on_subscription",
               },
               expand: ["latest_invoice.payment_intent"],
-            });
+            };
+
+            if (stripeCouponId) {
+              subscriptionParams.discounts = [{ coupon: stripeCouponId }];
+            }
+
+            const newSubscription =
+              await stripe.subscriptions.create(subscriptionParams);
 
             const subscription = await stripe.subscriptions.retrieve(
               newSubscription.id

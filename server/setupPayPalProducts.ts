@@ -3,7 +3,7 @@ import { eq, and, not } from "drizzle-orm";
 import { db } from "./db";
 import { subscriptionPlans } from "@shared/schema";
 
-async function getPayPalAccessToken(
+export async function getPayPalAccessToken(
   baseUrl: string,
   clientId: string,
   secret: string
@@ -30,6 +30,36 @@ async function getPayPalAccessToken(
     access_token: string;
   };
   return access_token;
+}
+
+export async function updatePayPalPlan(
+  baseUrl: string,
+  accessToken: string,
+  planId: string,
+  newPrice: string
+) {
+  const response = await fetch(`${baseUrl}/v1/billing/plans/${planId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify([
+      {
+        op: "replace",
+        path: "/billing_cycles/0/pricing_scheme/fixed_price/value",
+        value: newPrice,
+      },
+    ]),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`Failed to update PayPal plan ${planId}: ${response.status} ${errorText}`);
+    throw new Error(`Failed to update PayPal plan: ${response.status} ${errorText}`);
+  }
+
+  console.log(`✓ Updated PayPal plan price: ${planId} to ${newPrice}`);
 }
 
 async function findOrCreatePayPalProduct(
@@ -295,4 +325,4 @@ async function setupPayPalProducts() {
   }
 }
 
-setupPayPalProducts();
+// setupPayPalProducts();

@@ -29,6 +29,7 @@ import AdminUser from "@/pages/admin/users";
 import AdminEarlyAccess from "@/pages/admin/early-access";
 import AdminPlans from "@/pages/admin/plans";
 import AdminPromotions from "@/pages/admin/promotions";
+import AdminSupport from "@/pages/admin/support";
 import AdminSettings from "./pages/admin/settings";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
@@ -177,6 +178,9 @@ function Router() {
       </Route>
       <Route path="/admin/promotions">
         {() => <AdminProtectedRoute component={AdminPromotions} />}
+      </Route>
+      <Route path="/admin/support">
+        {() => <AdminProtectedRoute component={AdminSupport} />}
       </Route>
       <Route>
         {() => <NotFound />}

@@ -48,6 +48,8 @@ export default function Support() {
     SupportTicketWithUnseenCount[]
   >({
     queryKey: ["/api/support/tickets"],
+    refetchOnMount: true,
+    staleTime: 0,
   });
 
   const {
@@ -516,35 +518,37 @@ export default function Support() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {selectedTicket.status !== "closed" && (
-                    <form
-                      onSubmit={handleSendReply}
-                      className="space-y-4 border-t pt-4"
-                    >
-                      <div>
-                        <Label htmlFor="reply">Add a message</Label>
+
+                  <div className="p-4 border-t bg-background">
+                    {selectedTicket.status === "closed" ? (
+                      <div className="text-center py-4 bg-muted/50 rounded-lg text-muted-foreground">
+                        This ticket is closed
+                      </div>
+                    ) : (
+                      <form onSubmit={handleSendReply} className="flex gap-4">
                         <Textarea
-                          id="reply"
                           value={replyMessage}
                           onChange={(e) => setReplyMessage(e.target.value)}
-                          placeholder="Type your message here..."
-                          className="mt-1.5 min-h-[100px]"
+                          placeholder="Type a reply..."
+                          className="min-h-[80px]"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleSendReply(e);
+                            }
+                          }}
                         />
-                      </div>
-                      <Button
-                        type="submit"
-                        disabled={
-                          addMessageMutation.isPending || !replyMessage.trim()
-                        }
-                        className="gap-2"
-                      >
-                        <Send className="h-4 w-4" />
-                        {addMessageMutation.isPending
-                          ? "Sending..."
-                          : "Send Message"}
-                      </Button>
-                    </form>
-                  )}
+                        <Button
+                          type="submit"
+                          disabled={
+                            addMessageMutation.isPending || !replyMessage.trim()
+                          }
+                          className="h-full px-6">
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ) : isLoadingSelectedTicket && selectedTicketId ? (

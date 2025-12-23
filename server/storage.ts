@@ -110,6 +110,10 @@ export interface IStorage {
   getPromotions(): Promise<Promotion[]>;
   updatePromotion(id: string, updates: Partial<Promotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
+ 
+  getAllSupportTickets(): Promise<SupportTicket[]>;
+  getUnseenMessagesCountForTicketAdmin(ticketId: string): Promise<number>;
+  getAllUnseenMessagesCountForAdmin(): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -740,6 +744,42 @@ export class DatabaseStorage implements IStorage {
           eq(supportMessages.ticketId, ticketId),
           eq(supportMessages.senderType, "admin"),
           eq(supportMessages.seenByUser, false)
+        )
+      );
+    
+    return messages.length;
+  }
+
+  async getAllSupportTickets(): Promise<SupportTicket[]> {
+    return await db
+      .select()
+      .from(supportTickets)
+      .orderBy(desc(supportTickets.updatedAt));
+  }
+
+  async getUnseenMessagesCountForTicketAdmin(ticketId: string): Promise<number> {
+    const messages = await db
+      .select()
+      .from(supportMessages)
+      .where(
+        and(
+          eq(supportMessages.ticketId, ticketId),
+          eq(supportMessages.senderType, "user"),
+          eq(supportMessages.seenByAdmin, false)
+        )
+      );
+    
+    return messages.length;
+  }
+
+  async getAllUnseenMessagesCountForAdmin(): Promise<number> {
+    const messages = await db
+      .select()
+      .from(supportMessages)
+      .where(
+        and(
+          eq(supportMessages.senderType, "user"),
+          eq(supportMessages.seenByAdmin, false)
         )
       );
     

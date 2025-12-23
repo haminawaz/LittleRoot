@@ -14,6 +14,7 @@ import {
   type SubscriptionPlan,
   type Promotion,
   type Admin,
+  insertSupportMessageSchema,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
@@ -655,5 +656,172 @@ export function registerAdminRoutes(app: Express) {
         });
       }
     },
+  );
+
+  app.get("/api/admin/support/tickets", isAdminAuthenticated, async (req, res) => {
+    try {
+      const tickets = await storage.getAllSupportTickets();
+
+      const ticketsWithDetails = await Promise.all(
+        tickets.map(async (ticket) => {
+          const [user, unseenCount] = await Promise.all([
+            storage.getUser(ticket.userId),
+            storage.getUnseenMessagesCountForTicketAdmin(ticket.id),
+          ]);
+          return {
+            ...ticket,
+            user: user
+              ? {
+                  id: user.id,
+                  email: user.email,
+                  name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+                }
+              : null,
+            unseenCount,
+          };
+        })
+      );
+
+      // Sort: Tickets with unseen messages first, then by last activity (updatedAt)
+      ticketsWithDetails.sort((a, b) => {
+        const aUnseen = a.unseenCount > 0;
+        const bUnseen = b.unseenCount > 0;
+
+        if (aUnseen && !bUnseen) return -1;
+        if (!aUnseen && bUnseen) return 1;
+
+        // If both have unseen or both don't, sort by updatedAt desc
+        const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+        const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+
+      res.json(ticketsWithDetails);
+    } catch (error) {
+      console.error("Error fetching admin support tickets:", error);
+      res.status(500).json({ message: "Failed to fetch tickets" });
+    }
+  });
+
+  app.get(
+    "/api/admin/support/tickets/:ticketId",
+    isAdminAuthenticated,
+    async (req, res) => {
+      try {
+        const { ticketId } = req.params;
+        const ticket = await storage.getSupportTicket(ticketId);
+        if (!ticket) {
+          return res.status(404).json({ message: "Ticket not found" });
+        }
+
+        const ticketWithMessages = await storage.getSupportTicketWithMessages(
+          ticketId
+        );
+        const user = await storage.getUser(ticket.userId);
+
+        res.json({
+          ...ticketWithMessages,
+          user: user
+            ? {
+                id: user.id,
+                email: user.email,
+                name: `${user.firstName || ""} ${user.lastName || ""}`.trim() || user.email,
+              }
+            : null,
+        });
+      } catch (error) {
+        console.error("Error fetching ticket details:", error);
+        res.status(500).json({ message: "Failed to fetch ticket details" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/support/tickets/:ticketId/messages",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { ticketId } = req.params;
+        const sessionAdmin = (req as any).admin as Admin;
+        
+        // Ensure ticket exists
+        const ticket = await storage.getSupportTicket(ticketId);
+        if (!ticket) {
+            return res.status(404).json({ message: "Ticket not found" });
+        }
+
+        const messageData = insertSupportMessageSchema.parse({
+          ticketId,
+          senderId: sessionAdmin.id,
+          senderType: "admin",
+          message: req.body.message,
+          seenByUser: false,
+          seenByAdmin: true,
+        });
+
+        const message = await storage.createSupportMessage(messageData);
+        
+        // If ticket was closed, re-open it on admin reply? 
+        // Usually admin reply might open it, or keep it open. 
+        // User requested: "close the ticket" as separate action. 
+        // So we leave status as is, unless logic dictates otherwise.
+        
+        res.json(message);
+      } catch (error: any) {
+        console.error("Error sending reply:", error);
+        res.status(400).json({
+          message: error.message || "Failed to send message",
+        });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/support/tickets/:ticketId/mark-seen",
+    isAdminAuthenticated,
+    async (req, res) => {
+      try {
+        const { ticketId } = req.params;
+        await storage.markMessagesAsSeenByAdmin(ticketId);
+        res.json({ success: true });
+      } catch (error) {
+        console.error("Error marking messages as seen:", error);
+        res.status(500).json({ message: "Failed to mark as seen" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/support/tickets/:ticketId/close",
+    isAdminAuthenticated,
+    async (req, res) => {
+        try {
+            const { ticketId } = req.params;
+            const ticket = await storage.getSupportTicket(ticketId);
+            if (!ticket) {
+                return res.status(404).json({ message: "Ticket not found" });
+            }
+            
+            const updated = await storage.updateSupportTicket(ticketId, { status: "closed" });
+            res.json(updated);
+        } catch (error) {
+            console.error("Error closing ticket:", error);
+            res.status(500).json({ message: "Failed to close ticket" });
+        }
+    }
+  );
+
+  app.get(
+    "/api/admin/support/unseen-count",
+    isAdminAuthenticated,
+    async (req, res) => {
+      try {
+        const count = await storage.getAllUnseenMessagesCountForAdmin();
+        res.json({ count });
+      } catch (error) {
+        console.error("Error fetching global unseen count:", error);
+        res.status(500).json({ message: "Failed to fetch unseen count" });
+      }
+    }
   );
 }

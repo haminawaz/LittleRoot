@@ -1,4 +1,5 @@
 import { Link, useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -17,8 +18,8 @@ const navLinks = [
   { path: "/admin/early-access", label: "Early Access", icon: Sparkles },
   { path: "/admin/plans", label: "Subscription Plans", icon: DollarSign },
   { path: "/admin/promotions", label: "Promotions", icon: Percent },
-  //   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
-  //   { path: "/admin/activity", label: "Activity", icon: Activity },
+  { path: "/admin/support", label: "Support", icon: MessageSquare },
+//   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
@@ -29,6 +30,10 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const [location] = useLocation();
+  const { data: unseenData } = useQuery<{ count: number }>({
+    queryKey: ["/api/admin/support/unseen-count"],
+    refetchInterval: 10000,
+  });
 
   return (
     <>
@@ -56,14 +61,21 @@ export default function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                   }
                 }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-colors",
                   isActive
                     ? "bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300"
                     : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                {link.label}
+                <div className="flex items-center gap-3">
+                  <Icon className="h-5 w-5" />
+                  {link.label}
+                </div>
+                {link.path === "/admin/support" && unseenData?.count ? (
+                  <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-xs font-bold text-white bg-red-500 rounded-full">
+                    {unseenData.count > 99 ? "99+" : unseenData.count}
+                  </span>
+                ) : null}
               </Link>
             );
           })}

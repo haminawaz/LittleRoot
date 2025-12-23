@@ -27,7 +27,6 @@ import {
 } from "@/components/ui/sheet";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UserWithSubscriptionInfo } from "@shared/schema";
-import { SUBSCRIPTION_PLANS } from "@shared/schema";
 
 interface HeaderProps {
   onHomeClick?: () => void;
@@ -52,6 +51,12 @@ export default function Header({
       refetchOnMount: true,
       refetchOnWindowFocus: true,
     });
+
+  const { data: subscriptionPlans } = useQuery<
+    { id: string; name: string }[]
+  >({
+    queryKey: ["/api/subscription/plans"],
+  });
 
   const { data: unseenCountData } = useQuery<{ count: number }>({
     queryKey: ["/api/support/unseen-count"],
@@ -341,9 +346,9 @@ export default function Header({
                           {userLoading ? (
                             <div className="h-3 bg-muted rounded animate-pulse w-20" />
                           ) : userWithSubscription?.subscriptionPlan ? (
-                            SUBSCRIPTION_PLANS[
-                              userWithSubscription.subscriptionPlan as keyof typeof SUBSCRIPTION_PLANS
-                            ]?.name || "Free Trial"
+                            subscriptionPlans?.find(
+                              (p) => p.id === userWithSubscription.subscriptionPlan,
+                            )?.name || "Free Trial"
                           ) : (
                             "Loading..."
                           )}

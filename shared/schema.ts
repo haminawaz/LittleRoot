@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, jsonb, integer, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  varchar,
+  jsonb,
+  integer,
+  timestamp,
+  boolean,
+  index,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -147,6 +156,23 @@ export const earlyAccessSignups = pgTable("early_access_signups", {
   index("IDX_early_access_email").on(table.email),
 ]);
 
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey(),
+  name: text("name").notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+  booksPerMonth: integer("books_per_month").notNull().default(0),
+  templateBooks: integer("template_books").notNull().default(0),
+  bonusVariations: integer("bonus_variations").notNull().default(0),
+  pagesPerBook: integer("pages_per_book").notNull().default(24),
+  stripePriceId: varchar("stripe_price_id"),
+  paypalPlanId: varchar("paypal_plan_id"),
+  commercialRights: boolean("commercial_rights").notNull().default(false),
+  resellRights: boolean("resell_rights").notNull().default(false),
+  allFormattingOptions: boolean("all_formatting_options").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   stories: many(stories),
@@ -250,6 +276,10 @@ export const insertEarlyAccessSignupSchema = createInsertSchema(earlyAccessSignu
   createdAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -269,6 +299,9 @@ export type InsertSocialAccount = z.infer<typeof insertSocialAccountSchema>;
 export type SocialAccount = typeof socialAccounts.$inferSelect;
 export type InsertEarlyAccessSignup = z.infer<typeof insertEarlyAccessSignupSchema>;
 export type EarlyAccessSignup = typeof earlyAccessSignups.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type SubscriptionPlanId = SubscriptionPlan["id"];
 
 // Extended interfaces
 export interface StoryWithPages extends Story {
@@ -298,61 +331,3 @@ export interface GenerateBookRequest {
   pagesCount: number;
   pdfFormat?: string;
 }
-
-// Subscription plan constants
-export const SUBSCRIPTION_PLANS = {
-  trial: { 
-    name: "Free 7 Day Trial", 
-    booksPerMonth: 1, 
-    price: 0,
-    stripePriceId: null,
-    paypalPlanId: null,
-    templateBooks: 0,
-    bonusVariations: 2,
-    commercialRights: false,
-    resellRights: false,
-    allFormattingOptions: false,
-    pagesPerBook: 24
-  },
-  hobbyist: { 
-    name: "Hobbyist", 
-    booksPerMonth: 6, 
-    price: 19.99, 
-    stripePriceId: "price_1SOtmW2aFol5BLxzREkwfEYU",
-    paypalPlanId: "price_1SOtmW2aFol5BLxzREkwfEYU",
-    templateBooks: 3,
-    bonusVariations: 10,
-    commercialRights: true,
-    resellRights: false,
-    allFormattingOptions: false,
-    pagesPerBook: 24
-  },
-  pro: { 
-    name: "Pro", 
-    booksPerMonth: 15, 
-    price: 39.99, 
-    stripePriceId: "price_1SOtmX2aFol5BLxzCHvwlQ71",
-    paypalPlanId: null,
-    templateBooks: 15,
-    bonusVariations: 25,
-    commercialRights: true,
-    resellRights: false,
-    allFormattingOptions: true,
-    pagesPerBook: 24
-  },
-  reseller: { 
-    name: "Business", 
-    booksPerMonth: 25, 
-    price: 74.99, 
-    stripePriceId: "price_1SOtmX2aFol5BLxzalckWDRI",
-    paypalPlanId: "price_1SOtmX2aFol5BLxzalckWDRI",
-    templateBooks: 30,
-    bonusVariations: 75,
-    commercialRights: true,
-    resellRights: true,
-    allFormattingOptions: true,
-    pagesPerBook: 24
-  },
-} as const;
-
-export type SubscriptionPlan = keyof typeof SUBSCRIPTION_PLANS;

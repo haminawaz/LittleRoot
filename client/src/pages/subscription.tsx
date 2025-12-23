@@ -18,7 +18,6 @@ import {
 import { ArrowLeft, Calendar, CreditCard, Check, Crown, AlertCircle, BookOpen, Sparkles, Shield, FileText, XCircle } from "lucide-react";
 import { useLocation } from "wouter";
 import type { UserWithSubscriptionInfo } from "@shared/schema";
-import { SUBSCRIPTION_PLANS } from "@shared/schema";
 import { motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +31,19 @@ export default function Subscription() {
   const { data: user, isLoading } = useQuery<UserWithSubscriptionInfo>({
     queryKey: ["/api/auth/user"],
     refetchOnMount: "always",
+  });
+
+  const { data: plans } = useQuery<{
+    id: string;
+    name: string;
+    price: number;
+    booksPerMonth: number;
+    templateBooks: number;
+    bonusVariations: number;
+    pagesPerBook: number;
+    paypalPlanId?: string | null;
+  }[]>({
+    queryKey: ["/api/subscription/plans"],
   });
 
   // Cancel subscription mutation
@@ -58,30 +70,34 @@ export default function Subscription() {
   });
 
   const getPlanDetails = (planId: string) => {
-    const plans: any = SUBSCRIPTION_PLANS;
-    return plans[planId] || plans.trial;
+    if (!plans) return null;
+    return plans.find((p) => p.id === planId) || plans.find((p) => p.id === "trial") || null;
   };
 
   const currentPlan = user?.subscriptionPlan ? getPlanDetails(user.subscriptionPlan) : null;
   const isTrial = user?.subscriptionPlan === 'trial';
 
-  const handleChoosePlan = (planId: string, planName: string, planPrice: number) => {
+  const handleChoosePlan = (planId: string) => {
+    const plan = getPlanDetails(planId);
+    if (!plan) return;
+
     // Save plan details to localStorage (same as landing page flow)
-    localStorage.setItem('selectedPlan', JSON.stringify({
-      id: planId,
-      name: planName,
-      price: planPrice
+    localStorage.setItem("selectedPlan", JSON.stringify({
+      id: plan.id,
+      name: plan.name,
+      price: plan.price,
+      paypalPlanId: plan.paypalPlanId,
     }));
     
     // Clear any stale signup data from abandoned previous signups
-    localStorage.removeItem('signupData');
-    sessionStorage.removeItem('signupPassword');
+    localStorage.removeItem("signupData");
+    sessionStorage.removeItem("signupPassword");
     
     // Mark this as an upgrade (not a new signup)
-    localStorage.setItem('isUpgrade', 'true');
+    localStorage.setItem("isUpgrade", "true");
     
     // Redirect to checkout page
-    setLocation('/checkout');
+    setLocation("/checkout");
   };
 
   return (

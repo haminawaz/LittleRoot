@@ -14,7 +14,7 @@ const navLinks = [
   { path: "/admin/dashboard", label: "Overview", icon: LayoutDashboard },
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/early-access", label: "Early Access", icon: Sparkles },
-  //   { path: "/admin/revenue", label: "Revenue", icon: DollarSign },
+  { path: "/admin/plans", label: "Subscription Plans", icon: DollarSign },
   //   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
   //   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/settings", label: "Settings", icon: Settings },

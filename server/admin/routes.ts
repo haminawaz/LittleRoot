@@ -7,13 +7,15 @@ import {
   users,
   stories,
   pages,
-  SUBSCRIPTION_PLANS,
   earlyAccessSignups,
+  subscriptionPlans,
+  type SubscriptionPlan,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
 import Stripe from "stripe";
 import { sendEmail } from "../emailService";
+import { getPayPalAccessToken, updatePayPalPlan } from "../setupPayPalProducts";
 
 export function registerAdminRoutes(app: Express) {
   setupAdminAuth();
@@ -217,6 +219,226 @@ export function registerAdminRoutes(app: Express) {
         res
           .status(500)
           .json({ message: "Failed to fetch early access signups" });
+      }
+    }
+  );
+
+  app.get(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (_req, res) => {
+      try {
+        const plans = await db
+          .select()
+          .from(subscriptionPlans)
+          .orderBy(subscriptionPlans.sortOrder);
+        res.json(plans);
+      } catch (error) {
+        console.error("Error fetching subscription plans:", error);
+        res.status(500).json({ message: "Failed to fetch subscription plans" });
+      }
+    }
+  );
+
+  app.post(
+    "/api/admin/subscription-plans",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!body.id || !body.name) {
+          return res.status(400).json({ 
+            message: "Plan id and name are required"
+          });
+        }
+
+        const priceCents =
+          typeof body.priceCents === "number"
+            ? body.priceCents
+            : Math.round((Number((body as any).price) || 0) * 100);
+
+        const [plan] = await db
+          .insert(subscriptionPlans)
+          .values({
+            id: body.id,
+            name: body.name,
+            priceCents,
+            booksPerMonth: body.booksPerMonth ?? 0,
+            templateBooks: body.templateBooks ?? 0,
+            bonusVariations: body.bonusVariations ?? 0,
+            pagesPerBook: body.pagesPerBook ?? 24,
+            stripePriceId: body.stripePriceId ?? null,
+            paypalPlanId: body.paypalPlanId ?? null,
+            commercialRights: body.commercialRights ?? false,
+            resellRights: body.resellRights ?? false,
+            allFormattingOptions: body.allFormattingOptions ?? false,
+            sortOrder: body.sortOrder ?? 0,
+            isActive: body.isActive ?? true,
+          })
+          .returning();
+
+        res.status(201).json(plan);
+      } catch (error: any) {
+        console.error("Error creating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to create plan"
+        });
+      }
+    }
+  );
+
+  app.put(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const body = req.body as Partial<SubscriptionPlan>;
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+
+        const { id: _ignoredId, ...updates } = body as any;
+        if ((updates as any).price !== undefined) {
+          (updates as any).priceCents = Math.round(
+            Number((updates as any).price) * 100
+          );
+          delete (updates as any).price;
+        }
+
+        const plan = await storage.getSubscriptionPlanById(id);
+        if (!plan) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        const [updatedPlan] = await db
+          .update(subscriptionPlans)
+          .set(updates)
+          .where(eq(subscriptionPlans.id, id))
+          .returning();
+
+        if (
+          plan &&
+          updates.priceCents !== undefined &&
+          plan.priceCents !== updatedPlan.priceCents
+        ) {
+          console.log(
+            `Price change detected for plan ${id}: ${updatedPlan.priceCents} -> ${updates.priceCents}`
+          );
+
+          const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY2;
+          if (stripeSecretKey && updatedPlan.stripePriceId) {
+            try {
+              const stripe = new Stripe(stripeSecretKey, {
+                apiVersion: "2025-08-27.basil",
+              });
+
+              const oldPrice = await stripe.prices.retrieve(
+                updatedPlan.stripePriceId!
+              );
+              const productId = oldPrice.product as string;
+
+              if (productId) {
+                const newPrice = await stripe.prices.create({
+                  product: productId,
+                  unit_amount: updates.priceCents,
+                  currency: "usd",
+                  recurring: { interval: "month" },
+                  nickname: updates.name || updatedPlan.name,
+                });
+
+                await stripe.products.update(productId, {
+                  default_price: newPrice.id,
+                });
+
+                await db
+                  .update(subscriptionPlans)
+                  .set({ stripePriceId: newPrice.id })
+                  .where(eq(subscriptionPlans.id, id));
+
+                console.log(
+                  `  ✓ Created new Stripe Price: ${newPrice.id} for product ${productId} and set as default`
+                );
+              }
+            } catch (stripeError) {
+              console.error("Error syncing with Stripe:", stripeError);
+            }
+          }
+
+          const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+          const paypalSecret = process.env.PAYPAL_SECRET;
+          const paypalMode = process.env.PAYPAL_MODE;
+
+          if (
+            paypalClientId &&
+            paypalSecret &&
+            updatedPlan.paypalPlanId
+          ) {
+            try {
+              const paypalBaseUrl =
+                paypalMode === "live"
+                  ? "https://api-m.paypal.com"
+                  : "https://api-m.sandbox.paypal.com";
+
+              const accessToken = await getPayPalAccessToken(
+                paypalBaseUrl,
+                paypalClientId,
+                paypalSecret
+              );
+
+              const newPriceString = (updates.priceCents / 100).toFixed(2);
+              await updatePayPalPlan(
+                paypalBaseUrl,
+                accessToken,
+                updatedPlan.paypalPlanId,
+                newPriceString
+              );
+            } catch (paypalError) {
+              console.error("Error syncing with PayPal:", paypalError);
+            }
+          }
+        }
+
+        res.json(updatedPlan);
+      } catch (error: any) {
+        console.error("Error updating subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to update plan",
+        });
+      }
+    }
+  );
+
+  app.delete(
+    "/api/admin/subscription-plans/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+
+        if (!id) {
+          return res.status(400).json({ message: "Plan id is required" });
+        }
+        if (id === "trial") {
+          return res.status(400).json({ 
+            message: "Trial plan cannot be deleted"
+          });
+        }
+
+        const result = await db
+          .delete(subscriptionPlans)
+          .where(eq(subscriptionPlans.id, id));
+
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting subscription plan:", error);
+        res.status(500).json({ 
+          message: error.message || "Failed to delete plan"
+        });
       }
     }
   );

@@ -10,8 +10,10 @@ import {
   earlyAccessSignups,
   subscriptionPlans,
   promotions,
+  admins,
   type SubscriptionPlan,
   type Promotion,
+  type Admin,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
@@ -71,6 +73,59 @@ export function registerAdminRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch admin" });
     }
   });
+
+  app.put(
+    "/api/admin/settings/promotion",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const sessionAdmin = (req as any).admin as Admin | undefined;
+        if (!sessionAdmin) {
+          return res.status(401).json({ message: "Admin not found" });
+        }
+
+        const { promotionId } = req.body as {
+          promotionId?: string | null;
+        };
+
+        let newPromotionId: string | null = null;
+
+        if (promotionId) {
+          const [promotion] = await db
+            .select()
+            .from(promotions)
+            .where(eq(promotions.id, promotionId));
+
+          if (!promotion) {
+            return res
+              .status(400)
+              .json({ message: "Selected promotion does not exist" });
+          }
+
+          newPromotionId = promotion.id;
+        }
+
+        const [updatedAdmin] = await db
+          .update(admins)
+          .set({ promotionId: newPromotionId })
+          .where(eq(admins.id, sessionAdmin.id))
+          .returning();
+
+        if (!updatedAdmin) {
+          return res.status(404).json({ message: "Admin not found" });
+        }
+
+        res.json({
+          success: true,
+        });
+      } catch (error: any) {
+        console.error("Error updating admin promotion:", error);
+        res.status(500).json({
+          message: error.message || "Failed to update admin promotion",
+        });
+      }
+    },
+  );
 
   // Dashboard analytics
   app.get(

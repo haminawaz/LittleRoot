@@ -19,6 +19,7 @@ import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
 import Stripe from "stripe";
 import { sendEmail } from "../emailService";
+import { getPayPalAccessToken, updatePayPalPlan } from "../setupPayPalProducts";
 
 export function registerAdminRoutes(app: Express) {
   setupAdminAuth();
@@ -362,21 +363,104 @@ export function registerAdminRoutes(app: Express) {
           delete (updates as any).price;
         }
 
-        const [plan] = await db
+        const plan = await storage.getSubscriptionPlanById(id);
+        if (!plan) {
+          return res.status(404).json({ message: "Plan not found" });
+        }
+
+        const [updatedPlan] = await db
           .update(subscriptionPlans)
           .set(updates)
           .where(eq(subscriptionPlans.id, id))
           .returning();
 
-        if (!plan) {
-          return res.status(404).json({ message: "Plan not found" });
+        if (
+          plan &&
+          updates.priceCents !== undefined &&
+          plan.priceCents !== updatedPlan.priceCents
+        ) {
+          console.log(
+            `Price change detected for plan ${id}: ${updatedPlan.priceCents} -> ${updates.priceCents}`
+          );
+
+          const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY2;
+          if (stripeSecretKey && updatedPlan.stripePriceId) {
+            try {
+              const stripe = new Stripe(stripeSecretKey, {
+                apiVersion: "2025-08-27.basil",
+              });
+
+              const oldPrice = await stripe.prices.retrieve(
+                updatedPlan.stripePriceId!
+              );
+              const productId = oldPrice.product as string;
+
+              if (productId) {
+                const newPrice = await stripe.prices.create({
+                  product: productId,
+                  unit_amount: updates.priceCents,
+                  currency: "usd",
+                  recurring: { interval: "month" },
+                  nickname: updates.name || updatedPlan.name,
+                });
+
+                await stripe.products.update(productId, {
+                  default_price: newPrice.id,
+                });
+
+                await db
+                  .update(subscriptionPlans)
+                  .set({ stripePriceId: newPrice.id })
+                  .where(eq(subscriptionPlans.id, id));
+
+                console.log(
+                  `  ✓ Created new Stripe Price: ${newPrice.id} for product ${productId} and set as default`
+                );
+              }
+            } catch (stripeError) {
+              console.error("Error syncing with Stripe:", stripeError);
+            }
+          }
+
+          const paypalClientId = process.env.PAYPAL_CLIENT_ID;
+          const paypalSecret = process.env.PAYPAL_SECRET;
+          const paypalMode = process.env.PAYPAL_MODE;
+
+          if (
+            paypalClientId &&
+            paypalSecret &&
+            updatedPlan.paypalPlanId
+          ) {
+            try {
+              const paypalBaseUrl =
+                paypalMode === "live"
+                  ? "https://api-m.paypal.com"
+                  : "https://api-m.sandbox.paypal.com";
+
+              const accessToken = await getPayPalAccessToken(
+                paypalBaseUrl,
+                paypalClientId,
+                paypalSecret
+              );
+
+              const newPriceString = (updates.priceCents / 100).toFixed(2);
+              await updatePayPalPlan(
+                paypalBaseUrl,
+                accessToken,
+                updatedPlan.paypalPlanId,
+                newPriceString
+              );
+            } catch (paypalError) {
+              console.error("Error syncing with PayPal:", paypalError);
+            }
+          }
         }
 
-        res.json(plan);
+        res.json(updatedPlan);
       } catch (error: any) {
         console.error("Error updating subscription plan:", error);
         res.status(500).json({ 
-          message: error.message || "Failed to update plan"
+          message: error.message || "Failed to update plan",
         });
       }
     }

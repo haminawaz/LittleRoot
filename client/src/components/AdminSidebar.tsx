@@ -8,6 +8,7 @@ import {
   Activity,
   Settings,
   Sparkles,
+  Percent,
 } from "lucide-react";
 
 const navLinks = [
@@ -15,6 +16,7 @@ const navLinks = [
   { path: "/admin/users", label: "Users", icon: Users },
   { path: "/admin/early-access", label: "Early Access", icon: Sparkles },
   { path: "/admin/plans", label: "Subscription Plans", icon: DollarSign },
+  { path: "/admin/promotions", label: "Promotions", icon: Percent },
   //   { path: "/admin/messages", label: "Messages", icon: MessageSquare },
   //   { path: "/admin/activity", label: "Activity", icon: Activity },
   { path: "/admin/settings", label: "Settings", icon: Settings },

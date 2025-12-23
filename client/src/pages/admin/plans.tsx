@@ -30,6 +30,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/AdminLayout";
 import { Edit2, Trash2, Plus } from "lucide-react";
+import {
+  adminPlanSchema,
+  type AdminPlanInput,
+} from "@/validation/adminPlan";
 
 interface AdminSubscriptionPlan {
   id: string;
@@ -76,14 +80,24 @@ export default function AdminPlans() {
   );
   const [planToDelete, setPlanToDelete] =
     useState<AdminSubscriptionPlan | null>(null);
+  const [formError, setFormError] = useState<{
+    planId?: string;
+    name?: string;
+    price?: string;
+    booksPerMonth?: string;
+    templateBooks?: string;
+    bonusVariations?: string;
+    pagesPerBook?: string;
+    sortOrder?: string;
+  }>({});
 
   const [formState, setFormState] = useState<PlanFormState>({
     id: "",
     name: "",
-    price: "",
-    booksPerMonth: "",
-    templateBooks: "",
-    bonusVariations: "",
+    price: "0",
+    booksPerMonth: "0",
+    templateBooks: "0",
+    bonusVariations: "0",
     pagesPerBook: "24",
     stripePriceId: "",
     paypalPlanId: "",
@@ -119,20 +133,49 @@ export default function AdminPlans() {
 
   const upsertMutation = useMutation({
     mutationFn: async () => {
-      const payload: any = {
-        id: formState.id.trim(),
-        name: formState.name.trim(),
-        priceCents: Math.round(Number(formState.price || "0") * 100),
+      const toValidate: AdminPlanInput = {
+        planId: formState.id,
+        name: formState.name,
+        price: Number(formState.price || "0"),
         booksPerMonth: Number(formState.booksPerMonth || "0"),
         templateBooks: Number(formState.templateBooks || "0"),
         bonusVariations: Number(formState.bonusVariations || "0"),
         pagesPerBook: Number(formState.pagesPerBook || "24"),
+        sortOrder: Number(formState.sortOrder || "0"),
+      };
+
+      const result = adminPlanSchema.safeParse(toValidate);
+      if (!result.success) {
+        const fieldErrors = result.error.flatten().fieldErrors;
+        setFormError({
+          planId: fieldErrors.planId?.[0],
+          name: fieldErrors.name?.[0],
+          price: fieldErrors.price?.[0],
+          booksPerMonth: fieldErrors.booksPerMonth?.[0],
+          templateBooks: fieldErrors.templateBooks?.[0],
+          bonusVariations: fieldErrors.bonusVariations?.[0],
+          pagesPerBook: fieldErrors.pagesPerBook?.[0],
+          sortOrder: fieldErrors.sortOrder?.[0],
+        });
+        throw new Error("Validation failed");
+      }
+
+      setFormError({});
+
+      const payload: any = {
+        id: formState.id.trim(),
+        name: formState.name.trim(),
+        priceCents: Math.round(result.data.price * 100),
+        booksPerMonth: result.data.booksPerMonth,
+        templateBooks: result.data.templateBooks,
+        bonusVariations: result.data.bonusVariations,
+        pagesPerBook: result.data.pagesPerBook,
         stripePriceId: formState.stripePriceId.trim() || null,
         paypalPlanId: formState.paypalPlanId.trim() || null,
         commercialRights: formState.commercialRights,
         resellRights: formState.resellRights,
         allFormattingOptions: formState.allFormattingOptions,
-        sortOrder: Number(formState.sortOrder || "0"),
+        sortOrder: result.data.sortOrder,
         isActive: formState.isActive,
       };
 
@@ -192,10 +235,10 @@ export default function AdminPlans() {
     setFormState({
       id: "",
       name: "",
-      price: "",
-      booksPerMonth: "",
-      templateBooks: "",
-      bonusVariations: "",
+      price: "0",
+      booksPerMonth: "0",
+      templateBooks: "0",
+      bonusVariations: "0",
       pagesPerBook: "24",
       stripePriceId: "",
       paypalPlanId: "",
@@ -410,6 +453,11 @@ export default function AdminPlans() {
                               handleFormChange("id", e.target.value)
                             }
                           />
+                          {formError.planId && (
+                            <p className="text-xs text-red-600">
+                              {formError.planId}
+                            </p>
+                          )}
                         </div>
                       )}
                       {editingPlan && (
@@ -429,6 +477,11 @@ export default function AdminPlans() {
                             handleFormChange("name", e.target.value)
                           }
                         />
+                        {formError.name && (
+                          <p className="text-xs text-red-600">
+                            {formError.name}
+                          </p>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -446,6 +499,11 @@ export default function AdminPlans() {
                               handleFormChange("price", e.target.value)
                             }
                           />
+                          {formError.price && (
+                            <p className="text-xs text-red-600">
+                              {formError.price}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="plan-books">Books per month</Label>
@@ -458,6 +516,11 @@ export default function AdminPlans() {
                               handleFormChange("booksPerMonth", e.target.value)
                             }
                           />
+                          {formError.booksPerMonth && (
+                            <p className="text-xs text-red-600">
+                              {formError.booksPerMonth}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -473,6 +536,11 @@ export default function AdminPlans() {
                               handleFormChange("templateBooks", e.target.value)
                             }
                           />
+                          {formError.templateBooks && (
+                            <p className="text-xs text-red-600">
+                              {formError.templateBooks}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="plan-bonus">Bonus variations</Label>
@@ -488,6 +556,11 @@ export default function AdminPlans() {
                               )
                             }
                           />
+                          {formError.bonusVariations && (
+                            <p className="text-xs text-red-600">
+                              {formError.bonusVariations}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="plan-pages">Pages per book</Label>
@@ -500,6 +573,11 @@ export default function AdminPlans() {
                               handleFormChange("pagesPerBook", e.target.value)
                             }
                           />
+                          {formError.pagesPerBook && (
+                            <p className="text-xs text-red-600">
+                              {formError.pagesPerBook}
+                            </p>
+                          )}
                         </div>
                       </div>
 
@@ -539,6 +617,11 @@ export default function AdminPlans() {
                               handleFormChange("sortOrder", e.target.value)
                             }
                           />
+                          {formError.sortOrder && (
+                            <p className="text-xs text-red-600">
+                              {formError.sortOrder}
+                            </p>
+                          )}
                         </div>
                         <div className="space-y-2">
                           <Label>Flags</Label>

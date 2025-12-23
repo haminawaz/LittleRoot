@@ -19,6 +19,8 @@ import {
   type EarlyAccessSignup,
   type InsertEarlyAccessSignup,
   type SubscriptionPlan,
+  type Promotion,
+  type InsertPromotion,
   stories,
   pages,
   users,
@@ -28,6 +30,7 @@ import {
   socialAccounts,
   earlyAccessSignups,
   subscriptionPlans,
+  promotions,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -101,6 +104,12 @@ export interface IStorage {
 
   getSubscriptionPlanById(id: string): Promise<SubscriptionPlan | undefined>;
   getAllSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+
+  createPromotion(promotion: InsertPromotion): Promise<Promotion>;
+  getPromotion(id: string): Promise<Promotion | undefined>;
+  getPromotions(): Promise<Promotion[]>;
+  updatePromotion(id: string, updates: Partial<Promotion>): Promise<Promotion | undefined>;
+  deletePromotion(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -845,6 +854,46 @@ export class DatabaseStorage implements IStorage {
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.isActive, true))
       .orderBy(subscriptionPlans.sortOrder);
+  }
+
+  async createPromotion(insertPromotion: InsertPromotion): Promise<Promotion> {
+    const [promotion] = await db.insert(promotions).values(insertPromotion).returning();
+    return promotion;
+  }
+
+  async getPromotion(id: string): Promise<Promotion | undefined> {
+    const [promotion] = await db
+      .select()
+      .from(promotions)
+      .where(eq(promotions.id, id));
+    return promotion || undefined;
+  }
+
+  async getPromotions(): Promise<Promotion[]> {
+    return await db
+      .select()
+      .from(promotions)
+      .orderBy(desc(promotions.createdAt));
+  }
+
+  async updatePromotion(
+    id: string,
+    updates: Partial<Promotion>,
+  ): Promise<Promotion | undefined> {
+    const [promotion] = await db
+      .update(promotions)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(promotions.id, id))
+      .returning();
+    return promotion || undefined;
+  }
+
+  async deletePromotion(id: string): Promise<boolean> {
+    const result = await db.delete(promotions).where(eq(promotions.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

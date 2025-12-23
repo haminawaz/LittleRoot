@@ -9,7 +9,9 @@ import {
   pages,
   earlyAccessSignups,
   subscriptionPlans,
+  promotions,
   type SubscriptionPlan,
+  type Promotion,
 } from "@shared/schema";
 import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
 import { storage } from "../storage";
@@ -441,5 +443,162 @@ export function registerAdminRoutes(app: Express) {
         });
       }
     }
+  );
+
+  app.get(
+    "/api/admin/promotions",
+    isAdminAuthenticated,
+    async (_req, res) => {
+      try {
+        const allPromotions = await db
+          .select()
+          .from(promotions)
+          .orderBy(desc(promotions.createdAt));
+        res.json(allPromotions);
+      } catch (error) {
+        console.error("Error fetching promotions:", error);
+        res.status(500).json({ message: "Failed to fetch promotions" });
+      }
+    },
+  );
+
+  app.post(
+    "/api/admin/promotions",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const body = req.body as Partial<Promotion> & {
+          planIds?: string[];
+        };
+        if (!body.couponCode || !body.discountPercent || !body.planIds || body.planIds.length === 0 || !body.banner) {
+          return res.status(400).json({
+            message: "Coupon code, discountPercent, banner, and at least one planId are required",
+          });
+        }
+
+        const discountPercent = Number(body.discountPercent);
+        if (Number.isNaN(discountPercent) || discountPercent <= 0 || discountPercent > 100) {
+          return res
+            .status(400)
+            .json({ message: "discountPercent must be between 1 and 100" });
+        }
+
+        if (body.banner.length > 120) {
+          return res
+            .status(400)
+            .json({ message: "Banner must not exceed 120 characters" });
+        }
+
+        const cleanedPlanIds = body.planIds.map((id) => id.trim()).filter(Boolean);
+
+        const [promotion] = await db
+          .insert(promotions)
+          .values({
+            couponCode: body.couponCode.trim(),
+            discountPercent,
+            planIds: cleanedPlanIds,
+            banner: body.banner,
+          })
+          .returning();
+
+        res.status(201).json(promotion);
+      } catch (error: any) {
+        console.error("Error creating promotion:", error);
+        res.status(500).json({
+          message: error.message || "Failed to create promotion",
+        });
+      }
+    },
+  );
+
+  app.put(
+    "/api/admin/promotions/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        const body = req.body as Partial<Promotion> & {
+          planIds?: string[];
+        };
+
+        if (!id) {
+          return res.status(400).json({ message: "Promotion id is required" });
+        }
+
+        const updates: Partial<Promotion> = {};
+        if (body.couponCode !== undefined) {
+          updates.couponCode = body.couponCode.trim();
+        }
+        if (body.discountPercent !== undefined) {
+          const discountPercent = Number(body.discountPercent);
+          if (
+            Number.isNaN(discountPercent) ||
+            discountPercent <= 0 ||
+            discountPercent > 100
+          ) {
+            return res
+              .status(400)
+              .json({ message: "discountPercent must be between 1 and 100" });
+          }
+          updates.discountPercent = discountPercent;
+        }
+        if (body.planIds !== undefined) {
+          updates.planIds = body.planIds.map((id) => id.trim()).filter(Boolean);
+        }
+        if (body.banner !== undefined) {
+          if (body.banner.length > 120) {
+            return res
+              .status(400)
+              .json({ message: "Banner must not exceed 120 characters" });
+          }
+          updates.banner = body.banner;
+        }
+
+        const [promotion] = await db
+          .update(promotions)
+          .set({
+            ...updates,
+            updatedAt: new Date(),
+          })
+          .where(eq(promotions.id, id))
+          .returning();
+
+        if (!promotion) {
+          return res.status(404).json({ message: "Promotion not found" });
+        }
+
+        res.json(promotion);
+      } catch (error: any) {
+        console.error("Error updating promotion:", error);
+        res.status(500).json({
+          message: error.message || "Failed to update promotion",
+        });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/admin/promotions/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          return res.status(400).json({ message: "Promotion id is required" });
+        }
+
+        const result = await db.delete(promotions).where(eq(promotions.id, id));
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "Promotion not found" });
+        }
+
+        res.json({ success: true });
+      } catch (error: any) {
+        console.error("Error deleting promotion:", error);
+        res.status(500).json({
+          message: error.message || "Failed to delete promotion",
+        });
+      }
+    },
   );
 }

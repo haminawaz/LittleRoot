@@ -526,9 +526,9 @@ export function registerAdminRoutes(app: Express) {
         const body = req.body as Partial<Promotion> & {
           planIds?: string[];
         };
-        if (!body.couponCode || !body.discountPercent || !body.planIds || body.planIds.length === 0 || !body.banner) {
+        if (!body.couponCode || !body.discountPercent || !body.planIds || body.planIds.length === 0 || !body.banner || !body.validityMonths) {
           return res.status(400).json({
-            message: "Coupon code, discountPercent, banner, and at least one planId are required",
+            message: "Coupon code, discountPercent, banner, planIds, and validityMonths are required",
           });
         }
 
@@ -545,6 +545,11 @@ export function registerAdminRoutes(app: Express) {
             .json({ message: "Banner must not exceed 120 characters" });
         }
 
+        const validityMonths = Number(body.validityMonths);
+        if (Number.isNaN(validityMonths) || validityMonths < 1 || !Number.isInteger(validityMonths)) {
+          return res.status(400).json({ message: "Validity months must be a positive integer" });
+        }
+
         const cleanedPlanIds = body.planIds.map((id) => id.trim()).filter(Boolean);
 
         const [promotion] = await db
@@ -553,6 +558,7 @@ export function registerAdminRoutes(app: Express) {
             couponCode: body.couponCode.trim(),
             discountPercent,
             planIds: cleanedPlanIds,
+            validityMonths: validityMonths,
             banner: body.banner,
           })
           .returning();
@@ -608,6 +614,17 @@ export function registerAdminRoutes(app: Express) {
               .json({ message: "Banner must not exceed 120 characters" });
           }
           updates.banner = body.banner;
+        }
+        if (body.validityMonths !== undefined) {
+          if (body.validityMonths === null || body.validityMonths === ("" as any)) {
+            updates.validityMonths = null;
+          } else {
+            const months = Number(body.validityMonths);
+            if (months < 1 || !Number.isInteger(months)) {
+              return res.status(400).json({ message: "Validity months must be a positive integer" });
+            }
+            updates.validityMonths = months;
+          }
         }
 
         const [promotion] = await db

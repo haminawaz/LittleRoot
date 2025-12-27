@@ -34,6 +34,7 @@ interface AdminPromotion {
   couponCode: string;
   discountPercent: number;
   planIds: string[];
+  validityMonths: number;
   banner: string;
 }
 
@@ -47,6 +48,7 @@ type PromotionFormState = {
   couponCode: string;
   discountPercent: string;
   planIds: string[];
+  validityMonths: string;
   banner: string;
 };
 
@@ -64,6 +66,7 @@ export default function AdminPromotions() {
     couponCode?: string;
     discountPercentage?: string;
     subscriptionPlans?: string;
+    validityMonths?: string;
     banner?: string;
   }>({});
 
@@ -72,6 +75,7 @@ export default function AdminPromotions() {
     couponCode: "",
     discountPercent: "",
     planIds: [],
+    validityMonths: "",
     banner: "",
   });
 
@@ -118,6 +122,7 @@ export default function AdminPromotions() {
         couponCode: formState.couponCode,
         discountPercentage: Number(formState.discountPercent || "0"),
         subscriptionPlans: formState.planIds,
+        validityMonths: Number(formState.validityMonths || "0"),
         banner: formState.banner,
       };
 
@@ -128,6 +133,7 @@ export default function AdminPromotions() {
           couponCode: fieldErrors.couponCode?.[0],
           discountPercentage: fieldErrors.discountPercentage?.[0],
           subscriptionPlans: fieldErrors.subscriptionPlans?.[0],
+          validityMonths: fieldErrors.validityMonths?.[0],
           banner: fieldErrors.banner?.[0],
         });
         throw new Error("Validation failed");
@@ -139,6 +145,7 @@ export default function AdminPromotions() {
         couponCode: formState.couponCode.trim(),
         discountPercent: result.data.discountPercentage,
         planIds: formState.planIds,
+        validityMonths: Number(formState.validityMonths),
         banner: result.data.banner,
       };
 
@@ -201,6 +208,7 @@ export default function AdminPromotions() {
       couponCode: "",
       discountPercent: "",
       planIds: [],
+      validityMonths: "",
       banner: "",
     });
     setIsFormOpen(true);
@@ -213,6 +221,7 @@ export default function AdminPromotions() {
       couponCode: promotion.couponCode,
       discountPercent: promotion.discountPercent.toString(),
       planIds: promotion.planIds || [],
+      validityMonths: promotion.validityMonths?.toString(),
       banner: promotion.banner || "",
     });
     setIsFormOpen(true);
@@ -251,8 +260,7 @@ export default function AdminPromotions() {
             <Button
               size="sm"
               onClick={openCreateForm}
-              className={`${isFormOpen ? "hidden" : ""}`}
-            >
+              className={`${isFormOpen ? "hidden" : ""}`}>
               <Plus className="h-4 w-4 mr-2" />
               Create Promotion
             </Button>
@@ -268,8 +276,7 @@ export default function AdminPromotions() {
                   animate={{ x: 0, opacity: 1 }}
                   exit={{ x: -40, opacity: 0 }}
                   transition={{ duration: 0.32, ease: [0.22, 0.61, 0.36, 1] }}
-                  className="space-y-4"
-                >
+                  className="space-y-4">
                   {promotionsLoading ? (
                     <div className="flex items-center justify-center h-64">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
@@ -308,6 +315,11 @@ export default function AdminPromotions() {
                                 </TableCell>
                                 <TableCell>
                                   {promotion.discountPercent}%
+                                  {promotion.validityMonths && (
+                                    <span className="ml-2 text-xs text-muted-foreground">
+                                      ({promotion.validityMonths} mo)
+                                    </span>
+                                  )}
                                 </TableCell>
                                 <TableCell>{planNames}</TableCell>
                                 <TableCell className="text-right">
@@ -316,8 +328,7 @@ export default function AdminPromotions() {
                                       variant="outline"
                                       size="icon"
                                       className="h-8 w-8"
-                                      onClick={() => openEditForm(promotion)}
-                                    >
+                                      onClick={() => openEditForm(promotion)}>
                                       <Edit2 className="h-4 w-4" />
                                     </Button>
                                     <Button
@@ -326,8 +337,7 @@ export default function AdminPromotions() {
                                       className="h-8 w-8 text-red-600"
                                       onClick={() =>
                                         openDeleteDialog(promotion)
-                                      }
-                                    >
+                                      }>
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
@@ -350,8 +360,7 @@ export default function AdminPromotions() {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 56, opacity: 0 }}
                     transition={{ duration: 0.32, ease: [0.22, 0.61, 0.36, 1] }}
-                    className="w-full ml-auto bg-card rounded-xl border shadow-sm p-6 space-y-6"
-                  >
+                    className="w-full ml-auto bg-card rounded-xl border shadow-sm p-6 space-y-6">
                     <div className="space-y-1">
                       <h2 className="text-xl font-semibold tracking-tight">
                         {editingPromotion
@@ -425,6 +434,28 @@ export default function AdminPromotions() {
                             </p>
                           )}
                         </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="validity-months">
+                            Duration (Months)
+                            <span className="text-red-600">*</span>
+                          </Label>
+                          <Input
+                            id="validity-months"
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={formState.validityMonths}
+                            onChange={(e) =>
+                              handleFormChange("validityMonths", e.target.value)
+                            }
+                          />
+                          {formError.validityMonths && (
+                            <p className="text-xs text-red-600">
+                              {formError.validityMonths}
+                            </p>
+                          )}
+                        </div>
                         <div className="space-y-2">
                           <Label>Subscription plans</Label>
                           <div className="border rounded-md px-3 py-2 max-h-56 overflow-y-auto space-y-2">
@@ -437,8 +468,7 @@ export default function AdminPromotions() {
                                 return (
                                   <label
                                     key={plan.id}
-                                    className="flex items-center gap-2 text-sm"
-                                  >
+                                    className="flex items-center gap-2 text-sm">
                                     <Checkbox
                                       checked={checked}
                                       onCheckedChange={(v) => {
@@ -496,14 +526,12 @@ export default function AdminPromotions() {
                       onClick={() => {
                         setIsFormOpen(false);
                         setEditingPromotion(null);
-                      }}
-                    >
+                      }}>
                       Cancel
                     </Button>
                     <Button
                       onClick={() => upsertMutation.mutate()}
-                      disabled={upsertMutation.isPending}
-                    >
+                      disabled={upsertMutation.isPending}>
                       {upsertMutation.isPending
                         ? "Saving..."
                         : editingPromotion
@@ -535,15 +563,13 @@ export default function AdminPromotions() {
                 onClick={() => {
                   setIsDeleteOpen(false);
                   setPromotionToDelete(null);
-                }}
-              >
+                }}>
                 Cancel
               </Button>
               <Button
                 variant="destructive"
                 onClick={() => deleteMutation.mutate()}
-                disabled={deleteMutation.isPending}
-              >
+                disabled={deleteMutation.isPending}>
                 {deleteMutation.isPending ? "Deleting..." : "Delete"}
               </Button>
             </div>

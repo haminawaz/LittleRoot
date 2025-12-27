@@ -69,6 +69,7 @@ export default function Subscription() {
     promotion: {
       id: string;
       discountPercent: number;
+      validityMonths: number | null;
       planIds: string[];
       banner: string;
     } | null;
@@ -661,7 +662,7 @@ export default function Subscription() {
                                 </span>
                                 <span className="text-muted-foreground">
                                   {" "}
-                                  /month
+                                  /month for {promotion?.validityMonths} month
                                 </span>
                               </div>
                             </div>

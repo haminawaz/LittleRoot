@@ -102,7 +102,6 @@ export default function AdminLogin() {
           <div className="flex items-center justify-center mb-4">
             <div className="relative">
               <BookOpen className="h-10 w-10 text-purple-400 mr-2" />
-              <Shield className="h-5 w-5 text-purple-500 absolute -top-1 -right-1" />
             </div>
             <h1 className="text-3xl font-bold text-white">LittleRoot</h1>
           </div>

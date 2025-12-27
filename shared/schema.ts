@@ -181,6 +181,7 @@ export const promotions = pgTable(
     couponCode: varchar("coupon_code").notNull(),
     discountPercent: integer("discount_percent").notNull(),
     planIds: varchar("plan_ids").array().notNull(),
+    validityMonths: integer("validity_months"),
     banner: text("banner").notNull(),
     createdAt: timestamp("created_at").defaultNow(),
     updatedAt: timestamp("updated_at").defaultNow(),

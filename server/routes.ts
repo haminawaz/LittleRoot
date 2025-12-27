@@ -1336,6 +1336,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             id: string;
             couponCode: string;
             discountPercent: number;
+            validityMonths: number | null;
             planIds: string[];
             banner: string;
           }
@@ -1356,6 +1357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               id: promotion.id,
               couponCode: promotion.couponCode,
               discountPercent: promotion.discountPercent,
+              validityMonths: promotion.validityMonths,
               planIds: promotion.planIds,
               banner: promotion.banner,
             };
@@ -1429,6 +1431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         couponCode: promotion.couponCode,
         originalPriceCents,
         discountedPriceCents,
+        validityMonths: promotion.validityMonths,
       });
     } catch (error: any) {
       console.error("Error validating coupon:", error);
@@ -1680,7 +1683,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   couponCode.trim().toLowerCase() &&
                 promotion.planIds.includes(planId)
               ) {
-                const couponName = `OFF_${promotion.discountPercent}`;
+                const couponName = promotion.validityMonths 
+                  ? `OFF_${promotion.discountPercent}_${promotion.validityMonths}M`
+                  : `OFF_${promotion.discountPercent}`;
                 try {
                   await stripe.coupons.retrieve(couponName);
                   stripeCouponId = couponName;
@@ -1688,9 +1693,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   try {
                     const newCoupon = await stripe.coupons.create({
                       percent_off: promotion.discountPercent,
-                      duration: "forever",
+                      duration: promotion.validityMonths ? "repeating" : "once",
+                      duration_in_months: promotion.validityMonths || undefined,
                       id: couponName,
-                      name: `${promotion.discountPercent}% Off`,
+                      name: promotion.validityMonths 
+                        ? `${promotion.discountPercent}% Off for ${promotion.validityMonths} Months` 
+                        : `${promotion.discountPercent}% Off (One-time)`,
                     });
                     stripeCouponId = newCoupon.id;
                   } catch (createErr: any) {
@@ -1833,7 +1841,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     couponCode.trim().toLowerCase() &&
                   promotion.planIds.includes(planId)
                 ) {
-                  const couponName = `OFF_${promotion.discountPercent}`;
+                  const couponName = promotion.validityMonths 
+                    ? `OFF_${promotion.discountPercent}_${promotion.validityMonths}M`
+                    : `OFF_${promotion.discountPercent}`;
                   try {
                     await stripe.coupons.retrieve(couponName);
                     stripeCouponId = couponName;
@@ -1841,9 +1851,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     try {
                       const newCoupon = await stripe.coupons.create({
                         percent_off: promotion.discountPercent,
-                        duration: "forever",
+                        duration: promotion.validityMonths ? "repeating" : "once",
+                        duration_in_months: promotion.validityMonths || undefined,
                         id: couponName,
-                        name: `${promotion.discountPercent}% Off`,
+                        name: promotion.validityMonths 
+                          ? `${promotion.discountPercent}% Off for ${promotion.validityMonths} Months` 
+                          : `${promotion.discountPercent}% Off (One-time)`,
                       });
                       stripeCouponId = newCoupon.id;
                     } catch (createErr: any) {

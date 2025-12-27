@@ -35,6 +35,12 @@ export const adminPromotionSchema = z.object({
     })
     .gt(0, "Discount must be greater than 0")
     .max(100, "Discount must be 100 or less"),
+  validityMonths: z
+    .number({
+      invalid_type_error: "Validity months must be a number",
+    })
+    .gt(0, "Validity months must be greater than 0")
+    .max(12, "Validity months must be 12 or less"),
   subscriptionPlans: z
     .array(z.string().trim())
     .min(1, "Select at least one subscription plan"),

@@ -38,7 +38,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Initialize Stripe - use test keys in development
   let stripe: Stripe | null = null;
-  const stripeSecretKey = process.env.TESTING_STRIPE_SECRET_KEY2;
+  const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
   
   if (stripeSecretKey) {
     stripe = new Stripe(stripeSecretKey, {

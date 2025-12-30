@@ -212,7 +212,7 @@ export default function TemplateBooks() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-9 w-9 p-0 rounded-full bg-destructive/90 text-destructive-foreground backdrop-blur-sm border border-destructive shadow-sm opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-destructive hover:scale-110 hover:shadow-lg"
+                      className="h-10 w-10 p-0 rounded-full bg-transparent text-destructive border-2 border-destructive shadow-md transition-all duration-300 hover:bg-destructive hover:text-white hover:scale-110 hover:shadow-lg"
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteTemplateMutation.mutate(template.id);

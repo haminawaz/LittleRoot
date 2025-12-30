@@ -29,9 +29,9 @@ export default function TemplateCustomizationModal({
   onClose, 
   onStoryCreated 
 }: TemplateCustomizationModalProps) {
-  const [title, setTitle] = useState(template.title);
+  const [title, setTitle] = useState("");
   const [content, setContent] = useState(template.content);
-  const [artStyle, setArtStyle] = useState(template.artStyle);
+  const [artStyle, setArtStyle] = useState("");
   const [pagesCount, setPagesCount] = useState("");
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
@@ -150,6 +150,24 @@ export default function TemplateCustomizationModal({
   };
 
   const handleSubmit = async () => {
+    if (!title.trim()) {
+      toast({
+        title: "Title Required",
+        description: "Please enter a title for your story.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!artStyle) {
+      toast({
+        title: "Art Style Required",
+        description: "Please select an art style for your story.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!characterDescription.trim() && !characterImage) {
       toast({
         title: "Character Required",
@@ -223,7 +241,7 @@ export default function TemplateCustomizationModal({
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-hidden p-0 flex flex-col">
+      <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-hidden p-0 flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader className="p-6 border-b border-border flex-shrink-0">
           <DialogTitle className="text-xl font-serif font-semibold">
             Customize "{template.title}"
@@ -238,13 +256,14 @@ export default function TemplateCustomizationModal({
             {/* Story Title */}
             <div>
               <Label htmlFor="title" className="block text-sm font-medium mb-2">
-                Story Title
+                Story Title *
               </Label>
               <Input
                 id="title"
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                placeholder={template.title}
                 data-testid="input-template-title"
               />
             </div>
@@ -313,7 +332,7 @@ export default function TemplateCustomizationModal({
                       type="file"
                       accept="image/*"
                       onChange={handleCharacterImageChange}
-                      className="block mx-auto"
+                      className="hidden"
                       id="character-image-upload"
                       data-testid="input-character-image"
                     />
@@ -352,10 +371,10 @@ export default function TemplateCustomizationModal({
 
             {/* Art Style */}
             <div>
-              <Label className="block text-sm font-medium mb-2">Art Style</Label>
+              <Label className="block text-sm font-medium mb-2">Art Style *</Label>
               <Select value={artStyle} onValueChange={setArtStyle}>
                 <SelectTrigger data-testid="select-template-art-style">
-                  <SelectValue />
+                  <SelectValue placeholder="Select art style" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="watercolor">Watercolor illustration</SelectItem>

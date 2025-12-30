@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { Wand2, User, Lock, Sparkles, Crown } from "lucide-react";
+import { Wand2, User, Lock, Sparkles, Crown, Upload, X } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +21,8 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [artStyle, setArtStyle] = useState("watercolor");
   const [pagesCount, setPagesCount] = useState("");
   const [characterDescription, setCharacterDescription] = useState("");
+  const [characterImage, setCharacterImage] = useState<File | null>(null);
+  const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -137,11 +139,28 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
 
 
 
-  const handleSubmit = () => {
-    if (!title.trim() || !content.trim() || !characterDescription.trim()) {
+  const handleCharacterImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCharacterImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setCharacterImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setCharacterImage(null);
+    setCharacterImagePreview(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!title.trim() || !content.trim() || !characterDescription.trim() && !characterImage) {
       toast({
         title: "Missing Information",
-        description: "Please provide a title, story content, and character description.",
+        description: "Please provide a title, story content, and character details (description or image).",
         variant: "destructive",
       });
       return;
@@ -158,14 +177,44 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
 
     const targetPages = parseInt(pagesCount, 10);
 
-    createStoryMutation.mutate({
-      title: title.trim(),
-      content: content.trim(),
-      characterDescription: characterDescription.trim(),
-      artStyle,
-      pagesCount: targetPages,
-      pdfFormat: "8x10", // Default format for all books
-    });
+    try {
+      let characterImageUrl: string | undefined;
+      
+      if (characterImage) {
+        const uploadResult = await fetch("/api/objects/upload-character-image", {
+          method: 'POST',
+          headers: {
+            'Content-Type': characterImage.type || 'image/png',
+            'X-File-Name': characterImage.name || 'character-image',
+          },
+          body: characterImage,
+        });
+        
+        if (!uploadResult.ok) {
+          throw new Error(`Failed to upload character image: ${uploadResult.status} ${uploadResult.statusText}`);
+        }
+        
+        const uploadData = await uploadResult.json();
+        characterImageUrl = uploadData.url;
+      }
+
+      createStoryMutation.mutate({
+        title: title.trim(),
+        content: content.trim(),
+        characterDescription: characterDescription.trim() || undefined,
+        characterImageUrl,
+        artStyle,
+        pagesCount: targetPages,
+        pdfFormat: "8x10",
+      });
+    } catch (error) {
+      console.error('Error uploading character image:', error);
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload character image. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const isLoading = createStoryMutation.isPending || generateBookMutation.isPending;
@@ -211,6 +260,67 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
           <p className="text-xs text-muted-foreground mt-1">
             This description helps maintain character consistency across all illustrations
           </p>
+          
+          {/* OR divider */}
+          <div className="flex items-center my-4">
+            <div className="flex-1 border-t border-border"></div>
+            <span className="px-3 text-xs text-muted-foreground">OR</span>
+            <div className="flex-1 border-t border-border"></div>
+          </div>
+
+          {/* Character Image Upload */}
+          <div>
+            <Label className="block text-sm font-medium mb-2">
+              Upload Character Image
+            </Label>
+            {characterImagePreview ? (
+              <div className="relative inline-block">
+                <img 
+                  src={characterImagePreview} 
+                  alt="Character preview" 
+                  className="w-32 h-32 object-cover rounded-lg border"
+                />
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
+                  onClick={handleRemoveImage}
+                  data-testid="button-remove-character-image"
+                >
+                  <X size={12} />
+                </Button>
+              </div>
+            ) : (
+              <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
+                <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">
+                  Upload a photo of your character
+                </p>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCharacterImageChange}
+                  className="hidden"
+                  id="story-character-image-upload"
+                  disabled={bookLimitReached}
+                  data-testid="input-character-image"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => document.getElementById('story-character-image-upload')?.click()}
+                  data-testid="button-upload-character-image"
+                  className="mt-2"
+                  disabled={bookLimitReached}
+                >
+                  Choose Image
+                </Button>
+              </div>
+            )}
+             <p className="text-xs text-muted-foreground mt-2">
+                Providing an image helps the AI generate a consistent character
+              </p>
+          </div>
         </div>
 
         {/* Story Text */}

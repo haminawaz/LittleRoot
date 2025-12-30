@@ -1,0 +1,23 @@
+# Sitemap: https://littlerootstudios.com/sitemap.xml
+
+User-agent: *
+Allow: /
+
+# Disallow admin pages
+Disallow: /admin/
+Disallow: /api/
+
+# Disallow user-specific pages
+Disallow: /dashboard/
+Disallow: /settings/
+Disallow: /subscription/
+Disallow: /checkout/
+
+# Allow important pages
+Allow: /home
+Allow: /signup
+Allow: /signin
+Allow: /privacypolicy
+Allow: /termsofservice
+Allow: /faq
+Allow: /support

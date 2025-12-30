@@ -457,6 +457,17 @@ COVER REQUIREMENTS:
 
 ${compositionGuidance}
 
+⭐ CHARACTER CONSISTENCY (CRITICAL FOR COVER):
+- The character on this cover MUST look EXACTLY the same as they appear on ALL interior pages
+- Maintain EXACT SAME facial features, body type, hairstyle, and physical attributes
+- Use the EXACT SAME clothing style, colors, and accessories as used throughout the book
+- If clothing is NOT explicitly specified in the character description:
+  * Choose ONE consistent outfit that will be used on EVERY page including this cover
+  * This outfit should be age-appropriate and fitting for a children's story
+  * The same outfit MUST appear on all interior pages
+- The character should be instantly recognizable and consistent with all interior illustrations
+- Only show the character in a pose/action appropriate for the cover - appearance must match interior pages
+
 CRITICAL TITLE TEXT PLACEMENT:
 - Display this EXACT title: "${title}"
 - Position title in the UPPER THIRD of the cover (approximately 25-35% from the top)
@@ -570,6 +581,22 @@ CRITICAL REQUIREMENTS:
 - The illustration must bleed to all four edges with NO exceptions
 
 ${compositionGuidance}
+
+⭐ ABSOLUTE CHARACTER CONSISTENCY RULES (THIS IS CRITICAL):
+- The character MUST look EXACTLY the same on every single page
+- Maintain the EXACT SAME facial features: eyes, nose, mouth, face shape, expressions
+- Keep the EXACT SAME body type, height proportions, and build
+- Use the EXACT SAME hairstyle, hair color, and hair length
+- Maintain the EXACT SAME skin tone and complexion
+- If clothing is specified in the character description, use those EXACT clothes
+- If clothing is NOT explicitly specified in the character description:
+  * Choose ONE consistent outfit for the character
+  * Use the SAME clothing style, colors, and accessories on EVERY page
+  * Keep the outfit age-appropriate and fitting for a children's story
+  * This outfit should remain IDENTICAL across all ${totalPages} pages unless the story explicitly mentions a clothing change
+- Keep any accessories (glasses, jewelry, hats, etc.) IDENTICAL across all pages
+- The character should be instantly recognizable as the same person on every page
+- Only the character's pose, action, and scene context should change - NOT their appearance
 
 IMPORTANT TEXT INSTRUCTION:
 - DO NOT add any text, words, or letters to the image

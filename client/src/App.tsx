@@ -33,6 +33,9 @@ import AdminSupport from "@/pages/admin/support";
 import AdminSettings from "./pages/admin/settings";
 import PrivacyPolicy from "@/pages/privacy-policy";
 import TermsOfService from "@/pages/terms-of-service";
+import { StructuredData } from "@/components/StructuredData";
+import { organizationSchema } from "@/components/StructuredData";
+import { websiteSchema } from "@/components/StructuredData";
 
 function Router() {
   const { isAuthenticated, isLoading, isAdminAuthenticated, adminLoading } = useAuth();
@@ -196,6 +199,8 @@ function App() {
     <GoogleOAuthProvider clientId={googleClientId}>
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
+          <StructuredData data={organizationSchema} />
+          <StructuredData data={websiteSchema} />
           <Toaster />
           <Router />
           <ScrollToTop />

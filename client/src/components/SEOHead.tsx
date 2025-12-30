@@ -7,6 +7,7 @@ interface SEOHeadProps {
   ogImage?: string;
   ogUrl?: string;
   ogType?: 'website' | 'article' | 'product';
+  canonicalUrl?: string;
 }
 
 export function SEOHead({
@@ -16,6 +17,7 @@ export function SEOHead({
   ogImage = 'https://littlerootstudios.com/og-image.png',
   ogUrl = window.location.href,
   ogType = 'website',
+  canonicalUrl = window.location.origin + window.location.pathname,
 }: SEOHeadProps) {
   useEffect(() => {
     document.title = title;
@@ -32,6 +34,18 @@ export function SEOHead({
       }
       element.setAttribute('content', content);
     };
+    
+    const updateLinkTag = (rel: string, href: string) => {
+      let element = document.querySelector(`link[rel="${rel}"]`);
+      if (!element) {
+        element = document.createElement('link');
+        element.setAttribute('rel', rel);
+        document.head.appendChild(element);
+      }
+      element.setAttribute('href', href);
+    };
+    updateLinkTag('canonical', canonicalUrl);
+    
     updateMetaTag('meta[name="description"]', description);
     updateMetaTag('meta[name="keywords"]', keywords);
     updateMetaTag('meta[property="og:title"]', title);
@@ -43,7 +57,7 @@ export function SEOHead({
     updateMetaTag('meta[name="twitter:description"]', description);
     updateMetaTag('meta[name="twitter:image"]', ogImage);
     updateMetaTag('meta[name="twitter:url"]', ogUrl);
-  }, [title, description, keywords, ogImage, ogUrl, ogType]);
+  }, [title, description, keywords, ogImage, ogUrl, ogType, canonicalUrl]);
 
   return null;
 }

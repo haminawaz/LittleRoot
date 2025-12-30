@@ -11,11 +11,22 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import Header from "@/components/Header";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function TemplateBooks() {
   const [location, setLocation] = useLocation();
   const [selectedTemplate, setSelectedTemplate] = useState<{ title: string; content: string; artStyle: string; description: string | null } | null>(null);
   const [templateToCustomize, setTemplateToCustomize] = useState<{ title: string; content: string; artStyle: string; description: string | null } | null>(null);
+  const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Query to get user with subscription info
@@ -215,7 +226,7 @@ export default function TemplateBooks() {
                       className="h-10 w-10 p-0 rounded-full bg-transparent text-destructive border-2 border-destructive shadow-md transition-all duration-300 hover:bg-destructive hover:text-white hover:scale-110 hover:shadow-lg"
                       onClick={(e) => {
                         e.stopPropagation();
-                        deleteTemplateMutation.mutate(template.id);
+                        setTemplateToDelete(template.id);
                       }}
                       data-testid={`button-delete-template-${index}`}
                       title="Delete template"
@@ -317,6 +328,31 @@ export default function TemplateBooks() {
           }}
         />
       )}
+
+      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your saved template.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (templateToDelete) {
+                  deleteTemplateMutation.mutate(templateToDelete);
+                  setTemplateToDelete(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

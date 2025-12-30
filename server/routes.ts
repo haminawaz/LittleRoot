@@ -2505,7 +2505,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const pageId = req.params.id;
       const userId = req.user.claims.sub;
-      const { text } = req.body; // Get updated text from request body
+      const { text, prompt } = req.body;
       const page = await storage.getPage(pageId);
       
       if (!page) {
@@ -2553,18 +2553,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fs.mkdirSync(imagesDir, { recursive: true });
       }
 
-      // Generate image using the current text (from request body if provided, otherwise from page)
+      // Generate image using the provided prompt, or fall back to text/page.text
+      // The overlay text always comes from 'text' (if provided) or page.text
       const tempImagePath = path.join(imagesDir, `temp_${pageId}.webp`);
       const finalImagePath = path.join(imagesDir, `${pageId}.webp`);
       const characterDescription = story.characterDescription || undefined;
-      const currentText = text || page.text; // Use provided text or fall back to stored text
       
       // Get image dimensions based on PDF format
       const dimensions = getImageDimensionsForFormat(story.pdfFormat);
 
       // Step 1: Generate the base illustration
       await generateIllustration({
-        prompt: currentText,
+        prompt: prompt,
         characterDescription,
         artStyle: story.artStyle,
         pdfFormat: story.pdfFormat,  // Pass format for proper orientation in AI prompts
@@ -2574,7 +2574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Step 2: Add text overlay on top of the illustration
       await addTextOverlay({
-        text: currentText,
+        text: prompt,
         imagePath: tempImagePath,
         outputPath: finalImagePath,
         fontSize: 72,
@@ -2593,7 +2593,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageUrl = `/generated-images/${pageId}.webp?t=${timestamp}`;
       const updatedPage = await storage.updatePage(pageId, { 
         imageUrl, 
-        isGenerating: false 
+        isGenerating: false,
+        imagePrompt: prompt
       });
 
       res.json(updatedPage);

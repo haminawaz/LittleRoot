@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, RotateCcw, Loader2, Trash2, Scissors, ChevronUp, ChevronDown, Save } from "lucide-react";
+import { Plus, RotateCcw, Loader2, Trash2, Scissors, ChevronUp, ChevronDown, Save, Pencil } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { StoryWithPages, Page } from "@shared/schema";
 import DeleteModal from "@/components/DeleteModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 interface PageGridProps {
   story: StoryWithPages;
@@ -23,6 +24,10 @@ export default function PageGrid({ story }: PageGridProps) {
   const [addPageModalOpen, setAddPageModalOpen] = useState(false);
   const [newPageText, setNewPageText] = useState("");
   
+  const [editImageModalOpen, setEditImageModalOpen] = useState(false);
+  const [editingPageId, setEditingPageId] = useState<string | null>(null);
+  const [imagePrompt, setImagePrompt] = useState("");
+
   // Track current text for each page (for live regeneration)
   const [pageTexts, setPageTexts] = useState<Record<string, string>>(() => {
     const initialTexts: Record<string, string> = {};
@@ -43,11 +48,11 @@ export default function PageGrid({ story }: PageGridProps) {
   }, [story.pages.length, story.pages.map(p => p.id).join(',')]);
 
   const generateImageMutation = useMutation({
-    mutationFn: async ({ pageId, text }: { pageId: string; text: string }) => {
-      const response = await apiRequest("POST", `/api/pages/${pageId}/generate-image`, { text });
+    mutationFn: async ({ pageId, text, prompt }: { pageId: string; text: string; prompt?: string }) => {
+      const response = await apiRequest("POST", `/api/pages/${pageId}/generate-image`, { text, prompt });
       return response.json() as Promise<Page>;
     },
-    onMutate: async ({ pageId }: { pageId: string; text: string }) => {
+    onMutate: async ({ pageId }: { pageId: string; text: string; prompt?: string }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/stories", story.id] });
       
@@ -70,13 +75,17 @@ export default function PageGrid({ story }: PageGridProps) {
       // Force a refetch to get the latest data
       await queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
       await queryClient.refetchQueries({ queryKey: ["/api/stories", story.id] });
-      
+
+      setEditImageModalOpen(false);
+      setEditingPageId(null);
+      setImagePrompt("");
+
       toast({
         title: "Success",
         description: "Image generated successfully!",
       });
     },
-    onError: (error: any, pageId, context) => {
+    onError: (error: any, variables, context) => {
       // Rollback to previous state on error
       if (context?.previousStory) {
         queryClient.setQueryData(["/api/stories", story.id], context.previousStory);
@@ -144,6 +153,39 @@ export default function PageGrid({ story }: PageGridProps) {
     // Use the current text from local state (live textarea value)
     const currentText = pageTexts[pageId] || "";
     generateImageMutation.mutate({ pageId, text: currentText });
+  };
+
+  const handleEditIllustration = (pageId: string) => {
+    const page = story.pages.find(p => p.id === pageId);
+    if (page) {
+      setEditingPageId(pageId);
+      
+      // Determine initial prompt
+      let initialPrompt = page.imagePrompt || pageTexts[pageId] || page.text;
+
+      // If the prompt looks like the detailed system-generated full prompt (starts with standard prefix),
+      // we want to show just the scene description (the page text) to the user.
+      // This makes it easier for them to just "edit the scene" without worrying about style instructions,
+      // which are added automatically by the backend.
+      if (initialPrompt.startsWith("Children's book illustration for") || 
+          (initialPrompt.includes("Scene:") && initialPrompt.includes("Style:"))) {
+         initialPrompt = pageTexts[pageId] || page.text;
+      }
+
+      setImagePrompt(initialPrompt);
+      setEditImageModalOpen(true);
+    }
+  };
+
+  const submitEditIllustration = () => {
+    if (editingPageId && imagePrompt.trim()) {
+      const currentText = pageTexts[editingPageId] || "";
+      generateImageMutation.mutate({ 
+        pageId: editingPageId, 
+        text: currentText,
+        prompt: imagePrompt
+      });
+    }
   };
 
   const addPageMutation = useMutation({
@@ -502,18 +544,32 @@ export default function PageGrid({ story }: PageGridProps) {
               )}
 
               {!page.isGenerating && (
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                   <Button
                     variant="secondary"
                     size="sm"
                     onClick={() => handleGenerateImage(page.id)}
                     disabled={generateImageMutation.isPending}
-                    className="shadow-lg"
+                    className="shadow-lg w-32"
                     data-testid={`button-regenerate-${page.pageNumber}`}
                   >
                     <RotateCcw size={14} className="mr-1" />
                     {page.imageUrl ? 'Regenerate' : 'Generate'}
                   </Button>
+                  
+                  {page.imageUrl && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleEditIllustration(page.id)}
+                      disabled={generateImageMutation.isPending}
+                      className="shadow-lg w-32"
+                      data-testid={`button-edit-illustration-${page.pageNumber}`}
+                    >
+                      <Pencil size={14} className="mr-1" />
+                      Edit Prompt
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -716,6 +772,68 @@ export default function PageGrid({ story }: PageGridProps) {
                 </>
               ) : (
                 "Create Page"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog 
+        open={editImageModalOpen} 
+        onOpenChange={(open) => {
+          setEditImageModalOpen(open);
+          if (!open) {
+            setImagePrompt("");
+            setEditingPageId(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Illustration</DialogTitle>
+            <DialogDescription>
+              Modify the prompt below to change how your illustration looks. The story text on the page will remain the same.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="image-prompt">Image Prompt</Label>
+              <Textarea
+                id="image-prompt"
+                value={imagePrompt}
+                onChange={(e) => setImagePrompt(e.target.value)}
+                placeholder="Describe what you want to see in the illustration..."
+                className="min-h-[150px] resize-none"
+                rows={6}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tip: Be descriptive about the scene, mood, and details you want to see.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setEditImageModalOpen(false);
+                setImagePrompt("");
+                setEditingPageId(null);
+              }}
+              disabled={generateImageMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitEditIllustration}
+              disabled={generateImageMutation.isPending || !imagePrompt.trim()}
+            >
+              {generateImageMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                "Generate Illustration"
               )}
             </Button>
           </DialogFooter>

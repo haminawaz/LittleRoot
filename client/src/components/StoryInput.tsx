@@ -23,6 +23,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
+  const [showTextOverlay, setShowTextOverlay] = useState(true);
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -206,6 +207,8 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         artStyle,
         pagesCount: targetPages,
         pdfFormat: "8x10",
+        isTextBaked: !showTextOverlay,
+        showTextOverlay: showTextOverlay,
       });
     } catch (error) {
       console.error('Error uploading character image:', error);
@@ -376,6 +379,20 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
                   <SelectItem value="3d">3D rendered</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="showTextOverlay"
+                checked={showTextOverlay}
+                onChange={(e) => setShowTextOverlay(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                disabled={bookLimitReached}
+              />
+              <Label htmlFor="showTextOverlay" className="text-sm cursor-pointer">
+                Show text on illustrations
+              </Label>
             </div>
           </div>
         </div>

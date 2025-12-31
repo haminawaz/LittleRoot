@@ -42,6 +42,7 @@ export interface GenerateBookImagesOptions {
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
   height?: number; // Image height in pixels (300 DPI)
+  isTextBaked?: boolean; // Whether to bake text into the image or not
 }
 
 export async function generateIllustration(
@@ -262,7 +263,7 @@ export async function generateBookIllustrations(
   storyId: string,
   onPageComplete?: (pageIndex: number, imageUrl: string) => Promise<void>
 ): Promise<string[]> {
-  const { pageTexts, title, content, artStyle, characterDescription, pdfFormat = '8x8' } = options;
+  const { pageTexts, title, content, artStyle, characterDescription, pdfFormat = '8x8', isTextBaked = false } = options;
   
   console.log(`Generating ${pageTexts.length} illustrations for "${title}" using sequential generation with Gemini 2.5 Flash Image (Nano Banana)...`);
   
@@ -336,19 +337,25 @@ export async function generateBookIllustrations(
               const imgHeight = options.height || 2400;
               await compressImage(buffer, tempImagePath, imgWidth, imgHeight);
               
-              // Step 2: Add consistent text overlay on top
-              await addTextOverlay({
-                text: pageText,
-                imagePath: tempImagePath,
-                outputPath: finalImagePath,
-                fontSize: 72,  // Extra large font for thumbnail visibility
-                fontFamily: 'Arial',
-                fontWeight: 'bold',
-                textColor: 'white'
-              });
-              
-              // Clean up temp file
-              fs.unlinkSync(tempImagePath);
+              // Step 2: Add consistent text overlay on top ONLY if isTextBaked is true
+              // Default is now FALSE for new stories to allow frontend customization
+              if (isTextBaked) {
+                await addTextOverlay({
+                  text: pageText,
+                  imagePath: tempImagePath,
+                  outputPath: finalImagePath,
+                  fontSize: 72,  // Extra large font for thumbnail visibility
+                  fontFamily: 'Arial',
+                  fontWeight: 'bold',
+                  textColor: 'white'
+                });
+                
+                // Clean up temp file
+                fs.unlinkSync(tempImagePath);
+              } else {
+                // If not baking text, just rename/move the temp file to final path
+                fs.renameSync(tempImagePath, finalImagePath);
+              }
               
               const compressedSize = fs.statSync(finalImagePath).size;
               const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
@@ -357,7 +364,7 @@ export async function generateBookIllustrations(
               const imageUrl = `/generated-images/${fileName}?t=${timestamp}`;
               imageUrls.push(imageUrl);
               
-              console.log(`✓ Page ${pageNumber}/${pageTexts.length}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) + text overlay`);
+              console.log(`✓ Page ${pageNumber}/${pageTexts.length}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) ${isTextBaked ? '+ text overlay' : '(no text overlay)'}`);
               imageSaved = true;
               
               // Call the callback immediately after this page is complete

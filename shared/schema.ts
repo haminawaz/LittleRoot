@@ -367,4 +367,7 @@ export interface GenerateBookRequest {
   pdfFormat?: string;
   isTextBaked?: boolean;
   showTextOverlay?: boolean;
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
 }

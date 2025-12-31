@@ -11,6 +11,8 @@ import {
   subscriptionPlans,
   promotions,
   admins,
+  templates,
+  supportTickets,
   type SubscriptionPlan,
   type Promotion,
   type Admin,
@@ -134,97 +136,95 @@ export function registerAdminRoutes(app: Express) {
     isAdminAuthenticated,
     async (req: any, res) => {
       try {
-        // Calculate MRR (Monthly Recurring Revenue)
-        const mrrQuery = await db
-          .select({
-            total: sql<number>`SUM(CASE 
-            WHEN subscription_plan = 'hobbyist' THEN 19.99
-            WHEN subscription_plan = 'pro' THEN 39.99
-            WHEN subscription_plan = 'reseller' THEN 74.99
-            ELSE 0
-          END)`,
-          })
-          .from(users)
-          .where(
-            and(
-              eq(users.subscriptionStatus, "active"),
-              sql`${users.subscriptionPlan} != 'trial'`
-            )
-          );
-
-        const mrr = Number(mrrQuery[0]?.total || 0);
-        const arr = mrr * 12;
-
-        // Calculate new sign-ups (last 7 days)
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-        const newSignupsQuery = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(users)
-          .where(gte(users.createdAt, sevenDaysAgo));
-
-        const newSignupsLast7Days = Number(newSignupsQuery[0]?.count || 0);
-
-        // Calculate active trials
-        const activeTrialsQuery = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(users)
-          .where(
-            and(
-              eq(users.subscriptionPlan, "trial"),
-              gte(users.trialEndsAt!, new Date())
-            )
-          );
-
-        const activeTrials = Number(activeTrialsQuery[0]?.count || 0);
-
-        // Calculate churned users (last 30 days)
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-        const churnedQuery = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(users)
-          .where(
-            and(
-              or(
-                eq(users.subscriptionStatus, "canceled"),
-                and(
-                  eq(users.subscriptionStatus, "past_due"),
-                  sql`${users.currentPeriodEnd} < NOW()`
-                )
-              )!,
-              gte(users.updatedAt, thirtyDaysAgo)
-            )
-          );
-
-        const churnedLast30Days = Number(churnedQuery[0]?.count || 0);
-
-        // Calculate illustrations generated this month
         const startOfMonth = new Date();
         startOfMonth.setDate(1);
         startOfMonth.setHours(0, 0, 0, 0);
 
-        const illustrationsQuery = await db
-          .select({ count: sql<number>`COUNT(*)` })
-          .from(pages)
-          .where(gte(pages.createdAt, startOfMonth));
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        thirtyDaysAgo.setHours(0, 0, 0, 0);
 
-        const illustrationsThisMonth = Number(
-          illustrationsQuery[0]?.count || 0
-        );
+        // Run all count queries in parallel for performance
+        const [
+          totalUsersResult,
+          totalBooksResult,
+          illustrationsResult,
+          earlyAccessResult,
+          userGrowthResult,
+          bookGrowthResult,
+        ] = await Promise.all([
+          // 1. Total Users
+          db.select({ count: sql<number>`COUNT(*)` }).from(users),
+
+          // 2. Total Books
+          db.select({ count: sql<number>`COUNT(*)` }).from(stories),
+
+          // 3. Illustrations This Month
+          db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(pages)
+            .where(gte(pages.createdAt, startOfMonth)),
+
+          // 4. Active Trials
+          db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(users)
+            .where(
+              and(
+                eq(users.subscriptionPlan, "trial"),
+                gte(users.trialEndsAt!, new Date())
+              )
+            ),
+
+          // 5. User Growth (Last 30 Days)
+          db
+            .select({
+              date: sql<string>`TO_CHAR(${users.createdAt}, 'YYYY-MM-DD')`,
+              count: sql<number>`COUNT(*)`,
+            })
+            .from(users)
+            .where(gte(users.createdAt, thirtyDaysAgo))
+            .groupBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM-DD')`)
+            .orderBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM-DD')`),
+
+          // 6. Book Growth (Last 30 Days)
+          db
+            .select({
+              date: sql<string>`TO_CHAR(${stories.createdAt}, 'YYYY-MM-DD')`,
+              count: sql<number>`COUNT(*)`,
+            })
+            .from(stories)
+            .where(gte(stories.createdAt, thirtyDaysAgo))
+            .groupBy(sql`TO_CHAR(${stories.createdAt}, 'YYYY-MM-DD')`)
+            .orderBy(sql`TO_CHAR(${stories.createdAt}, 'YYYY-MM-DD')`),
+        ]);
+
+        // Helper to fill in missing days for charts
+        const fillDates = (data: { date: string; count: number }[]) => {
+          const result = [];
+          const dataMap = new Map(data.map((d) => [d.date, Number(d.count)]));
+          
+          for (let i = 0; i < 30; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - (29 - i));
+            const dateStr = d.toISOString().split('T')[0];
+            result.push({
+              date: dateStr,
+              count: dataMap.get(dateStr) || 0,
+            });
+          }
+          return result;
+        };
 
         res.json({
-          mrr,
-          arr,
-          newSignups: {
-            last7Days: newSignupsLast7Days,
+          totalUsers: Number(totalUsersResult[0]?.count || 0),
+          totalBooks: Number(totalBooksResult[0]?.count || 0),
+          illustrationsThisMonth: Number(illustrationsResult[0]?.count || 0),
+          earlyAccessSignups: Number(earlyAccessResult[0]?.count || 0),
+          charts: {
+            userGrowth: fillDates(userGrowthResult),
+            bookGrowth: fillDates(bookGrowthResult),
           },
-          activeTrials,
-          churnedLast30Days,
-          illustrationsThisMonth,
-          apiSpendThisMonth: 0, // TODO: Integrate with Google Cloud billing API
         });
       } catch (error) {
         console.error("Dashboard analytics error:", error);

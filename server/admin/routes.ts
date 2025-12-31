@@ -23,6 +23,7 @@ import { storage } from "../storage";
 import Stripe from "stripe";
 import { sendEmail } from "../emailService";
 import { getPayPalAccessToken, updatePayPalPlan } from "../setupPayPalProducts";
+import { hashPassword, comparePassword } from "../localAuth";
 
 export function registerAdminRoutes(app: Express) {
   setupAdminAuth();
@@ -125,6 +126,58 @@ export function registerAdminRoutes(app: Express) {
         console.error("Error updating admin promotion:", error);
         res.status(500).json({
           message: error.message || "Failed to update admin promotion",
+        });
+      }
+    },
+  );
+
+  app.put(
+    "/api/admin/settings/password",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const sessionAdmin = (req as any).admin as Admin | undefined;
+        if (!sessionAdmin) {
+          return res.status(401).json({ message: "Admin not found" });
+        }
+
+        const { oldPassword, newPassword } = req.body;
+
+        if (!oldPassword || !newPassword) {
+          return res.status(400).json({
+            message: "Old password and new password are required",
+          });
+        }
+
+        const [admin] = await db
+          .select()
+          .from(admins)
+          .where(eq(admins.id, sessionAdmin.id));
+
+        if (!admin) {
+          return res.status(404).json({ message: "Admin not found" });
+        }
+
+        const isValid = await comparePassword(oldPassword, admin.passwordHash);
+        if (!isValid) {
+          return res.status(400).json({ message: "Incorrect old password" });
+        }
+
+        const newPasswordHash = await hashPassword(newPassword);
+
+        await db
+          .update(admins)
+          .set({
+            passwordHash: newPasswordHash,
+            updatedAt: new Date(),
+          })
+          .where(eq(admins.id, sessionAdmin.id));
+
+        res.json({ success: true, message: "Password updated successfully" });
+      } catch (error: any) {
+        console.error("Error updating admin password:", error);
+        res.status(500).json({
+          message: error.message || "Failed to update password",
         });
       }
     },

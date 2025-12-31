@@ -14,6 +14,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import AdminLayout from "@/components/AdminLayout";
+import AdminPasswordUpdate from "@/components/admin/AdminPasswordUpdate";
 
 interface AdminPromotion {
   id: string;
@@ -283,6 +284,10 @@ export default function AdminSettings() {
           </section>
         </CardContent>
       </Card>
+
+      <div className="mt-8">
+        <AdminPasswordUpdate />
+      </div>
     </AdminLayout>
   );
 }

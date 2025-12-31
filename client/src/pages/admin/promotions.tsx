@@ -444,6 +444,7 @@ export default function AdminPromotions() {
                             id="validity-months"
                             type="number"
                             min="1"
+                            max="12"
                             step="1"
                             value={formState.validityMonths}
                             onChange={(e) =>

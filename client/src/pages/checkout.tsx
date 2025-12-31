@@ -45,6 +45,7 @@ type SelectedPlanCoupon = {
   discountPercent: number;
   originalPrice: number;
   discountedPrice: number;
+  validityMonths?: number;
 };
 
 function CheckoutForm() {
@@ -163,9 +164,52 @@ function CheckoutForm() {
       throw new Error("PayPal plan is not configured for this subscription");
     }
 
-    return actions.subscription.create({
+    const planObject: any = {
       plan_id: selectedPlan.paypalPlanId,
-    });
+    };
+
+    if (couponInfo && couponInfo.discountedPrice !== undefined) {
+      const discountedPriceString = couponInfo.discountedPrice.toFixed(2);
+      const originalPriceString = selectedPlan.price.toFixed(2);
+      const discountDuration = couponInfo.validityMonths || 1;
+
+      planObject.plan = {
+        billing_cycles: [
+          {
+            frequency: {
+              interval_unit: "MONTH",
+              interval_count: 1,
+            },
+            tenure_type: "TRIAL",
+            sequence: 1,
+            total_cycles: discountDuration,
+            pricing_scheme: {
+              fixed_price: {
+                value: discountedPriceString,
+                currency_code: "USD",
+              },
+            },
+          },
+          {
+            frequency: {
+              interval_unit: "MONTH",
+              interval_count: 1,
+            },
+            tenure_type: "REGULAR",
+            sequence: 2,
+            total_cycles: 0,
+            pricing_scheme: {
+              fixed_price: {
+                value: originalPriceString,
+                currency_code: "USD",
+              },
+            },
+          },
+        ],
+      };
+    }
+
+    return actions.subscription.create(planObject);
   };
 
   const handlePayPalApprove = async (data: any, actions: any) => {
@@ -493,6 +537,7 @@ function CheckoutForm() {
                             discountPercent: data.discountPercent,
                             originalPrice: original,
                             discountedPrice: discounted,
+                            validityMonths: data.validityMonths,
                           };
 
                           setCouponInfo(appliedCoupon);
@@ -503,8 +548,7 @@ function CheckoutForm() {
                         } finally {
                           setIsValidatingCoupon(false);
                         }
-                      }}
-                    >
+                      }}>
                       {isValidatingCoupon ? "Applying..." : "Apply & continue"}
                     </Button>
                     <Button
@@ -515,8 +559,7 @@ function CheckoutForm() {
                         setCouponSkipped(true);
                         setCouponInfo(null);
                         setCouponError(null);
-                      }}
-                    >
+                      }}>
                       Skip coupon
                     </Button>
                   </div>
@@ -551,8 +594,7 @@ function CheckoutForm() {
                   paymentMethod === "stripe"
                     ? "border-purple-600 bg-purple-50 dark:bg-purple-900/20"
                     : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
-                }`}
-              >
+                }`}>
                 <CreditCard className="h-5 w-5" />
                 <span className="font-medium">Card</span>
               </button>
@@ -563,8 +605,7 @@ function CheckoutForm() {
                   paymentMethod === "paypal"
                     ? "border-purple-600 bg-purple-50 dark:bg-purple-900/20"
                     : "border-gray-300 dark:border-gray-600 hover:border-gray-400"
-                }`}
-              >
+                }`}>
                 <Wallet className="h-5 w-5" />
                 <span className="font-medium">PayPal</span>
               </button>
@@ -602,8 +643,7 @@ function CheckoutForm() {
                 type="submit"
                 className="w-full"
                 disabled={!stripe || isProcessing}
-                data-testid="button-complete-payment"
-              >
+                data-testid="button-complete-payment">
                 {isProcessing ? (
                   "Processing..."
                 ) : (
@@ -662,8 +702,7 @@ export default function Checkout() {
           currency: "USD",
           intent: "subscription",
           vault: true,
-        }}
-      >
+        }}>
         <CheckoutForm />
       </PayPalScriptProvider>
     </Elements>

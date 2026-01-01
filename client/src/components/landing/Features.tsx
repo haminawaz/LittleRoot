@@ -154,6 +154,7 @@ const Features = () => {
                 src="/landing/features-img.webp"
                 alt="Designed for Storytellers"
                 className="w-full h-full object-contain"
+                loading="lazy"
               />
             </div>
             <div className="" data-aos="fade-left">

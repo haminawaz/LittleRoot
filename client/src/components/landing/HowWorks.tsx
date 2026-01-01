@@ -134,6 +134,7 @@ const HowWorks = () => {
                       src={step.image}
                       alt={step.title}
                       className="w-full h-auto object-cover"
+                      loading="lazy"
                     />
 
                     <div className="absolute left-4 right-4 md:left-8 md:right-8 bottom-4 md:bottom-8">

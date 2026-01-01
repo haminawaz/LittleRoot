@@ -74,6 +74,8 @@ const Hero = () => {
                 src="/landing/hero-img-1.webp"
                 alt="Little Root Studios - Turn Stories into Beautiful Books"
                 className="w-full h-full object-cover"
+                fetchPriority="high"
+                loading="eager"
               />
             </div>
             <div className="block absolute -top-4 -right-2 md:-right-0 lg:-right-4 w-20 h-20 md:w-20 md:h-20 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10">
@@ -113,9 +115,10 @@ const Hero = () => {
             data-aos-delay="200"
           >
             <img
-              src="/landing/studio-img-1.svg"
+              src="/landing/studio-img-1.webp"
               alt="Professional Studio Interface"
               className="w-full h-auto object-cover"
+              loading="lazy"
             />
           </div>
           <div
@@ -124,9 +127,10 @@ const Hero = () => {
             data-aos-delay="200"
           >
             <img
-              src="/landing/studio-img-2.svg"
+              src="/landing/studio-img-2.webp"
               alt="Professional Studio Interface"
               className="w-full h-auto object-cover"
+              loading="lazy"
             />
           </div>
         </div>

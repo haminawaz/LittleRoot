@@ -18,7 +18,7 @@ import {
   type Admin,
   insertSupportMessageSchema,
 } from "@shared/schema";
-import { eq, and, gte, desc, sql, like, or } from "drizzle-orm";
+import { eq, and, gte, desc, asc, sql, like, ilike, or } from "drizzle-orm";
 import { storage } from "../storage";
 import Stripe from "stripe";
 import { sendEmail } from "../emailService";
@@ -288,6 +288,198 @@ export function registerAdminRoutes(app: Express) {
     }
   );
 
+  app.get("/api/admin/users", isAdminAuthenticated, async (req: any, res) => {
+    try {
+      const page = parseInt(req.query.page || "1", 10);
+      const limit = parseInt(req.query.limit || "20", 10);
+      const search = req.query.search as string;
+      const sortBy = req.query.sortBy || "createdAt";
+      const sortOrder = req.query.sortOrder || "desc";
+
+      if (page < 1) {
+        return res.status(400).json({ message: "Page must be greater than 0" });
+      }
+      if (limit < 1 || limit > 10000) {
+        return res
+          .status(400)
+          .json({ message: "Limit must be between 1 and 10000" });
+      }
+
+      const offset = (page - 1) * limit;
+
+      const whereConditions = [];
+      if (search) {
+        const searchLower = `%${search.toLowerCase()}%`;
+        whereConditions.push(
+          or(
+            ilike(users.email, searchLower),
+            ilike(users.firstName, searchLower),
+            ilike(users.lastName, searchLower),
+            ilike(users.subscriptionPlan, searchLower)
+          )
+        );
+      }
+
+      let orderBy;
+      switch (sortBy) {
+        case "email":
+          orderBy = sortOrder === "asc" ? asc(users.email) : desc(users.email);
+          break;
+        case "firstName":
+          orderBy =
+            sortOrder === "asc" ? asc(users.firstName) : desc(users.firstName);
+          break;
+        case "lastName":
+          orderBy =
+            sortOrder === "asc" ? asc(users.lastName) : desc(users.lastName);
+          break;
+        case "subscriptionPlan":
+          orderBy =
+            sortOrder === "asc"
+              ? asc(users.subscriptionPlan)
+              : desc(users.subscriptionPlan);
+          break;
+        case "createdAt":
+        default:
+          orderBy =
+            sortOrder === "asc" ? asc(users.createdAt) : desc(users.createdAt);
+          break;
+      }
+
+      const [usersData, totalResult] = await Promise.all([
+        db
+          .select()
+          .from(users)
+          .where(and(...whereConditions))
+          .orderBy(orderBy)
+          .limit(limit)
+          .offset(offset),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(users)
+          .where(and(...whereConditions)),
+      ]);
+
+      const total = Number(totalResult[0]?.count || 0);
+      const totalPages = Math.ceil(total / limit);
+
+      res.json({
+        users: usersData,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNextPage: page < totalPages,
+          hasPrevPage: page > 1,
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.delete(
+    "/api/admin/users/:id",
+    isAdminAuthenticated,
+    async (req: any, res) => {
+      try {
+        const { id } = req.params;
+        if (!id) {
+          return res.status(400).json({ message: "User ID is required" });
+        }
+
+        const [user] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, id))
+          .limit(1);
+
+        if (!user) {
+          return res.status(404).json({ message: "User not found" });
+        }
+
+        if (
+          user.stripeSubscriptionId &&
+          process.env.STRIPE_SECRET_KEY
+        ) {
+          try {
+            const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+              apiVersion: "2025-08-27.basil",
+            });
+            await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+            console.log(`Cancelled Stripe subscription for user ${user.id}`);
+          } catch (error) {
+            console.error(
+              `Error cancelling Stripe subscription for user ${user.id}:`,
+              error
+            );
+          }
+        }
+
+        if (
+          user.paypalSubscriptionId &&
+          process.env.PAYPAL_CLIENT_ID &&
+          process.env.PAYPAL_SECRET
+        ) {
+          try {
+            const paypalBaseUrl =
+              process.env.PAYPAL_MODE === "live"
+                ? "https://api-m.paypal.com"
+                : "https://api-m.sandbox.paypal.com";
+
+            const accessToken = await getPayPalAccessToken(
+              paypalBaseUrl,
+              process.env.PAYPAL_CLIENT_ID,
+              process.env.PAYPAL_SECRET
+            );
+
+            const response = await fetch(
+              `${paypalBaseUrl}/v1/billing/subscriptions/${user.paypalSubscriptionId}/cancel`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  reason: "Account deleted by admin",
+                }),
+              }
+            );
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(
+                `Failed to cancel PayPal subscription for user ${user.id}: ${response.status} ${errorText}`
+              );
+            } else {
+              console.log(`Cancelled PayPal subscription for user ${user.id}`);
+            }
+          } catch (error) {
+            console.error(
+              `Error cancelling PayPal subscription for user ${user.id}:`,
+              error
+            );
+             // Continue with deletion even if cancellation fails
+          }
+        }
+
+        const result = await db.delete(users).where(eq(users.id, id));
+
+        if ((result.rowCount || 0) === 0) {
+          return res.status(404).json({ message: "User not found" }); // Should be caught above, but safe check
+        }
+
+        res.json({ success: true, message: "User and subscriptions deleted successfully" });
+      } catch (error) {
+        console.error("Error deleting user:", error);
+        res.status(500).json({ message: "Failed to delete user" });
+      }
+    }
+  );
+
   app.get(
     "/api/admin/early-access-signups",
     isAdminAuthenticated,
@@ -301,10 +493,10 @@ export function registerAdminRoutes(app: Express) {
             .status(400)
             .json({ message: "Page must be greater than 0" });
         }
-        if (limit < 1 || limit > 100) {
+        if (limit < 1 || limit > 10000) {
           return res
             .status(400)
-            .json({ message: "Limit must be between 1 and 100" });
+            .json({ message: "Limit must be between 1 and 10000" });
         }
 
         const [signups, total] = await Promise.all([

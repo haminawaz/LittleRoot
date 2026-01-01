@@ -151,7 +151,7 @@ const Features = () => {
           <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
             <div className="overflow-hidden aspect-[1]" data-aos="fade-right">
               <img
-                src="/landing/features-img.png"
+                src="/landing/features-img.webp"
                 alt="Designed for Storytellers"
                 className="w-full h-full object-contain"
               />

@@ -71,14 +71,14 @@ const Hero = () => {
           >
             <div className="md:w-full lg:w-4/5 relative rounded-2xl border-2 border-black overflow-hidden aspect-[8/10] transform rotate-3">
               <img
-                src="/landing/hero-img-1.png"
+                src="/landing/hero-img-1.webp"
                 alt="Little Root Studios - Turn Stories into Beautiful Books"
                 className="w-full h-full object-cover"
               />
             </div>
             <div className="block absolute -top-4 -right-2 md:-right-0 lg:-right-4 w-20 h-20 md:w-20 md:h-20 lg:w-32 lg:h-32 rounded-full overflow-hidden z-10">
               <img
-                src="/landing/hero-img-3.png"
+                src="/landing/hero-img-3.webp"
                 alt="Story illustration"
                 className="w-full h-full object-cover"
               />
@@ -86,7 +86,7 @@ const Hero = () => {
 
             <div className="block absolute -bottom-12 -left-2 md:-left-8 lg:-left-8 w-24 h-24 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full overflow-hidden z-10">
               <img
-                src="/landing/hero-img-2.png"
+                src="/landing/hero-img-2.webp"
                 alt="Story illustration"
                 className="w-full h-full object-cover"
               />

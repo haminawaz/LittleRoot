@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 
 interface Plan {
   id: string;
@@ -79,27 +78,26 @@ const PLAN_STYLES: Record<
   },
 };
 
-const Pricing = () => {
-  const { data: subscriptionData } = useQuery<{
-    plans: {
-      id: string;
-      name: string;
-      price: number;
-      booksPerMonth: number;
-      templateBooks: number;
-      bonusVariations: number;
-      pagesPerBook: number;
-      commercialRights?: boolean;
-      resellRights?: boolean;
-    }[];
-    promotion: {
-      id: string;
-      discountPercent: number;
-      planIds: string[];
-    } | null;
-  }>({
-    queryKey: ["/api/subscription/plans"],
-  });
+interface PricingProps {
+  plans?: {
+    id: string;
+    name: string;
+    price: number;
+    booksPerMonth: number;
+    templateBooks: number;
+    bonusVariations: number;
+    pagesPerBook: number;
+    commercialRights?: boolean;
+    resellRights?: boolean;
+  }[];
+  promotion?: {
+    id: string;
+    discountPercent: number;
+    planIds: string[];
+  } | null;
+}
+
+const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
 
   const generateFeatures = (plan: any): string[] => {
     const illustrations =
@@ -133,8 +131,7 @@ const Pricing = () => {
     return features;
   };
 
-  const dbPlans = subscriptionData?.plans ?? [];
-  const promotion = subscriptionData?.promotion ?? null;
+
 
   const plans: Plan[] = dbPlans.map((plan) => {
     const style = PLAN_STYLES[plan.id] || PLAN_STYLES["hobbyist"];
@@ -200,7 +197,7 @@ const Pricing = () => {
                   {plan.name}
                 </CardTitle>
                 <div className="text-[#99A1AF] font-bold text-sm md:text-base">
-                  {plan.id !== "trial" && plan.normalPrice && (
+                  {plan.id !== "trial" && plan.normalPrice && promotion && (
                     <span className="line-through">
                       ${plan.normalPrice.toFixed(2)}
                     </span>

@@ -1,8 +1,7 @@
 import { useLocation } from "wouter";
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Sparkles, X, Menu } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import AOS from "aos";
 import Hero from "@/components/landing/Hero";
 import Features from "@/components/landing/Features";
@@ -28,6 +27,30 @@ export default function Landing() {
       offset: 100,
     });
   }, []);
+
+  const { data: subscriptionData } = useQuery<{
+    plans: {
+      id: string;
+      name: string;
+      price: number;
+      booksPerMonth: number;
+      templateBooks: number;
+      bonusVariations: number;
+      pagesPerBook: number;
+      commercialRights?: boolean;
+      resellRights?: boolean;
+    }[];
+    promotion: {
+      id: string;
+      discountPercent: number;
+      banner: string;
+      planIds: string[];
+    } | null;
+  }>({
+    queryKey: ["/api/subscription/plans"],
+  });
+
+  const promotion = subscriptionData?.promotion;
 
   useEffect(() => {
     const scrollToHashSection = () => {
@@ -106,9 +129,8 @@ export default function Landing() {
   return (
     <div
       className="min-h-screen bg-white"
-      style={{ fontFamily: "'Inter', sans-serif" }}
-    >
-      {bannerVisible && (
+      style={{ fontFamily: "'Inter', sans-serif" }}>
+      {bannerVisible && promotion && (
         <div
           className="bg-gradient-to-b from-[#00D5BE]  to-[#C27AFF] text-gray-900 py-2 md:py-3"
           data-aos="fade-down"
@@ -118,11 +140,9 @@ export default function Landing() {
               <span className="bg-purple-100/30 px-1.5 md:px-2 py-1 md:py-2 rounded-full flex-shrink-0">
                 <Sparkles className="h-3 w-3 md:h-4 md:w-4" />
               </span>
-              <span className="truncate">
-                Early Access Join now and get{" "}
-                <strong className="underline">40% off</strong> your first 3
-                months!
-              </span>
+              <span
+                className="truncate"
+                dangerouslySetInnerHTML={{ __html: promotion.banner }}></span>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <a
@@ -241,7 +261,10 @@ export default function Landing() {
       <Hero />
       <Features />
       <HowWorks />
-      <Pricing />
+      <Pricing
+        plans={subscriptionData?.plans}
+        promotion={subscriptionData?.promotion}
+      />
       <Contact
         handleEmailSubmit={handleEmailSubmit}
         signupMutation={signupMutation}

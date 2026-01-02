@@ -78,11 +78,6 @@ export const stories = pgTable("stories", {
   pdfFormat: text("pdf_format").notNull().default("8x10"), // Standard format: 8x10
   pdfUrl: text("pdf_url"), // Pre-generated PDF stored in cloud storage for instant downloads
   status: text("status").notNull().default("draft"), // draft, generating, completed, error
-  isTextBaked: boolean("is_text_baked").notNull().default(true), // default true for backward compatibility
-  showTextOverlay: boolean("show_text_overlay").notNull().default(true),
-  fontFamily: text("font_family").notNull().default("Amatic SC"),
-  fontSize: integer("font_size").notNull().default(32),
-  fontColor: text("font_color").notNull().default("#000000"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -93,9 +88,6 @@ export const pages = pgTable("pages", {
   text: text("text").notNull(),
   imageUrl: text("image_url"),
   imagePrompt: text("image_prompt"),
-  textPosition: text("text_position").default("bottom-center"),
-  textPositionX: integer("text_position_x"),
-  textPositionY: integer("text_position_y"),
   isGenerating: boolean("is_generating").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -365,9 +357,4 @@ export interface GenerateBookRequest {
   artStyle: string;
   pagesCount: number;
   pdfFormat?: string;
-  isTextBaked?: boolean;
-  showTextOverlay?: boolean;
-  fontFamily?: string;
-  fontSize?: number;
-  fontColor?: string;
 }

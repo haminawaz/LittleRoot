@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input"; // Added Input
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select
-import { Plus, RotateCcw, Loader2, Trash2, Scissors, ChevronUp, ChevronDown, Save, Pencil, Type } from "lucide-react"; // Added Type icon
+import { Plus, RotateCcw, Loader2, Trash2, Scissors, ChevronUp, ChevronDown, Save, Pencil } from "lucide-react"; // Removed Type icon
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -11,7 +11,6 @@ import type { StoryWithPages, Page } from "@shared/schema";
 import DeleteModal from "@/components/DeleteModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import TextOverlay from "./TextOverlay"; // Import TextOverlay
 
 interface PageGridProps {
   story: StoryWithPages;
@@ -39,51 +38,6 @@ export default function PageGrid({ story }: PageGridProps) {
     });
     return initialTexts;
   });
-
-  const [showStyleControls, setShowStyleControls] = useState(false);
-  const [fontFamily, setFontFamily] = useState(story.fontFamily || "Amatic SC");
-  const [fontSize, setFontSize] = useState(story.fontSize || 32);
-  const [fontColor, setFontColor] = useState(story.fontColor || "#000000");
-  
-  const [textPositions, setTextPositions] = useState<Record<string, string>>(() => {
-    const positions: Record<string, string> = {};
-    story.pages.forEach(page => {
-      positions[page.id] = page.textPosition || "bottom-center";
-    });
-    return positions;
-  });
-
-  const updateStorySettingsMutation = useMutation({
-    mutationFn: async (settings: { fontFamily: string; fontSize: number; fontColor: string }) => {
-      const response = await apiRequest("PUT", `/api/stories/${story.id}`, settings);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
-      toast({ title: "Saved", description: "Font settings saved!" });
-    },
-  });
-
-  const updatePagePositionMutation = useMutation({
-    mutationFn: async ({ pageId, position }: { pageId: string; position: string }) => {
-      const response = await apiRequest("PUT", `/api/pages/${pageId}`, { textPosition: position });
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
-    },
-  });
-
-  const handleSaveStyle = () => {
-    updateStorySettingsMutation.mutate({ fontFamily, fontSize, fontColor });
-    setShowStyleControls(false);
-  };
-
-  const handlePositionChange = (pageId: string, newPosition: string) => {
-    setTextPositions(prev => ({ ...prev, [pageId]: newPosition }));
-    updatePagePositionMutation.mutate({ pageId, position: newPosition });
-  };
-
 
   // Sync pageTexts when story.pages changes (e.g., after adding/deleting/reordering pages)
   useEffect(() => {
@@ -457,77 +411,6 @@ export default function PageGrid({ story }: PageGridProps) {
 
   return (
     <div>
-      <div className="mb-6 bg-card border border-border rounded-lg p-4 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-2">
-            <Type className="text-primary" size={20} />
-            <h3 className="font-medium">Text Styling</h3>
-          </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => setShowStyleControls(!showStyleControls)}
-          >
-            {showStyleControls ? "Hide Controls" : "Customize Text"}
-          </Button>
-        </div>
-
-        {showStyleControls && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animation-slide-down">
-            <div>
-              <Label className="text-xs mb-1.5 block">Font Family</Label>
-              <Select value={fontFamily} onValueChange={setFontFamily}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Amatic SC">Childlike (Amatic SC)</SelectItem>
-                  <SelectItem value="Comic Neue">Comic (Comic Neue)</SelectItem>
-                  <SelectItem value="Fredoka">Rounded (Fredoka)</SelectItem>
-                  <SelectItem value="Patrick Hand">Handwritten (Patrick Hand)</SelectItem>
-                  <SelectItem value="Roboto">Clean (Roboto)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label className="text-xs mb-1.5 block">Font Size ({fontSize}px)</Label>
-               <div className="flex items-center space-x-2">
-                <Button 
-                  variant="outline" size="icon" className="h-8 w-8"
-                  onClick={() => setFontSize(Math.max(16, fontSize - 2))}
-                >
-                  -
-                </Button>
-                <span className="flex-1 text-center text-sm font-medium">{fontSize}</span>
-                <Button 
-                  variant="outline" size="icon" className="h-8 w-8"
-                  onClick={() => setFontSize(Math.min(72, fontSize + 2))}
-                >
-                  +
-                </Button>
-               </div>
-            </div>
-            <div>
-              <Label className="text-xs mb-1.5 block">Font Color</Label>
-              <div className="flex items-center space-x-2">
-                <Input 
-                  type="color" 
-                  value={fontColor} 
-                  onChange={(e) => setFontColor(e.target.value)}
-                  className="w-10 h-10 p-1 rounded-md cursor-pointer"
-                />
-                <span className="text-sm font-mono text-muted-foreground">{fontColor}</span>
-              </div>
-            </div>
-            <div className="sm:col-span-3 flex justify-end mt-2">
-              <Button size="sm" onClick={handleSaveStyle} disabled={updateStorySettingsMutation.isPending}>
-                {updateStorySettingsMutation.isPending ? "Saving..." : "Save Changes"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
       <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
           {coverImageUrl && (
           <div 
@@ -625,18 +508,7 @@ export default function PageGrid({ story }: PageGridProps) {
               {!page.isGenerating && (
                 <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               )}
-              
-              {!page.isGenerating && !story.isTextBaked && story.showTextOverlay && (
-                <TextOverlay
-                  text={pageTexts[page.id] || page.text}
-                  fontFamily={fontFamily}
-                  fontSize={fontSize}
-                  fontColor={fontColor}
-                  position={textPositions[page.id] || "bottom-center"}
-                  isVisible={true}
-                />
-              )}
-              
+
               {!page.isGenerating && (
                 <div className="absolute top-4 right-4 z-20">
                   <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium">
@@ -700,30 +572,6 @@ export default function PageGrid({ story }: PageGridProps) {
                       Edit Prompt
                     </Button>
                   )}
-
-                  {!story.isTextBaked && story.showTextOverlay && page.imageUrl && (
-                     <div className="bg-background/90 rounded-md p-1 shadow-md flex items-center space-x-1 mt-2">
-                      <Label className="text-[10px] px-1 font-semibold text-muted-foreground">POS</Label>
-                       <Select 
-                        value={textPositions[page.id] || "bottom-center"} 
-                        onValueChange={(val) => handlePositionChange(page.id, val)}
-                       >
-                         <SelectTrigger className="h-6 w-24 text-[10px] border-none bg-transparent focus:ring-0 px-1 py-0">
-                           <SelectValue placeholder="Pos" />
-                         </SelectTrigger>
-                         <SelectContent>
-                           <SelectItem value="top-left">Top Left</SelectItem>
-                           <SelectItem value="top-center">Top Center</SelectItem>
-                           <SelectItem value="top-right">Top Right</SelectItem>
-                           <SelectItem value="center">Center</SelectItem>
-                           <SelectItem value="bottom-left">Bottom Left</SelectItem>
-                           <SelectItem value="bottom-center">Bottom Center</SelectItem>
-                           <SelectItem value="bottom-right">Bottom Right</SelectItem>
-                         </SelectContent>
-                       </Select>
-                     </div>
-                  )}
-                  
                 </div>
               )}
             </div>

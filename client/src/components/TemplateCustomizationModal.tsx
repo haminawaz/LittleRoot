@@ -36,10 +36,6 @@ export default function TemplateCustomizationModal({
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
-  const [showTextOverlay, setShowTextOverlay] = useState(true);
-  const [fontFamily, setFontFamily] = useState("Amatic SC");
-  const [fontSize, setFontSize] = useState(32);
-  const [fontColor, setFontColor] = useState("#000000");
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -230,10 +226,6 @@ export default function TemplateCustomizationModal({
         characterImageUrl,
         artStyle,
         pagesCount: targetPages,
-        showTextOverlay,
-        fontFamily: showTextOverlay ? fontFamily : undefined,
-        fontSize: showTextOverlay ? fontSize : undefined,
-        fontColor: showTextOverlay ? fontColor : undefined,
       });
     } catch (error) {
       console.error('Error uploading character image:', error);
@@ -408,79 +400,6 @@ export default function TemplateCustomizationModal({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-             <div className="bg-muted/30 rounded-lg p-4 border border-border">
-              <Label className="block text-sm font-medium mb-3">Text Settings</Label>
-              
-              <div className="flex items-center space-x-2 mb-4">
-                <Input
-                  type="checkbox"
-                  id="showTextOverlay"
-                  checked={showTextOverlay}
-                  onChange={(e) => setShowTextOverlay(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary shadow-none"
-                />
-                <Label htmlFor="showTextOverlay" className="text-sm cursor-pointer font-normal">
-                  Show text on illustrations
-                </Label>
-              </div>
-              
-              {showTextOverlay && (
-                <div className="space-y-4 pt-2 border-t border-border/50 animation-slide-down">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <Label className="text-xs mb-1.5 block text-muted-foreground">Font Family</Label>
-                      <Select value={fontFamily} onValueChange={setFontFamily}>
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Amatic SC">Childlike (Amatic SC)</SelectItem>
-                          <SelectItem value="Comic Neue">Comic (Comic Neue)</SelectItem>
-                          <SelectItem value="Fredoka">Rounded (Fredoka)</SelectItem>
-                          <SelectItem value="Patrick Hand">Handwritten (Patrick Hand)</SelectItem>
-                          <SelectItem value="Roboto">Clean (Roboto)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-xs mb-1.5 block text-muted-foreground">Font Color</Label>
-                       <div className="flex items-center space-x-2 h-9">
-                         <Input 
-                          type="color" 
-                          value={fontColor} 
-                          onChange={(e) => setFontColor(e.target.value)}
-                          className="w-full h-9 p-1 rounded-md cursor-pointer"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <Label className="text-xs mb-1.5 block text-muted-foreground">Font Size ({fontSize}px)</Label>
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        type="button" 
-                        variant="outline" size="sm" className="h-8 w-8"
-                        onClick={() => setFontSize(Math.max(16, fontSize - 2))}
-                      >
-                        -
-                      </Button>
-                      <div className="flex-1 bg-background border rounded-md h-8 flex items-center justify-center text-xs font-medium">
-                        {fontSize}
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="outline" size="sm" className="h-8 w-8"
-                        onClick={() => setFontSize(Math.min(72, fontSize + 2))}
-                      >
-                        +
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         </div>

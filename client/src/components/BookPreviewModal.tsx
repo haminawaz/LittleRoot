@@ -15,7 +15,6 @@ import {
   X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import TextOverlay from "./TextOverlay";
 import { exportToPDF, validateStoryForExport } from "@/lib/pdfExport";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -252,20 +251,6 @@ export default function BookPreviewModal({
                     <div className="w-full h-full bg-gradient-to-br from-purple-100 via-blue-100 to-pink-100 flex items-center justify-center">
                       <div className="relative">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-
-                        {!story.isTextBaked && story.showTextOverlay && (
-                          <TextOverlay
-                            text={currentPageData.text}
-                            fontFamily={story.fontFamily || "Amatic SC"}
-                            fontSize={story.fontSize || 32}
-                            fontColor={story.fontColor || "#000000"}
-                            position={
-                              currentPageData.textPosition || "bottom-center"
-                            }
-                            isVisible={true}
-                          />
-                        )}
-
                         <div className="absolute bottom-4 right-4 bg-white/90 text-xs px-2 py-1 rounded-full pointer-events-none"></div>
                         <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
                           <div className="flex flex-col items-center space-y-4">

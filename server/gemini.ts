@@ -2,7 +2,6 @@ import * as fs from "fs";
 import * as path from "path";
 import { GoogleGenAI, Modality } from "@google/genai";
 import sharp from "sharp";
-import { addTextOverlay } from "./imageUtils";
 import { getFormatPromptInfo, getCompositionGuidance } from "./formatUtils";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
@@ -42,7 +41,6 @@ export interface GenerateBookImagesOptions {
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
   height?: number; // Image height in pixels (300 DPI)
-  isTextBaked?: boolean; // Whether to bake text into the image or not
 }
 
 export async function generateIllustration(
@@ -68,10 +66,10 @@ export async function generateIllustrationStream(
     if (pageText) {
       fullPrompt += ` 
 
-SCENE CONTEXT (for composition only - DO NOT add text):
+SCENE CONTEXT (for composition only - ABSOLUTELY NO TEXT):
 The illustration should visually depict: "${pageText}"
 
-IMPORTANT: Create ONLY the artwork/illustration. Do NOT add any text, words, or letters to the image. Text will be added separately for consistency.`;
+IMPORTANT: Create ONLY the artwork/illustration. DO NOT add any text, words, letters, signatures, or watermarks to the image. The image MUST be clean artwork only. Text will be added programmatically later. Any text added by the AI will be considered a failure.`;
     }
     
     // If character description is provided, include it in the prompt
@@ -263,7 +261,7 @@ export async function generateBookIllustrations(
   storyId: string,
   onPageComplete?: (pageIndex: number, imageUrl: string) => Promise<void>
 ): Promise<string[]> {
-  const { pageTexts, title, content, artStyle, characterDescription, pdfFormat = '8x8', isTextBaked = false } = options;
+  const { pageTexts, title, content, artStyle, characterDescription, pdfFormat = '8x8' } = options;
   
   console.log(`Generating ${pageTexts.length} illustrations for "${title}" using sequential generation with Gemini 2.5 Flash Image (Nano Banana)...`);
   
@@ -337,25 +335,7 @@ export async function generateBookIllustrations(
               const imgHeight = options.height || 2400;
               await compressImage(buffer, tempImagePath, imgWidth, imgHeight);
               
-              // Step 2: Add consistent text overlay on top ONLY if isTextBaked is true
-              // Default is now FALSE for new stories to allow frontend customization
-              if (isTextBaked) {
-                await addTextOverlay({
-                  text: pageText,
-                  imagePath: tempImagePath,
-                  outputPath: finalImagePath,
-                  fontSize: 72,  // Extra large font for thumbnail visibility
-                  fontFamily: 'Arial',
-                  fontWeight: 'bold',
-                  textColor: 'white'
-                });
-                
-                // Clean up temp file
-                fs.unlinkSync(tempImagePath);
-              } else {
-                // If not baking text, just rename/move the temp file to final path
-                fs.renameSync(tempImagePath, finalImagePath);
-              }
+              fs.renameSync(tempImagePath, finalImagePath);
               
               const compressedSize = fs.statSync(finalImagePath).size;
               const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
@@ -364,7 +344,7 @@ export async function generateBookIllustrations(
               const imageUrl = `/generated-images/${fileName}?t=${timestamp}`;
               imageUrls.push(imageUrl);
               
-              console.log(`✓ Page ${pageNumber}/${pageTexts.length}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller) ${isTextBaked ? '+ text overlay' : '(no text overlay)'}`);
+              console.log(`✓ Page ${pageNumber}/${pageTexts.length}: ${(originalSize / 1024).toFixed(1)}KB → ${(compressedSize / 1024).toFixed(1)}KB (${savings}% smaller)`);
               imageSaved = true;
               
               // Call the callback immediately after this page is complete
@@ -475,17 +455,11 @@ ${compositionGuidance}
 - The character should be instantly recognizable and consistent with all interior illustrations
 - Only show the character in a pose/action appropriate for the cover - appearance must match interior pages
 
-CRITICAL TITLE TEXT PLACEMENT:
-- Display this EXACT title: "${title}"
-- Position title in the UPPER THIRD of the cover (approximately 25-35% from the top)
-- Center-align the title text horizontally (50% from left edge)
-- Keep title within the MIDDLE 70% of page width (15% margin on left, 15% on right)
-- NEVER place title near left/right edges or in corners
-- Use MEDIUM-SIZED, BEAUTIFUL, child-friendly typography that is readable but not overwhelming
-- Title must be FULLY VISIBLE with NO CUTOFF whatsoever
-- Title color must CONTRAST STRONGLY with background for perfect readability
-- Title should be artistically integrated but not dominate the entire cover
-- Make title text CLEAR, READABLE, and VISUALLY APPEALING
+CRITICAL INSTRUCTION:
+- DO NOT add any text, words, letters, titles, or signatures to the image
+- NEVER include the title or author name in the artwork
+- Generate ONLY the clean artwork/illustration
+- Text will be added programmatically later for consistency
 
 Create an enchanting, professional-quality children's book cover with a perfectly centered, prominent title.`;
 
@@ -605,8 +579,8 @@ ${compositionGuidance}
 - The character should be instantly recognizable as the same person on every page
 - Only the character's pose, action, and scene context should change - NOT their appearance
 
-IMPORTANT TEXT INSTRUCTION:
-- DO NOT add any text, words, or letters to the image
+IMPORTANT TEXT INSTRUCTION (STRICT):
+- DO NOT add any text, words, letters, signatures, or watermarks to the image
 - Generate ONLY the artwork/illustration
 - Text will be added programmatically later for consistency
 - Create clean, beautiful artwork without any embedded text`;

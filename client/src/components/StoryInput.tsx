@@ -23,11 +23,6 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
-  const [showTextOverlay, setShowTextOverlay] = useState(true);
-  
-  const [fontFamily, setFontFamily] = useState("Amatic SC");
-  const [fontSize, setFontSize] = useState(32);
-  const [fontColor, setFontColor] = useState("#000000");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -211,10 +206,6 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         artStyle,
         pagesCount: targetPages,
         pdfFormat: "8x10",
-        showTextOverlay: showTextOverlay,
-        fontFamily: showTextOverlay ? fontFamily : undefined,
-        fontSize: showTextOverlay ? fontSize : undefined,
-        fontColor: showTextOverlay ? fontColor : undefined,
       });
     } catch (error) {
       console.error('Error uploading character image:', error);
@@ -386,78 +377,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
                 </SelectContent>
               </Select>
             </div>
-            
-            <div className="flex items-center space-x-2 pt-2">
-              <input
-                type="checkbox"
-                id="showTextOverlay"
-                checked={showTextOverlay}
-                onChange={(e) => setShowTextOverlay(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                disabled={bookLimitReached}
-              />
-              <Label htmlFor="showTextOverlay" className="text-sm cursor-pointer">
-                Show text on illustrations
-              </Label>
             </div>
-
-            {showTextOverlay && (
-              <div className="grid grid-cols-1 gap-3 pt-3 pl-6 border-l-2 border-primary/20 ml-2 mt-2 animation-slide-down">
-                 <div>
-                  <Label className="text-xs mb-1.5 block">Font Family</Label>
-                  <Select value={fontFamily} onValueChange={setFontFamily}>
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Amatic SC">Childlike (Amatic SC)</SelectItem>
-                      <SelectItem value="Comic Neue">Comic (Comic Neue)</SelectItem>
-                      <SelectItem value="Fredoka">Rounded (Fredoka)</SelectItem>
-                      <SelectItem value="Patrick Hand">Handwritten (Patrick Hand)</SelectItem>
-                      <SelectItem value="Roboto">Clean (Roboto)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Font Size ({fontSize}px)</Label>
-                    <div className="flex items-center space-x-2">
-                      <Button 
-                        type="button" // Prevent form submission
-                        variant="outline" size="icon" className="h-8 w-8"
-                        onClick={() => setFontSize(Math.max(16, fontSize - 2))}
-                        disabled={bookLimitReached} // Assuming limit affects customization? Or just generation.
-                      >
-                        -
-                      </Button>
-                      <span className="flex-1 text-center text-xs font-medium">{fontSize}</span>
-                      <Button 
-                        type="button" 
-                        variant="outline" size="icon" className="h-8 w-8"
-                        onClick={() => setFontSize(Math.min(72, fontSize + 2))}
-                        disabled={bookLimitReached}
-                      >
-                        +
-                      </Button>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-xs mb-1.5 block">Font Color</Label>
-                    <div className="flex items-center space-x-2 h-8">
-                       <Input 
-                        type="color" 
-                        value={fontColor} 
-                        onChange={(e) => setFontColor(e.target.value)}
-                        className="w-full h-8 p-1 rounded-md cursor-pointer"
-                        disabled={bookLimitReached}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
         </div>
 
         <Button 

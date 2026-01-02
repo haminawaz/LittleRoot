@@ -7,10 +7,11 @@ import { Plus, RotateCcw, Loader2, Trash2, Scissors, ChevronUp, ChevronDown, Sav
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { StoryWithPages, Page } from "@shared/schema";
+import type { StoryWithPages, Page, Story } from "@shared/schema";
 import DeleteModal from "@/components/DeleteModal";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import IllustrationTextEditor, { type TextOverlay } from "@/components/IllustrationTextEditor";
 
 interface PageGridProps {
   story: StoryWithPages;
@@ -29,6 +30,10 @@ export default function PageGrid({ story }: PageGridProps) {
   const [editImageModalOpen, setEditImageModalOpen] = useState(false);
   const [editingPageId, setEditingPageId] = useState<string | null>(null);
   const [imagePrompt, setImagePrompt] = useState("");
+
+  const [textEditorOpen, setTextEditorOpen] = useState(false);
+  const [editingOverlayType, setEditingOverlayType] = useState<"page" | "cover" | null>(null);
+  const [editingOverlayPageId, setEditingOverlayPageId] = useState<string | null>(null);
 
   // Track current text for each page (for live regeneration)
   const [pageTexts, setPageTexts] = useState<Record<string, string>>(() => {
@@ -147,6 +152,41 @@ export default function PageGrid({ story }: PageGridProps) {
         title: "Error",
         description: "Failed to save text. Please try again.",
         variant: "destructive",
+      });
+    },
+  });
+
+  const updateStoryMutation = useMutation({
+    mutationFn: async (updates: Partial<Story>) => {
+      const response = await apiRequest("PUT", `/api/stories/${story.id}`, updates);
+      return response.json() as Promise<Story>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      toast({
+        title: "Saved",
+        description: "Story updated successfully!",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update story. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updatePageOverlayMutation = useMutation({
+    mutationFn: async ({ pageId, textOverlay }: { pageId: string; textOverlay: TextOverlay }) => {
+      const response = await apiRequest("PUT", `/api/pages/${pageId}`, { textOverlay });
+      return response.json() as Promise<Page>;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      toast({
+        title: "Saved",
+        description: "Text overlay saved!",
       });
     },
   });
@@ -423,18 +463,49 @@ export default function PageGrid({ story }: PageGridProps) {
               </div>
             </div>
 
-            <div className="aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative">
+            <div className="aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative overflow-hidden">
               <img
                 src={coverImageUrl}
                 alt="Book cover"
                 className="w-full h-full object-cover"
                 data-testid="img-cover"
               />
+              {(story as any).coverTextOverlay?.isVisible && (
+                <div
+                  className="absolute w-[80%] pointer-events-none font-bold"
+                  style={{
+                    left: `${(story as any).coverTextOverlay.x}%`,
+                    top: `${(story as any).coverTextOverlay.y}%`,
+                    transform: "translate(-50%, -50%)",
+                    fontSize: `${(story as any).coverTextOverlay.fontSize / 3}px`,
+                    fontFamily: (story as any).coverTextOverlay.fontFamily,
+                    color: (story as any).coverTextOverlay.color,
+                    textAlign: (story as any).coverTextOverlay.textAlign as any,
+                  }}
+                >
+                  {(story as any).coverTextOverlay.text}
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               <div className="absolute top-4 right-4">
-                <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium">
+                <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium shadow-sm">
                   Cover
                 </span>
+              </div>
+
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setEditingOverlayType("cover");
+                    setTextEditorOpen(true);
+                  }}
+                  className="shadow-lg"
+                >
+                  <Pencil size={14} className="mr-1" />
+                  Edit Text
+                </Button>
               </div>
             </div>
 
@@ -487,13 +558,32 @@ export default function PageGrid({ story }: PageGridProps) {
 
             <div className="aspect-[3/4] bg-gradient-to-br from-blue-50 to-green-50 relative">
               {page.imageUrl && !page.isGenerating ? (
-                <img
-                  key={page.imageUrl}
-                  src={page.imageUrl}
-                  alt={`Page ${page.pageNumber} illustration`}
-                  className="w-full h-full object-cover"
-                  data-testid={`img-page-${page.pageNumber}`}
-                />
+                <>
+                  <img
+                    key={page.imageUrl}
+                    src={page.imageUrl}
+                    alt={`Page ${page.pageNumber} illustration`}
+                    className="w-full h-full object-cover"
+                    data-testid={`img-page-${page.pageNumber}`}
+                  />
+                  {(page as any).textOverlay?.isVisible && (
+                    <div
+                      className="absolute w-[80%] pointer-events-none font-bold"
+                      style={{
+                        left: `${(page as any).textOverlay.x}%`,
+                        top: `${(page as any).textOverlay.y}%`,
+                        transform: "translate(-50%, -50%)",
+                        fontSize: `${(page as any).textOverlay.fontSize / 3}px`,
+                        fontFamily: (page as any).textOverlay.fontFamily,
+                        color: (page as any).textOverlay.color,
+                        textAlign: (page as any).textOverlay.textAlign as any,
+                        textShadow: "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
+                      }}
+                    >
+                      {(page as any).textOverlay.text}
+                    </div>
+                  )}
+                </>
               ) : !page.isGenerating ? (
                 <div className="w-full h-full bg-muted flex items-center justify-center">
                   <div className="text-center text-muted-foreground">
@@ -560,17 +650,32 @@ export default function PageGrid({ story }: PageGridProps) {
                   </Button>
                   
                   {page.imageUrl && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleEditIllustration(page.id)}
-                      disabled={generateImageMutation.isPending}
-                      className="shadow-lg w-32"
-                      data-testid={`button-edit-illustration-${page.pageNumber}`}
-                    >
-                      <Pencil size={14} className="mr-1" />
-                      Edit Prompt
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => handleEditIllustration(page.id)}
+                        disabled={generateImageMutation.isPending}
+                        className="shadow-lg w-32"
+                        data-testid={`button-edit-illustration-${page.pageNumber}`}
+                      >
+                        <Pencil size={14} className="mr-1" />
+                        Edit Prompt
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setEditingOverlayType("page");
+                          setEditingOverlayPageId(page.id);
+                          setTextEditorOpen(true);
+                        }}
+                        className="shadow-lg w-32"
+                      >
+                        <Pencil size={14} className="mr-1" />
+                        Edit Text
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -841,6 +946,40 @@ export default function PageGrid({ story }: PageGridProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <IllustrationTextEditor
+        isOpen={textEditorOpen}
+        onClose={() => {
+          setTextEditorOpen(false);
+          setEditingOverlayType(null);
+          setEditingOverlayPageId(null);
+        }}
+        imageUrl={
+          editingOverlayType === "cover"
+            ? (story as any).coverImageUrl
+            : story.pages.find((p) => p.id === editingOverlayPageId)?.imageUrl || ""
+        }
+        overlay={
+          editingOverlayType === "cover"
+            ? (story as any).coverTextOverlay
+            : (story.pages.find((p) => p.id === editingOverlayPageId) as any)?.textOverlay
+        }
+        defaultText={
+          editingOverlayType === "cover"
+            ? story.title
+            : story.pages.find((p) => p.id === editingOverlayPageId)?.text || ""
+        }
+        onSave={(newOverlay) => {
+          if (editingOverlayType === "cover") {
+            updateStoryMutation.mutate({ coverTextOverlay: newOverlay } as any);
+          } else if (editingOverlayPageId) {
+            updatePageOverlayMutation.mutate({
+              pageId: editingOverlayPageId,
+              textOverlay: newOverlay,
+            });
+          }
+          setTextEditorOpen(false);
+        }}
+      />
     </div>
   );
 }

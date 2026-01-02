@@ -109,6 +109,105 @@ def add_image_to_page(c, image_reader, page_width, page_height):
         print(f"Error adding image to page: {e}", file=sys.stderr)
 
 
+def add_text_overlay(c, overlay, page_width, page_height):
+    """
+    Add text overlay with a blurred background box
+    """
+    if not overlay or not overlay.get('isVisible', True):
+        return
+    
+    try:
+        text = overlay.get('text', '')
+        if not text:
+            return
+            
+        font_size = overlay.get('fontSize', 48)
+        font_family = overlay.get('fontFamily', 'Helvetica-Bold')
+        # Map common fonts to standard ReportLab fonts if needed
+        font_map = {
+            'Arial': 'Helvetica-Bold',
+            'Georgia': 'Times-Bold',
+            'Verdana': 'Helvetica-Bold',
+            'Times New Roman': 'Times-Bold',
+            'Courier New': 'Courier-Bold',
+            'Comic Sans MS': 'Helvetica-Bold',
+            'Trebuchet MS': 'Helvetica-Bold'
+        }
+        actual_font = font_map.get(font_family, 'Helvetica-Bold')
+        
+        color_hex = overlay.get('color', '#ffffff').lstrip('#')
+        r = int(color_hex[0:2], 16) / 255.0
+        g = int(color_hex[2:4], 16) / 255.0
+        b = int(color_hex[4:6], 16) / 255.0
+        
+        x_pct = overlay.get('x', 50) / 100.0
+        y_pct = overlay.get('y', 65) / 100.0
+        text_align = overlay.get('textAlign', 'center')
+        
+        # ReportLab coordinates start from bottom-left
+        # Invert Y from percentage (top-down) to points (bottom-up)
+        # We also need to account for font height to roughly center vertically
+        # Simple approximation: y_points = page_height * (1 - y_pct)
+        y_points = page_height * (1 - y_pct)
+        x_points = page_width * x_pct
+        
+        # Render background blur/glow (optional but improves readability)
+        # We'll use a semi-transparent black rectangle
+        c.saveState()
+        c.setFillAlpha(0.4)
+        c.setFillColorRGB(0, 0, 0)
+        
+        # Calculate text width for background sizing
+        c.setFont(actual_font, font_size)
+        
+        # Handle multi-line text
+        lines = text.split('\n')
+        line_height = font_size * 1.2
+        max_width = 0
+        for line in lines:
+            max_width = max(max_width, c.stringWidth(line, actual_font, font_size))
+        
+        # Background box
+        bg_padding = font_size * 0.5
+        bg_width = max_width + (bg_padding * 2)
+        bg_height = (len(lines) * line_height) + (bg_padding * 1)
+        
+        # Rect coordinates
+        if text_align == 'center':
+            bg_x = x_points - (bg_width / 2)
+        elif text_align == 'left':
+            bg_x = x_points - bg_padding
+        else: # right
+            bg_x = x_points - bg_width + bg_padding
+            
+        bg_y = y_points - (bg_height / 2) - (font_size * 0.2)
+        
+        # Draw rounded rect for background
+        c.roundRect(bg_x, bg_y, bg_width, bg_height, 10, stroke=0, fill=1)
+        c.restoreState()
+        
+        # Draw text
+        c.saveState()
+        c.setFont(actual_font, font_size)
+        c.setFillColorRGB(r, g, b)
+        
+        for i, line in enumerate(lines):
+            # Calculate Y for each line (centered around y_points)
+            line_y = y_points + ((len(lines) - 1) / 2.0 - i) * line_height - (font_size * 0.3)
+            
+            if text_align == 'center':
+                c.drawCentredString(x_points, line_y, line)
+            elif text_align == 'left':
+                c.drawString(x_points, line_y, line)
+            else: # right
+                c.drawRightString(x_points, line_y, line)
+        
+        c.restoreState()
+        
+    except Exception as e:
+        print(f"Error adding text overlay: {e}", file=sys.stderr)
+
+
 def generate_pdf(config):
     """
     Generate PDF with consistent formatting
@@ -142,6 +241,11 @@ def generate_pdf(config):
             img_reader = load_image_from_path(cover_image)
             if img_reader:
                 add_image_to_page(c, img_reader, page_width, page_height)
+                
+                cover_overlay = config.get('cover_overlay')
+                if cover_overlay:
+                    add_text_overlay(c, cover_overlay, page_width, page_height)
+                
                 c.showPage()  # Move to next page
                 print("✓ Cover added", file=sys.stderr)
         
@@ -156,6 +260,11 @@ def generate_pdf(config):
             img_reader = load_image_from_path(image_path)
             if img_reader:
                 add_image_to_page(c, img_reader, page_width, page_height)
+                
+                overlay = page.get('overlay')
+                if overlay:
+                    add_text_overlay(c, overlay, page_width, page_height)
+                
                 c.showPage()  # Move to next page
                 print(f"✓ Page {i+1} added", file=sys.stderr)
         

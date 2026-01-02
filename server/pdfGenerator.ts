@@ -269,6 +269,7 @@ export async function generatePDFWithReportLab(options: GeneratePDFOptions): Pro
       await downloadImageToFile(coverImageUrl, coverPath);
       console.log('✓ Cover downloaded');
     }
+    const coverTextOverlay = (options as any).coverTextOverlay;
     
     // Download all page images
     const pagePaths: string[] = [];
@@ -296,7 +297,11 @@ export async function generatePDFWithReportLab(options: GeneratePDFOptions): Pro
       output_path: pdfOutputPath,
       format: pdfFormat,
       cover_image: coverPath,
-      pages: pagePaths.map(p => ({ image_path: p }))
+      cover_overlay: coverTextOverlay,
+      pages: pages.map((p, i) => ({
+        image_path: pagePaths[i],
+        overlay: (p as any).textOverlay
+      }))
     };
     
     // Call Python script

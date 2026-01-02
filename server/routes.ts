@@ -2570,23 +2570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdfFormat: story.pdfFormat,  // Pass format for proper orientation in AI prompts
         width: dimensions.width,
         height: dimensions.height,
-      }, tempImagePath);
-
-      // Step 2: Add text overlay on top of the illustration
-      await addTextOverlay({
-        text: prompt,
-        imagePath: tempImagePath,
-        outputPath: finalImagePath,
-        fontSize: 72,
-        fontFamily: 'Arial',
-        fontWeight: 'bold',
-        textColor: 'white'
-      });
-
-      // Step 3: Clean up temp file
-      if (fs.existsSync(tempImagePath)) {
-        fs.unlinkSync(tempImagePath);
-      }
+      }, finalImagePath);
 
       // Update page with image URL (add timestamp to bust browser cache)
       const timestamp = Date.now();

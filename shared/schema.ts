@@ -78,6 +78,7 @@ export const stories = pgTable("stories", {
   pdfFormat: text("pdf_format").notNull().default("8x10"), // Standard format: 8x10
   pdfUrl: text("pdf_url"), // Pre-generated PDF stored in cloud storage for instant downloads
   status: text("status").notNull().default("draft"), // draft, generating, completed, error
+  coverTextOverlay: jsonb("cover_text_overlay"), // { text: string, fontSize: number, fontFamily: string, color: string, x: number, y: number, isVisible: boolean, textAlign: string }
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -89,6 +90,7 @@ export const pages = pgTable("pages", {
   imageUrl: text("image_url"),
   imagePrompt: text("image_prompt"),
   isGenerating: boolean("is_generating").notNull().default(false),
+  textOverlay: jsonb("text_overlay"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

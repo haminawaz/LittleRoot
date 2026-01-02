@@ -163,24 +163,32 @@ def add_text_overlay(c, overlay, page_width, page_height):
         # Handle multi-line text
         lines = text.split('\n')
         line_height = font_size * 1.2
-        max_width = 0
-        for line in lines:
-            max_width = max(max_width, c.stringWidth(line, actual_font, font_size))
         
-        # Background box
-        bg_padding = font_size * 0.5
-        bg_width = max_width + (bg_padding * 2)
-        bg_height = (len(lines) * line_height) + (bg_padding * 1)
+        # Determine background dimensions
+        # Use provided width/height if available, otherwise calculate from text
+        overlay_width_pct = overlay.get('width')
+        overlay_height_pct = overlay.get('height')
+        
+        if overlay_width_pct and overlay_height_pct:
+            bg_width = page_width * (overlay_width_pct / 100.0)
+            bg_height = page_height * (overlay_height_pct / 100.0)
+        else:
+            max_line_width = 0
+            for line in lines:
+                max_line_width = max(max_line_width, c.stringWidth(line, actual_font, font_size))
+            bg_padding = font_size * 0.5
+            bg_width = max_line_width + (bg_padding * 2)
+            bg_height = (len(lines) * line_height) + (bg_padding * 1)
         
         # Rect coordinates
         if text_align == 'center':
             bg_x = x_points - (bg_width / 2)
         elif text_align == 'left':
-            bg_x = x_points - bg_padding
+            bg_x = x_points
         else: # right
-            bg_x = x_points - bg_width + bg_padding
+            bg_x = x_points - bg_width
             
-        bg_y = y_points - (bg_height / 2) - (font_size * 0.2)
+        bg_y = y_points - (bg_height / 2)
         
         # Draw rounded rect for background
         c.roundRect(bg_x, bg_y, bg_width, bg_height, 10, stroke=0, fill=1)

@@ -451,26 +451,28 @@ export default function PageGrid({ story }: PageGridProps) {
 
   return (
     <div>
-      <div className="grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
+      <div className={`grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 ${textEditorOpen ? "overflow-visible" : ""}`}>
           {coverImageUrl && (
           <div 
-            className="bg-card book-shadow overflow-hidden group hover:shadow-lg transition-shadow"
+            className={`bg-card book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayType !== "cover") ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
             data-testid="card-cover"
           >
-            <div className="bg-muted/50 px-2 sm:px-3 py-2 sm:py-3 border-b border-border flex items-center justify-between">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <span className="text-xs sm:text-sm font-medium">Cover</span>
-              </div>
+            <div className="bg-muted/50 px-2 sm:px-3 py-2 sm:py-3 border-b border-border flex items-center justify-between min-h-[48px]">
+              {!textEditorOpen && (
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                  <span className="text-xs sm:text-sm font-medium">Cover</span>
+                </div>
+              )}
             </div>
 
-            <div className="aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative overflow-hidden">
+            <div className={`aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative ${(!textEditorOpen || editingOverlayType !== "cover") ? "overflow-hidden" : "overflow-visible"}`}>
               <img
                 src={coverImageUrl}
                 alt="Book cover"
                 className="w-full h-full object-cover"
                 data-testid="img-cover"
               />
-              {(story as any).coverTextOverlay?.isVisible && (
+              {(story as any).coverTextOverlay?.isVisible && (!textEditorOpen || editingOverlayType !== "cover") && (
                 <div
                   className="absolute w-[80%] pointer-events-none font-bold"
                   style={{
@@ -486,27 +488,41 @@ export default function PageGrid({ story }: PageGridProps) {
                   {(story as any).coverTextOverlay.text}
                 </div>
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              <div className="absolute top-4 right-4">
-                <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium shadow-sm">
-                  Cover
-                </span>
-              </div>
-
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => {
-                    setEditingOverlayType("cover");
-                    setTextEditorOpen(true);
+              {/* Inline Cover Editor */}
+              {textEditorOpen && editingOverlayType === "cover" && (
+                <IllustrationTextEditor
+                  imageUrl={coverImageUrl}
+                  overlay={(story as any).coverTextOverlay}
+                  defaultText={story.title}
+                  onCancel={() => {
+                    setTextEditorOpen(false);
+                    setEditingOverlayType(null);
                   }}
-                  className="shadow-lg"
-                >
-                  <Pencil size={14} className="mr-1" />
-                  Edit Text
-                </Button>
-              </div>
+                  onSave={(newOverlay) => {
+                    updateStoryMutation.mutate({ coverTextOverlay: newOverlay } as any);
+                    setTextEditorOpen(false);
+                    setEditingOverlayType(null);
+                  }}
+                />
+              )}
+
+              {/* Cover Edit Controls */}
+              {!textEditorOpen ? (
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      setEditingOverlayType("cover");
+                      setTextEditorOpen(true);
+                    }}
+                    className="shadow-lg"
+                  >
+                    <Pencil size={14} className="mr-1" />
+                    Edit Text
+                  </Button>
+                </div>
+              ) : null}
             </div>
 
             <div className="p-4">
@@ -520,17 +536,19 @@ export default function PageGrid({ story }: PageGridProps) {
         {story.pages.map((page) => (
           <div 
             key={page.id} 
-            className="bg-card book-shadow overflow-hidden group hover:shadow-lg transition-shadow"
+            className={`bg-card book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayPageId !== page.id) ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
             data-testid={`card-page-${page.pageNumber}`}
             data-page-id={page.id}
           >
             {/* Page Header with Controls */}
-            <div className="bg-muted/50 px-2 sm:px-3 py-1.5 sm:py-2 border-b border-border flex items-center justify-between">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <span className="text-xs sm:text-sm font-medium">Page {page.pageNumber}</span>
-              </div>
-              
-              <div className="flex items-center space-x-1">
+            <div className="bg-muted/50 px-2 sm:px-3 py-1.5 sm:py-2 border-b border-border flex items-center justify-between min-h-[40px]">
+              {!textEditorOpen && (
+                <>
+                  <div className="flex items-center space-x-2 sm:space-x-3">
+                    <span className="text-xs sm:text-sm font-medium">Page {page.pageNumber}</span>
+                  </div>
+                  
+                  <div className="flex items-center space-x-1">
                 <Button
                   variant="ghost"
                   size="sm"
@@ -553,10 +571,12 @@ export default function PageGrid({ story }: PageGridProps) {
                 >
                   <ChevronDown size={14} />
                 </Button>
-              </div>
-            </div>
+                </div>
+              </>
+            )}
+          </div>
 
-            <div className="aspect-[3/4] bg-gradient-to-br from-blue-50 to-green-50 relative">
+            <div className={`aspect-[3/4] bg-gradient-to-br from-blue-50 to-green-50 relative ${(!textEditorOpen || editingOverlayPageId !== page.id) ? "overflow-hidden" : "overflow-visible"}`}>
               {page.imageUrl && !page.isGenerating ? (
                 <>
                   <img
@@ -566,7 +586,8 @@ export default function PageGrid({ story }: PageGridProps) {
                     className="w-full h-full object-cover"
                     data-testid={`img-page-${page.pageNumber}`}
                   />
-                  {(page as any).textOverlay?.isVisible && (
+                  {/* Dynamic Page Overlay */}
+                  {(page as any).textOverlay?.isVisible && (!textEditorOpen || editingOverlayPageId !== page.id) && (
                     <div
                       className="absolute w-[80%] pointer-events-none font-bold"
                       style={{
@@ -577,11 +598,33 @@ export default function PageGrid({ story }: PageGridProps) {
                         fontFamily: (page as any).textOverlay.fontFamily,
                         color: (page as any).textOverlay.color,
                         textAlign: (page as any).textOverlay.textAlign as any,
-                        textShadow: "2px 2px 4px rgba(0,0,0,0.8), -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000",
                       }}
                     >
                       {(page as any).textOverlay.text}
                     </div>
+                  )}
+
+                  {/* Inline Page Editor */}
+                  {textEditorOpen && editingOverlayType === "page" && editingOverlayPageId === page.id && (
+                    <IllustrationTextEditor
+                      imageUrl={page.imageUrl || ""}
+                      overlay={(page as any).textOverlay}
+                      defaultText={page.text}
+                      onCancel={() => {
+                        setTextEditorOpen(false);
+                        setEditingOverlayType(null);
+                        setEditingOverlayPageId(null);
+                      }}
+                      onSave={(newOverlay) => {
+                        updatePageOverlayMutation.mutate({
+                          pageId: page.id,
+                          textOverlay: newOverlay,
+                        });
+                        setTextEditorOpen(false);
+                        setEditingOverlayType(null);
+                        setEditingOverlayPageId(null);
+                      }}
+                    />
                   )}
                 </>
               ) : !page.isGenerating ? (
@@ -595,16 +638,15 @@ export default function PageGrid({ story }: PageGridProps) {
                 </div>
               ) : null}
 
-              {!page.isGenerating && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-              )}
-
-              {!page.isGenerating && (
-                <div className="absolute top-4 right-4 z-20">
-                  <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium">
-                    Page {page.pageNumber}
-                  </span>
-                </div>
+              {!page.isGenerating && !textEditorOpen && (
+                <>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+                  <div className="absolute top-4 right-4 z-20">
+                    <span className="bg-white/90 text-xs px-2 py-1 rounded-full font-medium">
+                      Page {page.pageNumber}
+                    </span>
+                  </div>
+                </>
               )}
 
               {page.isGenerating && (
@@ -635,7 +677,8 @@ export default function PageGrid({ story }: PageGridProps) {
                 </div>
               )}
 
-              {!page.isGenerating && (
+              {/* Page Hover Controls - Hide when editing text */}
+              {!page.isGenerating && !textEditorOpen ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
                   <Button
                     variant="secondary"
@@ -678,7 +721,7 @@ export default function PageGrid({ story }: PageGridProps) {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
 
             <div className="p-4">
@@ -946,40 +989,6 @@ export default function PageGrid({ story }: PageGridProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <IllustrationTextEditor
-        isOpen={textEditorOpen}
-        onClose={() => {
-          setTextEditorOpen(false);
-          setEditingOverlayType(null);
-          setEditingOverlayPageId(null);
-        }}
-        imageUrl={
-          editingOverlayType === "cover"
-            ? (story as any).coverImageUrl
-            : story.pages.find((p) => p.id === editingOverlayPageId)?.imageUrl || ""
-        }
-        overlay={
-          editingOverlayType === "cover"
-            ? (story as any).coverTextOverlay
-            : (story.pages.find((p) => p.id === editingOverlayPageId) as any)?.textOverlay
-        }
-        defaultText={
-          editingOverlayType === "cover"
-            ? story.title
-            : story.pages.find((p) => p.id === editingOverlayPageId)?.text || ""
-        }
-        onSave={(newOverlay) => {
-          if (editingOverlayType === "cover") {
-            updateStoryMutation.mutate({ coverTextOverlay: newOverlay } as any);
-          } else if (editingOverlayPageId) {
-            updatePageOverlayMutation.mutate({
-              pageId: editingOverlayPageId,
-              textOverlay: newOverlay,
-            });
-          }
-          setTextEditorOpen(false);
-        }}
-      />
     </div>
   );
 }

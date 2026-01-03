@@ -474,10 +474,11 @@ export default function PageGrid({ story }: PageGridProps) {
               />
               {(story as any).coverTextOverlay?.isVisible && (!textEditorOpen || editingOverlayType !== "cover") && (
                 <div
-                  className="absolute w-[80%] pointer-events-none font-bold"
+                  className="absolute pointer-events-none font-bold"
                   style={{
                     left: `${(story as any).coverTextOverlay.x}%`,
                     top: `${(story as any).coverTextOverlay.y}%`,
+                    width: `${(story as any).coverTextOverlay.width || 80}%`,
                     transform: "translate(-50%, -50%)",
                     fontSize: `${(story as any).coverTextOverlay.fontSize / 3}px`,
                     fontFamily: (story as any).coverTextOverlay.fontFamily,
@@ -589,10 +590,11 @@ export default function PageGrid({ story }: PageGridProps) {
                   {/* Dynamic Page Overlay */}
                   {(page as any).textOverlay?.isVisible && (!textEditorOpen || editingOverlayPageId !== page.id) && (
                     <div
-                      className="absolute w-[80%] pointer-events-none font-bold"
+                      className="absolute pointer-events-none font-bold"
                       style={{
                         left: `${(page as any).textOverlay.x}%`,
                         top: `${(page as any).textOverlay.y}%`,
+                        width: `${(page as any).textOverlay.width || 80}%`,
                         transform: "translate(-50%, -50%)",
                         fontSize: `${(page as any).textOverlay.fontSize / 3}px`,
                         fontFamily: (page as any).textOverlay.fontFamily,

@@ -25,6 +25,19 @@ export interface PDFExportProgress {
   progress: number;
 }
 
+export interface TextOverlay {
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  x: number;
+  y: number;
+  width?: number;
+  height?: number;
+  isVisible: boolean;
+  textAlign: "left" | "center" | "right";
+}
+
 const KDP_FORMATS = {
   "kdp-6x9": { width: 6 * 72, height: 9 * 72 },
   "kdp-8.5x11": { width: 8.5 * 72, height: 11 * 72 },
@@ -55,6 +68,24 @@ async function optimizeImageForPDF(
 
     img.onload = () => {
       try {
+        const targetAspectRatio = targetWidth / targetHeight;
+        const imgAspectRatio = img.width / img.height;
+
+        let srcX = 0,
+          srcY = 0,
+          srcW = img.width,
+          srcH = img.height;
+
+        if (imgAspectRatio > targetAspectRatio) {
+          // Image is wider than target: crop sides
+          srcW = img.height * targetAspectRatio;
+          srcX = (img.width - srcW) / 2;
+        } else {
+          // Image is taller than target: crop top/bottom
+          srcH = img.width / targetAspectRatio;
+          srcY = (img.height - srcH) / 2;
+        }
+
         const maxDimension = Math.max(targetWidth, targetHeight);
         const scaleFactor = maxDimension > 2500 ? 2500 / maxDimension : 1;
         const canvasWidth = Math.round(targetWidth * scaleFactor);
@@ -73,7 +104,18 @@ async function optimizeImageForPDF(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
 
-        ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+        // Draw with cropping (srcX, srcY, srcW, srcH) to fill the target (0, 0, canvasWidth, canvasHeight)
+        ctx.drawImage(
+          img,
+          srcX,
+          srcY,
+          srcW,
+          srcH,
+          0,
+          0,
+          canvasWidth,
+          canvasHeight
+        );
 
         const dataUrl = canvas.toDataURL("image/jpeg", quality);
 
@@ -88,6 +130,76 @@ async function optimizeImageForPDF(
   });
 }
 
+function renderTextOverlay(
+  pdf: jsPDF,
+  overlay: TextOverlay,
+  pageWidth: number,
+  pageHeight: number
+) {
+  try {
+    if (!overlay || !overlay.isVisible || !overlay.text) return;
+
+    // Map web fonts to jsPDF standard fonts
+    const fontMap: Record<string, string> = {
+      "Arial": "helvetica",
+      "Georgia": "times",
+      "Verdana": "helvetica",
+      "Times New Roman": "times",
+      "Courier New": "courier",
+      "Comic Sans MS": "helvetica",
+      "Trebuchet MS": "helvetica",
+    };
+
+    const pdfFont = fontMap[overlay.fontFamily] || "helvetica";
+    pdf.setFont(pdfFont, "bold");
+    
+    // Font size scaling: The UI uses fontSize/3 for display.
+    // Use 420px as the reference width where coordinates and sizes are defined.
+    // This matches the typical dashboard container size.
+    const referenceWidth = 420;
+    const scaleFactor = pageWidth / referenceWidth; 
+    pdf.setFontSize((overlay.fontSize / 3) * scaleFactor);
+
+    // Set color
+    let r = 255, g = 255, b = 255;
+    if (overlay.color && overlay.color.startsWith("#")) {
+      const hex = overlay.color;
+      r = parseInt(hex.slice(1, 3), 16) || 0;
+      g = parseInt(hex.slice(3, 5), 16) || 0;
+      b = parseInt(hex.slice(5, 7), 16) || 0;
+    }
+    pdf.setTextColor(r, g, b);
+
+    // Position (percentage based)
+    const centerX = (overlay.x / 100) * pageWidth;
+    const centerY = (overlay.y / 100) * pageHeight;
+    const boxWidth = (overlay.width || 80) / 100 * pageWidth;
+
+    // Align and Adjust X/Y (to match UI's centered-box model)
+    const align = overlay.textAlign || "center";
+    let drawX = centerX;
+    
+    // UI box model: div is centered at centerX.
+    if (align === "left") {
+      drawX = centerX - (boxWidth / 2);
+    } else if (align === "right") {
+      drawX = centerX + (boxWidth / 2);
+    }
+    
+    // Split text into lines
+    const lines = pdf.splitTextToSize(overlay.text, boxWidth);
+    
+    // Calculate vertical offset to center the text block
+    const lineHeight = pdf.getLineHeight();
+    const totalHeight = lines.length * lineHeight;
+    const adjustedY = centerY - (totalHeight / 2) + (lineHeight * 0.75);
+
+    pdf.text(lines, drawX, adjustedY, { align: align });
+  } catch (err) {
+    console.error("Error rendering text overlay:", err);
+  }
+}
+
 export async function exportToPDF(
   story: StoryWithPages,
   options: PDFExportOptions = {
@@ -97,15 +209,16 @@ export async function exportToPDF(
   },
   onProgress?: (progress: PDFExportProgress) => void
 ): Promise<void> {
-  const pdfFormat = (story as any).pdfFormat || "8x8";
-  const format = PDF_FORMATS[pdfFormat] || PDF_FORMATS["8x8"];
+  const storyFormat = (story as any).pdfFormat;
+  const requestedFormatKey = options.format?.replace("kdp-", "");
+  const formatKey = requestedFormatKey || storyFormat || "8x10";
+  const format = PDF_FORMATS[formatKey] || KDP_FORMATS[options.format as keyof typeof KDP_FORMATS] || PDF_FORMATS["8x10"];
 
   console.log(
-    `📄 Exporting PDF with format: ${pdfFormat} (${format.width / 72}" x ${
+    `📄 Exporting PDF with format: ${formatKey} (${format.width / 72}" x ${
       format.height / 72
     }")`
   );
-  console.log(`   Story object pdfFormat:`, (story as any).pdfFormat);
 
   const hasCover = !!(story as any).coverImageUrl;
   const totalPages = story.pages.length;
@@ -152,6 +265,17 @@ export async function exportToPDF(
         undefined,
         "FAST"
       );
+
+      // Render cover text overlay
+      if ((story as any).coverTextOverlay) {
+        renderTextOverlay(
+          pdf,
+          (story as any).coverTextOverlay,
+          format.width,
+          format.height
+        );
+      }
+
       isFirstPage = false;
       currentStep++;
       console.log("✓ Added illustrated cover to PDF");
@@ -196,6 +320,17 @@ export async function exportToPDF(
           undefined,
           "FAST"
         );
+
+        // Render page text overlay
+        if ((page as any).textOverlay) {
+          renderTextOverlay(
+            pdf,
+            (page as any).textOverlay,
+            format.width,
+            format.height
+          );
+        }
+
         currentStep++;
       } catch (error) {
         console.warn(
@@ -220,7 +355,7 @@ export async function exportToPDF(
     progress: Math.round(((totalSteps - 1) / totalSteps) * 100),
   });
 
-  const formatLabel = pdfFormat.replace("x", "x").replace(".", "_");
+  const formatLabel = formatKey.replace(".", "_");
   const fileName = `${story.title.replace(
     /[^a-zA-Z0-9]/g,
     "_"

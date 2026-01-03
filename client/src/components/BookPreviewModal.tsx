@@ -198,16 +198,35 @@ export default function BookPreviewModal({
           <div className="flex-1 bg-muted/30 p-2 sm:p-3 md:p-4 lg:p-6 xl:p-8 flex items-center justify-center min-w-0 min-h-0 overflow-hidden">
             <div className="bg-white shadow-2xl max-w-2xl w-full h-full flex flex-col overflow-hidden rounded-lg">
               {isCoverPage ? (
-                <div className="flex-1 flex items-center justify-center relative overflow-hidden">
+                <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-muted/20">
                   {(story as any).coverImageUrl ? (
-                    <>
-                      <img
-                        src={(story as any).coverImageUrl}
-                        alt="Book cover"
-                        className="max-w-full max-h-full w-auto h-auto object-contain"
-                        data-testid="img-preview-cover"
-                      />
-                      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+                    <div className="relative w-full h-full flex items-center justify-center p-4">
+                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden">
+                        <img
+                          src={(story as any).coverImageUrl}
+                          alt="Book cover"
+                          className="w-full h-full object-cover"
+                          data-testid="img-preview-cover"
+                        />
+                        {(story as any).coverTextOverlay?.isVisible && (
+                          <div
+                            className="absolute pointer-events-none font-bold"
+                            style={{
+                              left: `${(story as any).coverTextOverlay.x}%`,
+                              top: `${(story as any).coverTextOverlay.y}%`,
+                              width: `${(story as any).coverTextOverlay.width || 80}%`,
+                              transform: "translate(-50%, -50%)",
+                              fontSize: `${(story as any).coverTextOverlay.fontSize / 3}px`,
+                              fontFamily: (story as any).coverTextOverlay.fontFamily,
+                              color: (story as any).coverTextOverlay.color,
+                              textAlign: (story as any).coverTextOverlay.textAlign as any,
+                            }}
+                          >
+                            {(story as any).coverTextOverlay.text}
+                          </div>
+                        )}
+                      </div>
+                      <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
                         <Button
                           variant="secondary"
                           size="sm"
@@ -233,7 +252,7 @@ export default function BookPreviewModal({
                           )}
                         </Button>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center w-full h-full text-center text-muted-foreground">
                       <div>
@@ -249,51 +268,41 @@ export default function BookPreviewModal({
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden">
                   {currentPageData.isGenerating ? (
                     <div className="w-full h-full bg-gradient-to-br from-purple-100 via-blue-100 to-pink-100 flex items-center justify-center">
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none"></div>
-                        <div className="absolute bottom-4 right-4 bg-white/90 text-xs px-2 py-1 rounded-full pointer-events-none"></div>
-                        <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
-                          <div className="flex flex-col items-center space-y-4">
-                            <div className="relative">
-                              <div className="w-16 h-16 border-4 border-primary/20 rounded-full"></div>
-                              <div className="absolute top-0 left-0 w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                              <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="w-8 h-8 bg-gradient-to-br from-primary to-purple-500 rounded-full animate-pulse"></div>
-                              </div>
-                            </div>
-                            <div className="text-center">
-                              <p className="text-sm font-semibold text-foreground mb-1">
-                                Creating Magic
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                AI is painting your illustration...
-                              </p>
-                            </div>
-                            <div className="flex space-x-1">
-                              <div
-                                className="w-2 h-2 bg-primary rounded-full animate-bounce"
-                                style={{ animationDelay: "0ms" }}
-                              ></div>
-                              <div
-                                className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
-                                style={{ animationDelay: "150ms" }}
-                              ></div>
-                              <div
-                                className="w-2 h-2 bg-pink-500 rounded-full animate-bounce"
-                                style={{ animationDelay: "300ms" }}
-                              ></div>
-                            </div>
-                          </div>
+                      <div className="relative bg-white/90 backdrop-blur-sm rounded-2xl p-8 shadow-2xl border border-white/20">
+                        <div className="flex flex-col items-center space-y-4">
+                          <div className="w-16 h-16 border-4 border-primary/20 rounded-full animate-spin border-t-primary"></div>
+                          <p className="text-sm font-semibold">Creating Magic...</p>
                         </div>
                       </div>
                     </div>
                   ) : currentPageData.imageUrl ? (
-                    <img
-                      src={currentPageData.imageUrl}
-                      alt={`Page ${currentPageData.pageNumber} illustration`}
-                      className="max-w-full max-h-full w-auto h-auto object-contain"
-                      data-testid={`img-preview-page-${currentPageData.pageNumber}`}
-                    />
+                    <div className="relative w-full h-full flex items-center justify-center p-4">
+                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden">
+                        <img
+                          src={currentPageData.imageUrl}
+                          alt={`Page ${currentPageData.pageNumber} illustration`}
+                          className="w-full h-full object-cover"
+                          data-testid={`img-preview-page-${currentPageData.pageNumber}`}
+                        />
+                        {(currentPageData as any).textOverlay?.isVisible && (
+                          <div
+                            className="absolute pointer-events-none font-bold"
+                            style={{
+                              left: `${(currentPageData as any).textOverlay.x}%`,
+                              top: `${(currentPageData as any).textOverlay.y}%`,
+                              width: `${(currentPageData as any).textOverlay.width || 80}%`,
+                              transform: "translate(-50%, -50%)",
+                              fontSize: `${(currentPageData as any).textOverlay.fontSize / 3}px`,
+                              fontFamily: (currentPageData as any).textOverlay.fontFamily,
+                              color: (currentPageData as any).textOverlay.color,
+                              textAlign: (currentPageData as any).textOverlay.textAlign as any,
+                            }}
+                          >
+                            {(currentPageData as any).textOverlay.text}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ) : (
                     <div className="flex items-center justify-center w-full h-full">
                       <div className="text-center text-muted-foreground">

@@ -61,44 +61,8 @@ export default function FAQ() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
-      <Header />
-
-      <section className="relative overflow-hidden py-20 px-6">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 via-pink-500/10 to-orange-500/10"></div>
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="max-w-4xl mx-auto text-center relative z-10"
-        >
-          <div className="inline-flex items-center space-x-2 bg-gradient-to-r from-orange-600 to-red-600 rounded-full px-5 py-2.5 mb-6 shadow-lg shadow-orange-500/30">
-            <HelpCircle className="h-4 w-4 text-white" />
-            <span className="text-sm font-semibold text-white">
-              Frequently Asked Questions
-            </span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-serif font-bold mb-6 bg-gradient-to-r from-orange-600 via-red-600 to-pink-600 bg-clip-text text-transparent">
-            Got Questions?
-          </h1>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Find answers to common questions about creating children's books
-            with LittleRoot
-          </p>
-          <div className="flex items-center justify-center gap-4">
-            <Button
-              variant="ghost"
-              onClick={() => setLocation("/dashboard")}
-              className="group"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4 group-hover:-translate-x-1 transition-transform" />
-              Back to Home
-            </Button>
-          </div>
-        </motion.div>
-      </section>
-
-      <main className="max-w-4xl mx-auto px-6 py-14">
+    <div className="bg-white">
+      <main className="max-w-4xl mx-auto px-6 py-10">
         <motion.section
           variants={containerVariants}
           initial="hidden"
@@ -139,7 +103,7 @@ export default function FAQ() {
                       transition={{ duration: 0.3, ease: "easeInOut" }}
                       className="overflow-hidden"
                     >
-                      <p className="text-muted-foreground leading-relaxed">
+                      <p className="text-black leading-relaxed">
                         {faq.answer}
                       </p>
                     </motion.div>

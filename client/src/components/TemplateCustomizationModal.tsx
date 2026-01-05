@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Wand2, User, Upload, X } from "lucide-react";
+import { Wand2, User, Upload, X, BookOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -243,10 +243,10 @@ export default function TemplateCustomizationModal({
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl w-full max-h-[90vh] overflow-hidden p-0 flex flex-col" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader className="p-6 border-b border-border flex-shrink-0">
-          <DialogTitle className="text-xl font-serif font-semibold">
+          <DialogTitle className="text-xl font-serif font-semibold text-black">
             Customize "{template.title}"
           </DialogTitle>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-black mt-1">
             Personalize this template with your own character. All story details are pre-filled - just add your character!
           </p>
         </DialogHeader>
@@ -324,8 +324,14 @@ export default function TemplateCustomizationModal({
                   </div>
                 ) : (
                   <div className="border-2 border-dashed border-border rounded-lg p-6 text-center">
-                    <Upload className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground mb-2">
+                   <div className="w-full flex items-center justify-center">
+                     <img
+                      src="/upload-icon.svg"
+                      alt="Upload Icon"
+                      className="h-20 w-20 mr-2"
+                    />
+                   </div>
+                    <p className="text-sm text-muted-foreground my-2">
                       Upload a photo of your character
                     </p>
                     <input
@@ -404,12 +410,13 @@ export default function TemplateCustomizationModal({
           </div>
         </div>
 
-        <div className="flex items-center justify-between p-6 border-t border-border bg-muted/30 flex-shrink-0">
+        <div className="flex items-center space-x-2 p-6 border-t border-border bg-muted/30 flex-shrink-0">
           <Button 
             variant="outline" 
             onClick={onClose}
             disabled={isLoading}
             data-testid="button-cancel-template-customization"
+            className="w-1/2"
           >
             Cancel
           </Button>
@@ -418,10 +425,11 @@ export default function TemplateCustomizationModal({
             onClick={handleSubmit}
             disabled={isLoading}
             size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-8"
+            variant="default"
             data-testid="button-create-template-story"
+            className="w-1/2"
           >
-            <Wand2 size={16} className="mr-2" />
+            <BookOpen size={16} className="mr-2" />
             {isLoading ? "Creating Your Book..." : "Create Your Book"}
           </Button>
         </div>

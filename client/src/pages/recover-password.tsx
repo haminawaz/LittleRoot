@@ -57,11 +57,15 @@ export default function RecoverPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
+            <img
+              src="/logo-icon.svg"
+              alt="LittleRoot"
+              className="h-10 w-10 mr-2"
+            />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LittleRoot</h1>
           </div>
           <CardTitle className="text-2xl">Recover Password</CardTitle>

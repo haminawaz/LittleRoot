@@ -167,7 +167,7 @@ export default function Settings() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="bg-card border-b border-border">
+      <div className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold">Settings</h1>

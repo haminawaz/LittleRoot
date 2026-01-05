@@ -454,7 +454,7 @@ export default function PageGrid({ story }: PageGridProps) {
       <div className={`grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 ${textEditorOpen ? "overflow-visible" : ""}`}>
           {coverImageUrl && (
           <div 
-            className={`bg-card book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayType !== "cover") ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
+            className={`book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayType !== "cover") ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
             data-testid="card-cover"
           >
             <div className="bg-muted/50 px-2 sm:px-3 py-2 sm:py-3 border-b border-border flex items-center justify-between min-h-[48px]">
@@ -537,7 +537,7 @@ export default function PageGrid({ story }: PageGridProps) {
         {story.pages.map((page) => (
           <div 
             key={page.id} 
-            className={`bg-card book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayPageId !== page.id) ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
+            className={`book-shadow group hover:shadow-lg transition-shadow ${(!textEditorOpen || editingOverlayPageId !== page.id) ? "overflow-hidden" : "overflow-visible z-[100] relative"}`}
             data-testid={`card-page-${page.pageNumber}`}
             data-page-id={page.id}
           >
@@ -630,7 +630,7 @@ export default function PageGrid({ story }: PageGridProps) {
                   )}
                 </>
               ) : !page.isGenerating ? (
-                <div className="w-full h-full bg-muted flex items-center justify-center">
+                <div className="w-full h-full flex items-center justify-center">
                   <div className="text-center text-muted-foreground">
                     <div className="w-16 h-16 bg-muted-foreground/20 rounded-lg flex items-center justify-center mx-auto mb-2">
                       📖
@@ -852,7 +852,7 @@ export default function PageGrid({ story }: PageGridProps) {
           data-testid="button-add-page"
         >
         <div className="text-center">
-          <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-2 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+          <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center mx-auto mb-2 text-white transition-colors">
             <Plus size={20} />
           </div>
           <p className="text-sm font-medium text-muted-foreground group-hover:text-primary">

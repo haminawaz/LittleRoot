@@ -86,40 +86,36 @@ export default function Subscription() {
       string,
       {
         borderColor: string;
-        gradientClasses: string;
+        bgColor: string;
         textColor: string;
+        checkColor: string;
+        buttonClasses: string;
         gradientBarClasses: string;
       }
     > = {
       hobbyist: {
-        borderColor: isCurrentPlan
-          ? "border-violet-600 border-[3px]"
-          : "border-violet-500 border-2",
-        gradientClasses:
-          "bg-gradient-to-b from-violet-50 to-white dark:from-violet-950/20 dark:to-gray-900",
-        textColor: "text-violet-600",
-        gradientBarClasses:
-          "bg-gradient-to-r from-violet-400 via-violet-500 to-violet-600",
+        borderColor: "border-[#fbcfe8]",
+        bgColor: "bg-[#fff1ff]",
+        textColor: "text-[#ff4bef]",
+        checkColor: "text-[#ff4bef]",
+        buttonClasses: "bg-[#fdf2ff] text-[#ff4bef] hover:bg-[#fae8ff]",
+        gradientBarClasses: "bg-[#ff4bef]",
       },
       pro: {
-        borderColor: isCurrentPlan
-          ? "border-purple-600 border-[3px]"
-          : "border-purple-500 border-2",
-        gradientClasses:
-          "bg-gradient-to-b from-purple-50 to-white dark:from-purple-950/20 dark:to-gray-900",
-        textColor: "text-purple-600",
-        gradientBarClasses:
-          "bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600",
+        borderColor: "border-[#c4b5fd]",
+        bgColor: "bg-[#f5f3ff]",
+        textColor: "text-[#7c3aed]",
+        checkColor: "text-[#3b82f6]",
+        buttonClasses: "bg-[#ede9fe] text-[#7c3aed] hover:bg-[#ddd6fe]",
+        gradientBarClasses: "bg-[#7c3aed]",
       },
       reseller: {
-        borderColor: isCurrentPlan
-          ? "border-orange-600 border-[3px]"
-          : "border-orange-500 border-2",
-        gradientClasses:
-          "bg-gradient-to-b from-orange-50 to-white dark:from-orange-950/20 dark:to-gray-900",
-        textColor: "text-orange-600",
-        gradientBarClasses:
-          "bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600",
+        borderColor: "border-[#fed7aa]",
+        bgColor: "bg-[#fff7ed]",
+        textColor: "text-[#f97316]",
+        checkColor: "text-[#f97316]",
+        buttonClasses: "bg-[#ffedd5] text-[#f97316] hover:bg-[#fed7aa]",
+        gradientBarClasses: "bg-[#f97316]",
       },
     };
     return styles[planId] || styles.hobbyist;
@@ -195,7 +191,7 @@ export default function Subscription() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <div className="bg-card border-b border-border">
+      <div className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <h1 className="text-2xl font-bold">Manage Subscription</h1>
@@ -406,7 +402,7 @@ export default function Subscription() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.3 }}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                     >
                       <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
                         <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -420,7 +416,7 @@ export default function Subscription() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.4 }}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                     >
                       <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
                         <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -434,7 +430,7 @@ export default function Subscription() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.5 }}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                     >
                       <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
                         <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -448,7 +444,7 @@ export default function Subscription() {
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: 0.6 }}
-                      className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors"
                     >
                       <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
                         <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -462,7 +458,7 @@ export default function Subscription() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.4, delay: 0.7 }}
-                        className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors md:col-span-2"
+                        className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent/50 transition-colors md:col-span-2"
                       >
                         <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/30">
                           <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
@@ -621,12 +617,9 @@ export default function Subscription() {
                   return (
                     <Card
                       key={plan.id}
-                      className={`${style.borderColor} ${style.gradientClasses} flex flex-col shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 overflow-hidden group`}
+                      className={`rounded-2xl border-2 ${style.borderColor} ${style.bgColor} flex flex-col hover:shadow-xl transition-all duration-300 overflow-hidden group`}
                       data-testid={`card-plan-${plan.id}`}
                     >
-                      <div
-                        className={`absolute top-0 left-0 w-full h-1 ${style.gradientBarClasses}`}
-                      ></div>
                       {promotion && promotion.planIds.includes(plan.id) && (
                         <div className="px-4 pt-4">
                           <div className={`relative overflow-hidden ${style.gradientBarClasses} rounded-lg px-4 py-2.5 shadow-sm`}>
@@ -640,17 +633,17 @@ export default function Subscription() {
                           </div>
                         </div>
                       )}
-                      <CardHeader>
-                        <CardTitle className="text-xl font-bold">
+                      <CardHeader className="pb-4">
+                        <CardTitle className="text-2xl font-bold text-black">
                           {plan.name}
                         </CardTitle>
-                        <CardDescription>
+                        <div className="mt-1">
                           {promotion && promotion.planIds.includes(plan.id) ? (
-                            <div className="flex flex-col items-start gap-2">
-                              <span className="text-lg line-through text-muted-foreground">
+                            <div className="flex flex-col items-start gap-1">
+                              <span className="text-sm line-through text-muted-foreground">
                                 ${plan.price.toFixed(2)}
                               </span>
-                              <div className="flex justify-start items-center gap-2">
+                              <div className="flex justify-start items-center gap-1">
                                 <span
                                   className={`text-3xl font-bold ${style.textColor}`}
                                 >
@@ -660,32 +653,32 @@ export default function Subscription() {
                                     (1 - promotion.discountPercent / 100)
                                   ).toFixed(2)}
                                 </span>
-                                <span className="text-muted-foreground">
+                                <span className="text-slate-500 text-sm">
                                   {" "}
-                                  /month for {promotion?.validityMonths} month
+                                  / month
                                 </span>
                               </div>
                             </div>
                           ) : (
-                            <>
+                            <div className="flex items-baseline gap-1">
                               <span
                                 className={`text-3xl font-bold ${style.textColor}`}
                               >
                                 ${plan.price.toFixed(2)}
                               </span>
-                              <span className="text-muted-foreground">
+                              <span className="text-slate-500 text-sm">
                                 {" "}
-                                /month
+                                / month
                               </span>
-                            </>
+                            </div>
                           )}
-                        </CardDescription>
+                        </div>
                       </CardHeader>
                       <CardContent className="flex-1 flex flex-col">
-                        <ul className="space-y-3 mb-6 flex-1">
+                        <ul className="space-y-4 mb-8 flex-1">
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">
                               {illustrations
                                 ? `${illustrations} Illustrations (${plan.booksPerMonth}+ Books)`
                                 : plan.booksPerMonth
@@ -694,48 +687,49 @@ export default function Subscription() {
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">
                               {templateBooks !== null
                                 ? `${templateBooks} Template Books`
                                 : "Template Books"}
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">
                               Up to {pagesPerBook} Pages Each
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">
                               {bonusVariations !== null
                                 ? `${bonusVariations} Bonus Illustration Variations`
                                 : "Bonus Illustration Variations"}
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">
                               {commercialRightsText}
                             </span>
                           </li>
                           <li className="flex items-start gap-2">
-                            <Check className="h-5 w-5 text-green-600 shrink-0 mt-0.5" />
-                            <span className="text-sm">PDF Export</span>
+                            <Check className={`h-4 w-4 ${style.checkColor} shrink-0 mt-1`} />
+                            <span className="text-[15px] text-slate-700">PDF Export</span>
                           </li>
                         </ul>
                         {isCurrentPlan ? (
                           <Badge
                             variant="default"
-                            className="w-full justify-center py-2"
+                            className={`w-full py-3 rounded-sm justify-center font-semibold transition-all duration-300`}
                           >
                             Current Plan
                           </Badge>
                         ) : (
                           <Button
-                            className="w-full shadow-md hover:shadow-lg transition-all duration-300"
+                            variant="ghost"
+                            className={`w-full py-6 rounded-xl font-semibold transition-all duration-300 ${style.buttonClasses}`}
                             onClick={() => handleChoosePlan(plan.id)}
                             data-testid={`button-upgrade-${plan.id}`}
                           >

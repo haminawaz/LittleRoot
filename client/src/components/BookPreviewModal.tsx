@@ -228,7 +228,6 @@ export default function BookPreviewModal({
                       </div>
                       <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-10">
                         <Button
-                          variant="secondary"
                           size="sm"
                           onClick={() => regenerateCoverMutation.mutate()}
                           disabled={
@@ -323,7 +322,7 @@ export default function BookPreviewModal({
           </div>
 
           {/* Mobile Navigation Toggle Button */}
-          <div className="lg:hidden border-t border-border bg-card p-3 flex items-center justify-between flex-shrink-0">
+          <div className="lg:hidden border-t border-border p-3 flex items-center justify-between flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
@@ -351,7 +350,6 @@ export default function BookPreviewModal({
             flex-col
             w-full lg:w-80
             border-t lg:border-t-0 lg:border-l border-border
-            bg-card lg:bg-card/50
             backdrop-blur-md lg:backdrop-blur-none
             z-10 lg:z-auto
             lg:relative
@@ -360,7 +358,7 @@ export default function BookPreviewModal({
             shadow-xl lg:shadow-none
           `}
           >
-            <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between bg-card/50">
+            <div className="p-3 sm:p-4 border-b border-border flex items-center justify-between">
               <h4 className="font-semibold text-sm sm:text-base">
                 Page Navigation
               </h4>
@@ -466,7 +464,7 @@ export default function BookPreviewModal({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 border-t border-border bg-card/50 flex-shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 p-4 sm:p-6 border-t border-border flex-shrink-0">
           <div className="flex items-center justify-between sm:justify-start space-x-2 sm:space-x-4 flex-1">
             <Button
               variant="outline"

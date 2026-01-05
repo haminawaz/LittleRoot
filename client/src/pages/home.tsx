@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { BookOpen, Download, Eye, BookmarkPlus, Lock } from "lucide-react";
+import { motion } from "framer-motion";
 import StoryInput from "@/components/StoryInput";
 import PageGrid from "@/components/PageGrid";
 import BookPreviewModal from "@/components/BookPreviewModal";
@@ -25,6 +26,14 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"create" | "my-books">("create");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const images = ["/no-books-icon.svg", "/ready-to-create.svg"];
+    images.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -287,7 +296,7 @@ export default function Home() {
 
       <div className="flex flex-col lg:flex-row h-[calc(100vh-4rem)]">
         {viewMode === "create" && (
-          <aside className="w-full lg:w-80 bg-card border-r border-border flex flex-col order-2 lg:order-1">
+          <aside className="w-full lg:w-80 border-r border-border flex flex-col order-2 lg:order-1">
             <div className="p-4 sm:p-6 border-b border-border">
               <h2 className="text-base sm:text-lg font-serif font-semibold mb-3 sm:mb-4">
                 Create Your Story
@@ -296,9 +305,7 @@ export default function Home() {
               <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
-                      1
-                    )} flex items-center justify-center text-white text-xs sm:text-sm font-medium`}
+                    className={`step w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-xs sm:text-sm font-medium`}
                   >
                     1
                   </div>
@@ -308,7 +315,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
+                    className={`step w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
                       2
                     )} flex items-center justify-center text-xs sm:text-sm font-medium ${
                       getStepStatus(2) === "step-pending"
@@ -330,7 +337,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
+                    className={`step w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
                       3
                     )} flex items-center justify-center text-xs sm:text-sm font-medium ${
                       getStepStatus(3) === "step-pending"
@@ -352,7 +359,7 @@ export default function Home() {
                 </div>
                 <div className="flex items-center space-x-2 sm:space-x-3">
                   <div
-                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
+                    className={`step w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getStepStatus(
                       4
                     )} flex items-center justify-center text-xs sm:text-sm font-medium ${
                       getStepStatus(4) === "step-pending"
@@ -387,7 +394,7 @@ export default function Home() {
         <main className="flex-1 flex flex-col order-1 lg:order-2 min-w-0">
           {viewMode === "create" && (
             <>
-              <div className="bg-card border-b border-border p-3 sm:p-4">
+              <div className="border-b border-border p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                   <div className="min-w-0 flex-1">
                     <h2
@@ -562,19 +569,25 @@ export default function Home() {
                 ) : story ? (
                   <PageGrid story={story} />
                 ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-center px-4">
-                      <BookOpen
-                        size={40}
-                        className="sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4"
+                  <div className="flex h-full flex-col items-center justify-center text-center px-4">
+                    <motion.div
+                      className="flex items-center justify-center mb-6 h-64 w-full"
+                      initial={{ opacity: 0, scale: 0.5 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.2, duration: 0.4 }}
+                    >
+                      <img
+                        src="/ready-to-create.svg"
+                        alt="Ready to Create"
+                        className="h-full w-auto object-contain"
                       />
-                      <p className="text-base sm:text-lg font-medium text-muted-foreground mb-2">
-                        Ready to Create?
-                      </p>
-                      <p className="text-xs sm:text-sm text-muted-foreground">
-                        Enter your story details in the sidebar to get started.
-                      </p>
-                    </div>
+                    </motion.div>
+                    <p className="text-base sm:text-lg font-medium text-muted-foreground mb-2">
+                      Ready to Create?
+                    </p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      Enter your story details in the sidebar to get started.
+                    </p>
                   </div>
                 )}
               </div>
@@ -583,13 +596,13 @@ export default function Home() {
 
           {viewMode === "my-books" && (
             <>
-              <div className="bg-card border-b border-border p-3 sm:p-4">
+              <div className="border-b border-border p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                  <div>
+                  <div className="text-black">
                     <h2 className="text-base sm:text-lg font-serif font-semibold">
                       My Books
                     </h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground">
+                    <p className="text-xs sm:text-sm">
                       {allStories?.length || 0} saved stories
                     </p>
                   </div>
@@ -598,7 +611,7 @@ export default function Home() {
                     size="sm"
                     onClick={() => setViewMode("create")}
                     data-testid="button-create-new"
-                    className="w-full sm:w-auto text-xs sm:text-sm"
+                    className="text-black w-full sm:w-auto text-xs sm:text-sm"
                   >
                     Create New Story
                   </Button>
@@ -610,7 +623,7 @@ export default function Home() {
                   <div className="flex items-center justify-center h-64">
                     <div className="text-center">
                       <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                      <p className="text-sm sm:text-base text-muted-foreground">
+                      <p className="text-sm sm:text-base text-black">
                         Loading stories...
                       </p>
                     </div>
@@ -621,7 +634,7 @@ export default function Home() {
                       return (
                         <div
                           key={savedStory.id}
-                          className="bg-card rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col"
+                          className="rounded-lg border border-border overflow-hidden hover:shadow-lg transition-shadow cursor-pointer flex flex-col"
                           onClick={() => {
                             window.history.pushState(
                               {},
@@ -638,29 +651,29 @@ export default function Home() {
                               <img
                                 src={savedStory.coverImageUrl}
                                 alt={`${savedStory.title} cover`}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-cover text-black"
                                 data-testid={`img-cover-${savedStory.id}`}
                               />
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <BookOpen
                                   size={48}
-                                  className="text-muted-foreground/40"
+                                  className="text-black"
                                 />
                               </div>
                             )}
                           </div>
 
-                          <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0">
+                          <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0 text-black">
                             <div className="flex items-start justify-between mb-2">
                               <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-2">
                                 {savedStory.title}
                               </h3>
                             </div>
-                            <p className="text-xs sm:text-sm text-muted-foreground mb-2 sm:mb-3 line-clamp-2 flex-shrink-0">
+                            <p className="text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 flex-shrink-0">
                               {savedStory.content.substring(0, 100)}...
                             </p>
-                            <div className="flex items-center justify-between text-[10px] sm:text-xs text-muted-foreground mt-auto">
+                            <div className="flex items-center justify-between text-[10px] sm:text-xs mt-auto">
                               <span className="truncate flex-1 min-w-0 pr-2">
                                 {savedStory.artStyle}
                               </span>
@@ -676,16 +689,24 @@ export default function Home() {
                     })}
                   </div>
                 ) : (
-                  <div className="flex items-center justify-center h-64">
+                  <div className="flex items-center justify-center">
                     <div className="text-center px-4">
-                      <BookOpen
-                        size={40}
-                        className="sm:w-12 sm:h-12 text-muted-foreground mx-auto mb-4"
-                      />
-                      <p className="text-base sm:text-lg font-medium text-muted-foreground mb-2">
+                      <motion.div
+                        className="flex items-center justify-center mb-6 h-64 w-full"
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2, duration: 0.4 }}
+                      >
+                        <img
+                          src="/no-books-icon.svg"
+                          alt="No Books"
+                          className="h-full w-auto object-contain"
+                        />
+                      </motion.div>
+                      <p className="text-base sm:text-lg font-medium text-black mb-2">
                         No Stories Yet
                       </p>
-                      <p className="text-xs sm:text-sm text-muted-foreground mb-4">
+                      <p className="text-xs sm:text-sm text-black mb-4">
                         You haven't created any stories yet. Start by creating
                         your first story!
                       </p>

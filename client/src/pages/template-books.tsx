@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Eye, Lock, Crown, ArrowLeft, User, Trash2 } from "lucide-react";
+import { BookOpen, Trash2, Star } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import TemplatePreviewModal from "@/components/TemplatePreviewModal";
 import TemplateCustomizationModal from "@/components/TemplateCustomizationModal";
@@ -29,7 +29,14 @@ export default function TemplateBooks() {
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Query to get user with subscription info
+  useEffect(() => {
+    const images = ["/template-lock-icon.svg", "/template-lock-bg.svg"];
+    images.forEach(src => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
+
   const { data: userWithSubscription, isLoading: userLoading } = useQuery<UserWithSubscriptionInfo>({
     queryKey: ["/api/auth/user"],
   });
@@ -127,16 +134,16 @@ export default function TemplateBooks() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="min-h-screen bg-white">
       <Header />
 
-      <div className="bg-card border-b border-border">
+      <div className="bg-white text-black border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div>
                 <h1 className="text-2xl font-serif font-bold">Story Templates</h1>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm">
                   {canUseTemplates 
                     ? `Choose a template to get started quickly (${userWithSubscription?.templateBooksRemaining || 0}/${userWithSubscription?.templateBooksLimit || 0} remaining)`
                     : "Upgrade your plan to access premium templates"}
@@ -148,55 +155,75 @@ export default function TemplateBooks() {
               onClick={() => setLocation('/dashboard')}
               data-testid="button-create-from-scratch"
             >
-              Create From Scratch
+              Create New Story
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Free Trial Lock Notice */}
       {isFreeTrial && !canUseTemplates && (
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="w-full h-auto mx-auto px-4 py-20 bg-cover bg-center bg-no-repeat bg-[#F9F7FF]"
+          style={{ backgroundImage: "url('/template-lock-bg.svg')" }}
         >
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-2 border-purple-200 dark:border-purple-800 rounded-lg p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-full">
-                <Lock className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
-                  Template Books Are Locked
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
-                    Premium Feature
-                  </Badge>
-                </h3>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Free trial includes 0 template books. Upgrade to unlock our curated story templates and jumpstart your creativity!
-                </p>
+          <div className="max-w-md mx-auto bg-white/50 rounded-2xl shadow-2xl border border-white/20 p-8">
+            <div className="text-center">
+              <motion.div 
+                className="flex items-center justify-center mb-6 h-64 w-full"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.4 }}
+              >
+                <img
+                  src="/template-lock-icon.svg"
+                  alt="Template Lock Icon"
+                  className="h-full w-auto object-contain"
+                />
+              </motion.div>
+
+              <motion.h3 
+                className="text-2xl text-primary font-bold mb-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                Template Books Are Locked
+              </motion.h3>
+
+              <motion.p 
+                className="text-sm text-gray-600 mb-6 leading-relaxed"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+              >
+                Free trial includes 0 template books. Upgrade to unlock our curated story templates and jumpstart your creativity!
+              </motion.p>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+              >
                 <Link href="/subscription">
-                  <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
-                    <Crown className="h-4 w-4 mr-2" />
+                  <Button className="bg-primary text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                    <Star className="h-4 w-4" />
                     Upgrade to Access Templates
                   </Button>
                 </Link>
-              </div>
+              </motion.div>
             </div>
           </div>
         </motion.div>
       )}
 
-      {/* Templates Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* User Templates Section */}
-        {userTemplates && userTemplates.length > 0 && (
+      {userTemplates && userTemplates.length > 0 && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <User className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2 mb-4 text-black">
               <h2 className="text-xl font-serif font-semibold">My Saved Templates</h2>
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="default" className="ml-2">
                 {userTemplates.length}
               </Badge>
             </div>
@@ -211,7 +238,7 @@ export default function TemplateBooks() {
                     y: -8,
                     transition: { duration: 0.3, ease: "easeOut" }
                   }}
-                  className="relative bg-card rounded-lg border border-border hover:shadow-2xl hover:border-primary transition-all duration-300 p-6 group overflow-hidden"
+                  className="relative bg-white hover:bg-gradient-to-r from-[#FBD4FF] to-[#FFFFFF] rounded-lg border border-border hover:shadow-2xl hover:border-primary transition-all duration-300 p-6 group overflow-hidden"
                   data-testid={`user-template-${index}`}
                 >
                   {/* Animated Delete Button */}
@@ -247,7 +274,7 @@ export default function TemplateBooks() {
                         }}
                         transition={{ duration: 0.6 }}
                       >
-                        <BookOpen className="h-8 w-8 text-primary" />
+                        <BookOpen className="h-8 w-8 text-black group-hover:text-primary transition-colors" />
                       </motion.div>
                       <motion.div
                         whileHover={{ scale: 1.05 }}
@@ -260,19 +287,19 @@ export default function TemplateBooks() {
                     </div>
                     
                     <motion.h3 
-                      className="text-lg font-semibold mb-2 group-hover:text-primary transition-colors"
+                      className="text-lg font-semibold mb-2 text-black group-hover:text-primary transition-colors"
                       whileHover={{ x: 4 }}
                       transition={{ duration: 0.2 }}
                     >
                       {template.title}
                     </motion.h3>
-                    <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+                    <p className="text-sm text-black line-clamp-3 mb-4">
                       {template.description || template.content.substring(0, 100) + "..."}
                     </p>
 
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50">
                       <motion.span 
-                        className="text-xs text-muted-foreground"
+                        className="text-xs text-black"
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.2 }}
                       >
@@ -282,8 +309,7 @@ export default function TemplateBooks() {
                         whileHover={{ scale: 1.05 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <Badge className="bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
-                          <User className="h-3 w-3 mr-1" />
+                        <Badge className="bg-primary/10 text-black transition-colors">
                           Your Template
                         </Badge>
                       </motion.div>
@@ -293,8 +319,8 @@ export default function TemplateBooks() {
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Template Preview Modal */}
       {selectedTemplate && (

@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { BookOpen, Eye, EyeOff } from "lucide-react";
 import { useLocation, Link } from "wouter";
@@ -25,7 +31,7 @@ export default function Signin() {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
@@ -34,13 +40,13 @@ export default function Signin() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        credentials: 'include',
+        credentials: "include",
       });
 
       const data = await response.json();
@@ -49,7 +55,7 @@ export default function Signin() {
         toast({
           title: "Login failed",
           description: data.message || "Invalid email or password",
-          variant: "destructive"
+          variant: "destructive",
         });
         setIsLoading(false);
         return;
@@ -62,29 +68,31 @@ export default function Signin() {
 
       // Invalidate auth query to refresh user data, then navigate
       await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      setLocation('/dashboard');
+      setLocation("/dashboard");
     } catch (error) {
       toast({
         title: "Login failed",
         description: "Something went wrong. Please try again.",
-        variant: "destructive"
+        variant: "destructive",
       });
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">LittleRoot</h1>
+            <img
+              src="/logo-icon.svg"
+              alt="Little Root"
+              className="h-6 md:h-8"
+            />
+            <h1 className="text-3xl font-bold text-gray-900">LittleRoot</h1>
           </div>
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
-          <CardDescription>
-            Sign in to your account to continue
-          </CardDescription>
+          <CardDescription>Sign in to your account to continue</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -105,13 +113,6 @@ export default function Signin() {
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label htmlFor="password">Password</Label>
-                <Link 
-                  href="/recover-password" 
-                  className="text-xs text-purple-600 hover:underline"
-                  data-testid="link-forgot-password"
-                >
-                  Forgot Password?
-                </Link>
               </div>
               <div className="relative">
                 <Input
@@ -129,19 +130,30 @@ export default function Signin() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                  data-testid="button-toggle-password-visibility"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  data-testid="button-toggle-password-visibility">
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
+            </div>
+
+            <div className="flex items-center justify-end">
+              <Link
+                href="/recover-password"
+                className="text-xs text-purple-600 hover:underline"
+                data-testid="link-forgot-password">
+                Forgot Password?
+              </Link>
             </div>
 
             <Button
               type="submit"
               className="w-full"
               disabled={isLoading}
-              data-testid="button-signin-submit"
-            >
+              data-testid="button-signin-submit">
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
 
@@ -164,7 +176,10 @@ export default function Signin() {
 
             <p className="text-sm text-center text-gray-600 dark:text-gray-400">
               Don't have an account?{" "}
-              <Link href="/signup" className="text-purple-600 hover:underline" data-testid="link-signup">
+              <Link
+                href="/signup"
+                className="text-purple-600 hover:underline"
+                data-testid="link-signup">
                 Sign up
               </Link>
             </p>

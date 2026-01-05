@@ -113,7 +113,7 @@ export default function Header({
   };
 
   return (
-    <header className="bg-card/80 backdrop-blur-lg border-b border-border sticky top-0 z-50">
+    <header className="backdrop-blur-lg border-b border-border sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto">
         <div className="flex items-center justify-between h-16 px-3 sm:px-6">
           <div className="flex items-center space-x-2 sm:space-x-4 min-w-0 flex-shrink-0">
@@ -123,28 +123,20 @@ export default function Header({
                 className="flex items-center space-x-2 sm:space-x-4 hover:opacity-80 transition-opacity"
                 data-testid="button-home"
               >
-                <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
-                  <BookOpen size={18} className="sm:w-5 sm:h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h1 className="text-base sm:text-lg font-serif font-bold truncate">LittleRoot</h1>
-                  <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-                    Children's Book Creator
-                  </p>
-                </div>
+                <img
+                  src="/sidebar-logo.svg"
+                  alt="Logo"
+                  className="w-20 h-20"
+                />
               </button>
             ) : (
               <Link href="/dashboard">
                 <button className="flex items-center space-x-2 sm:space-x-4 hover:opacity-80 transition-opacity">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
-                    <BookOpen size={18} className="sm:w-5 sm:h-5 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <h1 className="text-base sm:text-lg font-serif font-bold truncate">LittleRoot</h1>
-                    <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
-                      Children's Book Creator
-                    </p>
-                  </div>
+                  <img
+                    src="/sidebar-logo.svg"
+                    alt="Logo"
+                    className="w-20 h-20"
+                  />
                 </button>
               </Link>
             )}
@@ -229,19 +221,6 @@ export default function Header({
                 Help
               </button>
             </Link>
-
-            <Link href="/faq">
-              <button
-                className={`text-sm font-medium transition-colors ${
-                  isActive("/faq")
-                    ? "text-primary font-semibold"
-                    : "text-foreground hover:text-primary"
-                }`}
-                data-testid="button-faq"
-              >
-                FAQ
-              </button>
-            </Link>
           </nav>
 
           <div className="flex items-center space-x-2 sm:space-x-3">
@@ -262,10 +241,10 @@ export default function Header({
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative h-8 w-8"
+                  className="relative h-10 w-10"
                   data-testid="button-support-notifications"
                 >
-                  <Bell className="h-5 w-5" />
+                  <Bell className="h-4 w-4" />
                   <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive flex items-center justify-center text-xs font-bold text-destructive-foreground">
                     {unseenCount > 99 ? "99+" : unseenCount}
                   </span>
@@ -281,7 +260,7 @@ export default function Header({
                   data-testid="button-user-avatar"
                 >
                   <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                    <span className="text-primary-foreground text-sm font-medium">
+                    <span className="text-white text-sm font-medium">
                       {userLoading
                         ? "U"
                         : userWithSubscription?.firstName
@@ -499,20 +478,6 @@ export default function Header({
                 data-testid="button-help-mobile"
               >
                 Help
-              </button>
-            </Link>
-
-            <Link href="/faq">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
-                  isActive("/faq")
-                    ? "text-primary font-semibold bg-primary/10"
-                    : "text-foreground hover:text-primary hover:bg-accent"
-                }`}
-                data-testid="button-faq-mobile"
-              >
-                FAQ
               </button>
             </Link>
 

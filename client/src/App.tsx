@@ -24,7 +24,6 @@ const Settings = lazy(() => import("@/pages/settings"));
 const Subscription = lazy(() => import("@/pages/subscription"));
 const TemplateBooks = lazy(() => import("@/pages/template-books"));
 const Help = lazy(() => import("@/pages/help"));
-const FAQ = lazy(() => import("@/pages/faq"));
 const Support = lazy(() => import("@/pages/support"));
 const AdminLogin = lazy(() => import("@/pages/admin/login"));
 const AdminDashboard = lazy(() => import("@/pages/admin/dashboard"));
@@ -160,9 +159,6 @@ function Router() {
         </Route>
         <Route path="/help">
           {() => <ProtectedRoute component={Help} />}
-        </Route>
-        <Route path="/faq">
-          {() => <ProtectedRoute component={FAQ} />}
         </Route>
         <Route path="/support">
           {() => <ProtectedRoute component={Support} />}

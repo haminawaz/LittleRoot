@@ -192,7 +192,7 @@ export default function ResetPassword() {
 
   if (isVerifying) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
@@ -207,11 +207,15 @@ export default function ResetPassword() {
 
   if (!isTokenValid) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="flex items-center justify-center mb-4">
-              <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
+              <img
+                src="/logo-icon.svg"
+                alt="LittleRoot"
+                className="h-10 w-10 mr-2"
+              />
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 LittleRoot
               </h1>
@@ -245,11 +249,15 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <BookOpen className="h-10 w-10 text-purple-600 mr-2" />
+            <img
+              src="/logo-icon.svg"
+              alt="LittleRoot"
+              className="h-10 w-10 mr-2"
+            />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               LittleRoot
             </h1>

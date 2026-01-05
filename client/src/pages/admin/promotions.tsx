@@ -287,7 +287,7 @@ export default function AdminPromotions() {
                       add one.
                     </p>
                   ) : (
-                    <div className="rounded-xl border bg-card/60 backdrop-blur-sm shadow-sm">
+                    <div className="rounded-xl border backdrop-blur-sm shadow-sm">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -360,7 +360,7 @@ export default function AdminPromotions() {
                     animate={{ x: 0, opacity: 1 }}
                     exit={{ x: 56, opacity: 0 }}
                     transition={{ duration: 0.32, ease: [0.22, 0.61, 0.36, 1] }}
-                    className="w-full ml-auto bg-card rounded-xl border shadow-sm p-6 space-y-6">
+                    className="w-full ml-auto rounded-xl border shadow-sm p-6 space-y-6">
                     <div className="space-y-1">
                       <h2 className="text-xl font-semibold tracking-tight">
                         {editingPromotion

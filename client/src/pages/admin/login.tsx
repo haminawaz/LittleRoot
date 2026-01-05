@@ -85,7 +85,7 @@ export default function AdminLogin() {
 
   if (adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
       </div>
     );
@@ -96,42 +96,42 @@ export default function AdminLogin() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md border-purple-500/50 bg-gray-800/50 backdrop-blur-sm">
+    <div className="min-h-screen bg-white flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
-            <div className="relative">
-              <BookOpen className="h-10 w-10 text-purple-400 mr-2" />
-            </div>
-            <h1 className="text-3xl font-bold text-white">LittleRoot</h1>
+            <img
+              src="/logo-icon.svg"
+              alt="Little Root"
+              className="h-6 md:h-8"
+            />
+            <h1 className="text-3xl font-bold text-gray-900">LittleRoot</h1>
           </div>
-          <CardTitle className="text-2xl text-white">Admin Login</CardTitle>
-          <CardDescription className="text-gray-400">
+          <CardTitle className="text-2xl">Admin Login</CardTitle>
+          <CardDescription>
             Sign in to access the admin dashboard
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-gray-300">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="admin@littleroot.com"
+                placeholder="Enter your email"
                 value={formData.email}
                 onChange={handleInputChange}
                 required
-                className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500"
+                data-testid="input-signin-email"
               />
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-gray-300">
-                Password
-              </Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="password">Password</Label>
+              </div>
               <div className="relative">
                 <Input
                   id="password"
@@ -141,13 +141,14 @@ export default function AdminLogin() {
                   value={formData.password}
                   onChange={handleInputChange}
                   required
-                  className="bg-gray-700/50 border-gray-600 text-white placeholder:text-gray-500 pr-10"
+                  data-testid="input-signin-password"
+                  className="pr-10"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                >
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  data-testid="button-toggle-password-visibility">
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
                   ) : (
@@ -159,9 +160,9 @@ export default function AdminLogin() {
 
             <Button
               type="submit"
-              className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+              className="w-full"
               disabled={isLoading}
-            >
+              data-testid="button-signin-submit">
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
 

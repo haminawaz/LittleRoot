@@ -148,7 +148,14 @@ ${compositionGuidance}`;
       throw new Error("No image data found in stream response");
     }
   } catch (error) {
-    throw new Error(`Failed to generate illustration with streaming: ${error}`);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error(`Gemini Generation Error:`, errorMessage);
+    
+    if (errorMessage.includes('403') || errorMessage.includes('PERMISSION_DENIED')) {
+      throw new Error("API Permission Denied: Your API key may not have access to the 'gemini-2.5-flash-image-preview' model yet. Please check your Google AI Studio settings.");
+    }
+    
+    throw new Error(`Failed to generate illustration: ${errorMessage}`);
   }
 }
 

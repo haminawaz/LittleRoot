@@ -2215,11 +2215,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pages.push(page);
       }
 
-      // Update story status to completed so pages are visible
-      await storage.updateStory(storyId, { status: "completed" });
-
-      // Return immediately so user can see pages with text
-      res.json({ story, pages });
+      await storage.updateStory(storyId, { status: "generating" });
+      res.json({ 
+        message: "Story pages created. Illustrations are being generated in the background.",
+        story: { ...story, status: "generating" }, 
+        pages 
+      });
 
       // Generate images in background (don't await)
       const characterDescription = story.characterDescription || undefined;
@@ -2308,7 +2309,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.log(`✓ PDF ready for instant download: ${pdfUrl}`);
           } catch (pdfError) {
             console.error(`Failed to generate PDF for "${story.title}":`, pdfError);
-            // Don't fail the whole process if PDF generation fails
+            // Even if PDF fails, the images are done, so mark as completed
+            await storage.updateStory(storyId, { status: "completed" });
           }
 
         } catch (error) {

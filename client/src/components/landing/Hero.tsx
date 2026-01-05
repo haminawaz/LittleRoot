@@ -36,7 +36,7 @@ const Hero = () => {
                 href="#contact"
                 className="border-2 border-black text-black !bg-transparent hover:!bg-gray-50 text-base md:text-lg px-6 md:px-8 py-3 rounded-full flex items-center justify-center gap-2 w-full sm:w-auto"
               >
-                View Showcase
+                View Free Demo
                 <ArrowRight className="h-4 w-4 md:h-5 md:w-5" />
               </a>
             </div>

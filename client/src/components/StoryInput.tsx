@@ -98,8 +98,8 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
       toast({
-        title: "Success",
-        description: "Book pages generated successfully!",
+        title: "Generating Book",
+        description: "Your story pages have been created! Illustrations are now being generated in the background. You'll see them appear as they're ready.",
       });
     },
     onError: (error: any) => {

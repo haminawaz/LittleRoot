@@ -14,10 +14,99 @@ export interface EPUBExportProgress {
   progress: number;
 }
 
-async function fetchImageAsBlob(url: string): Promise<Blob> {
-  const response = await fetch(url);
-  if (!response.ok) throw new Error(`Failed to fetch image: ${url}`);
-  return await response.blob();
+interface TextOverlay {
+  text: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  x: number;
+  y: number;
+  width?: number;
+  isVisible: boolean;
+  textAlign: "left" | "center" | "right";
+}
+
+async function processImageWithOverlay(
+  imageUrl: string,
+  overlay: TextOverlay | null
+): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+
+    img.onload = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          throw new Error("Failed to get canvas context");
+        }
+        ctx.drawImage(img, 0, 0);
+        if (overlay && overlay.isVisible && overlay.text) {
+          const referenceWidth = 420;
+          const scaleFactor = img.width / referenceWidth;
+
+          const fontSize = (overlay.fontSize / 3) * scaleFactor;
+          ctx.font = `bold ${fontSize}px ${overlay.fontFamily}, sans-serif`;
+          ctx.fillStyle = overlay.color;
+          ctx.textAlign = overlay.textAlign;
+          ctx.textBaseline = "middle";
+
+          const centerX = (overlay.x / 100) * img.width;
+          const centerY = (overlay.y / 100) * img.height;
+          const boxWidth = ((overlay.width || 80) / 100) * img.width;
+
+          let drawX = centerX;
+          if (overlay.textAlign === "left") {
+            drawX = centerX - boxWidth / 2;
+          } else if (overlay.textAlign === "right") {
+            drawX = centerX + boxWidth / 2;
+          }
+
+          const words = overlay.text.split(" ");
+          const lines: string[] = [];
+          let currentLine = words[0];
+
+          for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + " " + word).width;
+            if (width < boxWidth) {
+              currentLine += " " + word;
+            } else {
+              lines.push(currentLine);
+              currentLine = word;
+            }
+          }
+          lines.push(currentLine);
+
+          const lineHeight = fontSize * 1.2;
+          const totalHeight = lines.length * lineHeight;
+          const startY = centerY - totalHeight / 2 + lineHeight / 2;
+
+          lines.forEach((line, i) => {
+            ctx.fillText(line, drawX, startY + i * lineHeight);
+          });
+        }
+
+        canvas.toBlob(
+          (blob) => {
+            if (blob) resolve(blob);
+            else reject(new Error("Failed to create blob from canvas"));
+          },
+          "image/jpeg",
+          0.9
+        );
+      } catch (err) {
+        reject(err);
+      }
+    };
+
+    img.onerror = () => reject(new Error(`Failed to load image: ${imageUrl}`));
+    img.src = imageUrl;
+  });
 }
 
 export async function exportToEPUB(
@@ -61,11 +150,14 @@ export async function exportToEPUB(
 
   if (hasCover) {
     try {
-      const blob = await fetchImageAsBlob((story as any).coverImageUrl);
+      const blob = await processImageWithOverlay(
+        (story as any).coverImageUrl,
+        (story as any).coverTextOverlay
+      );
       imageItems.push({
         id: "cover-image",
         href: "images/cover.jpg",
-        mediaType: blob.type || "image/jpeg",
+        mediaType: "image/jpeg",
         blob,
       });
     } catch (err) {
@@ -84,11 +176,14 @@ export async function exportToEPUB(
           message: `Processing image for page ${i + 1}...`,
           progress: 10 + Math.round((i / totalPages) * 40),
         });
-        const blob = await fetchImageAsBlob(page.imageUrl);
+        const blob = await processImageWithOverlay(
+          page.imageUrl,
+          (page as any).textOverlay
+        );
         imageItems.push({
           id: `page-image-${i}`,
           href: `images/page-${i}.jpg`,
-          mediaType: blob.type || "image/jpeg",
+          mediaType: "image/jpeg",
           blob,
         });
       } catch (err) {

@@ -94,26 +94,51 @@ ${compositionGuidance}`;
       try {
         const fileName = options.characterImageUrl.split('/').pop();
         if (fileName) {
-          const filePath = path.join(process.cwd(), "uploads", fileName);
-          if (fs.existsSync(filePath)) {
-            const imageData = fs.readFileSync(filePath);
-            const base64Image = imageData.toString('base64');
-            const mimeType = fileName.endsWith('.webp') ? 'image/webp' : 
-                            fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
-            
+          // Try multiple possible locations for the uploaded file
+          const possiblePaths = [
+            path.join(process.cwd(), "uploads", fileName),
+            path.join(process.cwd(), "generated-images", fileName), // Just in case
+            path.join(process.cwd(), fileName)
+          ];
+          
+          let imageBuffer: Buffer | null = null;
+          let mimeType = 'image/jpeg'; // Default
+          
+          for (const filePath of possiblePaths) {
+            if (fs.existsSync(filePath)) {
+              console.log(`✓ Found character reference image at: ${filePath}`);
+              imageBuffer = fs.readFileSync(filePath);
+              mimeType = fileName.endsWith('.webp') ? 'image/webp' : 
+                        fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+              break;
+            }
+          }
+
+          if (imageBuffer) {
             parts.push({
               inlineData: {
-                data: base64Image,
+                data: imageBuffer.toString('base64'),
                 mimeType: mimeType
               }
             });
             
             fullPrompt = `REFERENCE CHARACTER IMAGE: Use the attached image as the DEFINITIVE reference for the main character. Your generated illustration MUST FEATURE THIS EXACT CHARACTER with identical facial features, clothing, and style.\n\n${fullPrompt}`;
+          } else {
+            console.warn(`Warning: Character image URL provided (${options.characterImageUrl}) but file not found in tested paths. Proceeding with description only.`);
+            // Add emphatic instruction to rely on description since image is missing
+            if (options.characterDescription) {
+               fullPrompt += ` \n\nIMPORTANT: Since the reference image is unavailable, you MUST STICK STRICTLY to the character description: "${options.characterDescription}"`;
+            }
           }
         }
       } catch (err) {
         console.error("Error reading character image for illustration:", err);
       }
+    } else {
+       // No image provided - emphasize description
+       if (options.characterDescription && options.characterDescription.trim()) {
+         fullPrompt += ` \n\nCRITICAL CHARACTER CONSISTENCY: You MUST generate the character EXACTLY as described: "${options.characterDescription}". This appearance must be consistent with all other illustrations.`;
+       }
     }
     
     parts.push({ text: fullPrompt });
@@ -337,25 +362,51 @@ export async function generateBookIllustrations(
           try {
             const fileName = characterImageUrl.split('/').pop();
             if (fileName) {
-              const filePath = path.join(process.cwd(), "uploads", fileName);
-              if (fs.existsSync(filePath)) {
-                const imageData = fs.readFileSync(filePath);
+              // Try multiple possible locations for the uploaded file
+              const possiblePaths = [
+                path.join(process.cwd(), "uploads", fileName),
+                path.join(process.cwd(), "generated-images", fileName),
+                path.join(process.cwd(), fileName)
+              ];
+              
+              let imageBuffer: Buffer | null = null;
+              let mimeType = 'image/jpeg';
+              
+              for (const filePath of possiblePaths) {
+                if (fs.existsSync(filePath)) {
+                  console.log(`Using character image reference for page ${pageNumber} (found at ${filePath})`);
+                  imageBuffer = fs.readFileSync(filePath);
+                  mimeType = fileName.endsWith('.webp') ? 'image/webp' : 
+                          fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+                  break;
+                }
+              }
+
+              if (imageBuffer) {
                 parts.push({
                   inlineData: {
-                    data: imageData.toString('base64'),
-                    mimeType: fileName.endsWith('.webp') ? 'image/webp' : 
-                             fileName.endsWith('.png') ? 'image/png' : 'image/jpeg'
+                    data: imageBuffer.toString('base64'),
+                    mimeType: mimeType
                   }
                 });
-                console.log(`Using character image reference for page ${pageNumber}`);
                 
                 // Add reference instruction to the prompt
                 fullPrompt = `REFERENCE CHARACTER IMAGE: The attached image is the DEFINITIVE reference for the main character. You MUST use this EXACT character with identical facial features, hair, and clothing in your illustration for page ${pageNumber}.\n\n${fullPrompt}`;
+              } else {
+                 console.warn(`Warning: Character image URL provided for page ${pageNumber} but file not found. Using description only.`);
+                 if (characterDescription) {
+                    fullPrompt += ` \n\nIMPORTANT: Use the character description as the primary reference: "${characterDescription}"`;
+                 }
               }
             }
           } catch (err) {
             console.error("Error adding character image to page generation:", err);
           }
+        } else {
+           // Emphasize description if no image
+           if (characterDescription && characterDescription.trim()) {
+              fullPrompt += ` \n\nCRITICAL: Ensure the character matches this description EXACTLY: "${characterDescription}".`;
+           }
         }
         
         parts.push({ text: fullPrompt });
@@ -530,24 +581,50 @@ CRITICAL INSTRUCTION:
     try {
       const fileName = characterImageUrl.split('/').pop();
       if (fileName) {
-        const filePath = path.join(process.cwd(), "uploads", fileName);
-        if (fs.existsSync(filePath)) {
-          const imageData = fs.readFileSync(filePath);
+        // Try multiple possible locations for the uploaded file
+        const possiblePaths = [
+          path.join(process.cwd(), "uploads", fileName),
+          path.join(process.cwd(), "generated-images", fileName),
+          path.join(process.cwd(), fileName)
+        ];
+        
+        let imageBuffer: Buffer | null = null;
+        let mimeType = 'image/jpeg';
+        
+        for (const filePath of possiblePaths) {
+          if (fs.existsSync(filePath)) {
+            console.log(`Using character image reference for cover (found at ${filePath})`);
+            imageBuffer = fs.readFileSync(filePath);
+            mimeType = fileName.endsWith('.webp') ? 'image/webp' : 
+                    fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            break;
+          }
+        }
+
+        if (imageBuffer) {
           parts.push({
             inlineData: {
-              data: imageData.toString('base64'),
-              mimeType: fileName.endsWith('.webp') ? 'image/webp' : 
-                       fileName.endsWith('.png') ? 'image/png' : 'image/jpeg'
+              data: imageBuffer.toString('base64'),
+              mimeType: mimeType
             }
           });
-          console.log(`Using character image reference for cover`);
           
           prompt = `REFERENCE CHARACTER IMAGE: Use the attached image as the DEFINITIVE reference for the main character. The character on the cover MUST LOOK EXACTLY as shown in this reference image.\n\n${prompt}`;
+        } else {
+           console.warn(`Warning: Character image URL provided for cover but file not found. Using description only.`);
+           if (characterDescription) {
+              prompt += ` \n\nIMPORTANT: Use the character description as the primary visual reference: "${characterDescription}"`;
+           }
         }
       }
     } catch (err) {
       console.error("Error adding character image to cover generation:", err);
     }
+  } else {
+      // Emphasize description if no image
+      if (characterDescription && characterDescription.trim()) {
+        prompt += ` \n\nCRITICAL: Ensure the main character on the cover matches this description EXACTLY: "${characterDescription}".`;
+      }
   }
 
   parts.push({ text: prompt });

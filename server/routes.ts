@@ -147,54 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique filename with proper extension
       const fileName = `character-${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-      
-      // Determine if we should use object storage (only on Replit)
-      const useObjectStorage = !!process.env.REPL_ID;
-      
-      if (useObjectStorage) {
-        try {
-          const privateDir = objectStorageService.getPrivateObjectDir();
-          const objectPath = `${privateDir}/uploads/${fileName}`;
-          
-          // Parse object path manually
-          let objPath = objectPath;
-          if (!objPath.startsWith("/")) {
-            objPath = `/${objPath}`;
-          }
-          const parts = objPath.slice(1).split("/");
-          const bucketName = parts[0];
-          const objectName = parts.slice(1).join("/");
 
-          const { objectStorageClient } = await import("./objectStorage");
-          const bucket = objectStorageClient.bucket(bucketName);
-          const file = bucket.file(objectName);
-          
-          const stream = file.createWriteStream({
-            metadata: {
-              contentType: contentType
-            },
-            resumable: false // Disable resumable uploads for better error handling/speed
-          });
-
-          await new Promise((resolve, reject) => {
-            stream.on('error', (err) => {
-              console.warn("Object storage stream error:", err.message);
-              reject(err);
-            });
-            stream.on('finish', resolve);
-            stream.end(imageBuffer);
-          });
-
-          const imageUrl = `/objects/uploads/${fileName}`;
-          console.log(`Successfully uploaded character image to object storage: ${fileName} (${contentType})`);
-          return res.json({ url: imageUrl, path: `uploads/${fileName}` });
-        } catch (storageError) {
-          console.warn("Object storage failed, falling back to local storage:", storageError instanceof Error ? storageError.message : String(storageError));
-          // Fall through to local storage logic below
-        }
-      }
-
-      // Fallback to local storage or used when not on Replit
       const uploadsDir = path.join(process.cwd(), "uploads");
       if (!fs.existsSync(uploadsDir)) {
         fs.mkdirSync(uploadsDir, { recursive: true });
@@ -203,7 +156,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filePath = path.join(uploadsDir, fileName);
       fs.writeFileSync(filePath, imageBuffer);
       
-      const imageUrl = `/objects/uploads/${fileName}`;
+      // Return URL pointing to the static middleware serving /uploads
+      const imageUrl = `/uploads/${fileName}`;
       console.log(`Successfully uploaded character image locally: ${fileName} (${contentType})`);
       return res.json({ url: imageUrl, path: `uploads/${fileName}` });
     } catch (error) {

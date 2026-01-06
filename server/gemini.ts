@@ -26,6 +26,7 @@ async function compressImage(
 export interface GenerateImageOptions {
   prompt: string;
   characterDescription?: string;
+  characterImageUrl?: string;
   artStyle: string;
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
@@ -38,6 +39,7 @@ export interface GenerateBookImagesOptions {
   artStyle: string;
   pageTexts: string[];
   characterDescription?: string;
+  characterImageUrl?: string;
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
   height?: number; // Image height in pixels (300 DPI)
@@ -87,6 +89,33 @@ ${compositionGuidance}`;
     
     // Prepare parts array for the request
     const parts: any[] = [];
+    
+    if (options.characterImageUrl) {
+      try {
+        const fileName = options.characterImageUrl.split('/').pop();
+        if (fileName) {
+          const filePath = path.join(process.cwd(), "uploads", fileName);
+          if (fs.existsSync(filePath)) {
+            const imageData = fs.readFileSync(filePath);
+            const base64Image = imageData.toString('base64');
+            const mimeType = fileName.endsWith('.webp') ? 'image/webp' : 
+                            fileName.endsWith('.png') ? 'image/png' : 'image/jpeg';
+            
+            parts.push({
+              inlineData: {
+                data: base64Image,
+                mimeType: mimeType
+              }
+            });
+            
+            fullPrompt = `REFERENCE CHARACTER IMAGE: Use the attached image as the DEFINITIVE reference for the main character. Your generated illustration MUST FEATURE THIS EXACT CHARACTER with identical facial features, clothing, and style.\n\n${fullPrompt}`;
+          }
+        }
+      } catch (err) {
+        console.error("Error reading character image for illustration:", err);
+      }
+    }
+    
     parts.push({ text: fullPrompt });
 
     const config = {
@@ -268,7 +297,7 @@ export async function generateBookIllustrations(
   storyId: string,
   onPageComplete?: (pageIndex: number, imageUrl: string) => Promise<void>
 ): Promise<string[]> {
-  const { pageTexts, title, content, artStyle, characterDescription, pdfFormat = '8x8' } = options;
+  const { pageTexts, title, content, artStyle, characterDescription, characterImageUrl, pdfFormat = '8x8' } = options;
   
   console.log(`Generating ${pageTexts.length} illustrations for "${title}" using sequential generation with Gemini 2.5 Flash Image (Nano Banana)...`);
   
@@ -292,7 +321,7 @@ export async function generateBookIllustrations(
         console.log(`Generating illustration ${pageNumber}/${pageTexts.length} (attempt ${attempt}/${MAX_RETRIES})...`);
         
         // Create a detailed prompt with full story context for consistency
-        const fullPrompt = createIndividualPagePrompt({
+        let fullPrompt = createIndividualPagePrompt({
           pageText,
           pageNumber,
           totalPages: pageTexts.length,
@@ -303,7 +332,33 @@ export async function generateBookIllustrations(
           pdfFormat
         });
         
-        const parts = [{ text: fullPrompt }];
+        const parts = [];
+        if (characterImageUrl) {
+          try {
+            const fileName = characterImageUrl.split('/').pop();
+            if (fileName) {
+              const filePath = path.join(process.cwd(), "uploads", fileName);
+              if (fs.existsSync(filePath)) {
+                const imageData = fs.readFileSync(filePath);
+                parts.push({
+                  inlineData: {
+                    data: imageData.toString('base64'),
+                    mimeType: fileName.endsWith('.webp') ? 'image/webp' : 
+                             fileName.endsWith('.png') ? 'image/png' : 'image/jpeg'
+                  }
+                });
+                console.log(`Using character image reference for page ${pageNumber}`);
+                
+                // Add reference instruction to the prompt
+                fullPrompt = `REFERENCE CHARACTER IMAGE: The attached image is the DEFINITIVE reference for the main character. You MUST use this EXACT character with identical facial features, hair, and clothing in your illustration for page ${pageNumber}.\n\n${fullPrompt}`;
+              }
+            }
+          } catch (err) {
+            console.error("Error adding character image to page generation:", err);
+          }
+        }
+        
+        parts.push({ text: fullPrompt });
         const config = {
           responseModalities: ['IMAGE', 'TEXT'],
         };
@@ -412,6 +467,7 @@ export async function generateCoverIllustration(
   artStyle: string,
   storyOverview: string,
   characterDescription: string | undefined,
+  characterImageUrl: string | undefined,
   outputPath: string,
   pdfFormat?: string,  // PDF format for orientation guidance
   width?: number,  // Image width in pixels (300 DPI)
@@ -468,7 +524,31 @@ CRITICAL INSTRUCTION:
 - Generate ONLY the clean artwork/illustration
 - Text will be added programmatically later for consistency
 
-Create an enchanting, professional-quality children's book cover with a perfectly centered, prominent title.`;
+  Create an enchanting, professional-quality children's book cover with a perfectly centered, prominent title.`;
+
+  if (characterImageUrl) {
+    try {
+      const fileName = characterImageUrl.split('/').pop();
+      if (fileName) {
+        const filePath = path.join(process.cwd(), "uploads", fileName);
+        if (fs.existsSync(filePath)) {
+          const imageData = fs.readFileSync(filePath);
+          parts.push({
+            inlineData: {
+              data: imageData.toString('base64'),
+              mimeType: fileName.endsWith('.webp') ? 'image/webp' : 
+                       fileName.endsWith('.png') ? 'image/png' : 'image/jpeg'
+            }
+          });
+          console.log(`Using character image reference for cover`);
+          
+          prompt = `REFERENCE CHARACTER IMAGE: Use the attached image as the DEFINITIVE reference for the main character. The character on the cover MUST LOOK EXACTLY as shown in this reference image.\n\n${prompt}`;
+        }
+      }
+    } catch (err) {
+      console.error("Error adding character image to cover generation:", err);
+    }
+  }
 
   parts.push({ text: prompt });
 

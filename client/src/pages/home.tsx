@@ -7,6 +7,7 @@ import StoryInput from "@/components/StoryInput";
 import PageGrid from "@/components/PageGrid";
 import BookPreviewModal from "@/components/BookPreviewModal";
 import { exportToPDF, type PDFExportProgress } from "@/lib/pdfExport";
+import { exportToEPUB, type EPUBExportProgress } from "@/lib/epubExport";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -23,6 +24,7 @@ export default function Home() {
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportType, setExportType] = useState<"pdf" | "epub" | null>(null);
   const [viewMode, setViewMode] = useState<"create" | "my-books">("create");
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -217,6 +219,7 @@ export default function Home() {
     }
 
     setIsExporting(true);
+    setExportType("pdf");
 
     const progressToast = toast({
       title: "Preparing your book for download...",
@@ -283,6 +286,84 @@ export default function Home() {
       });
     } finally {
       setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  const handleExportEPUB = async () => {
+    if (!story) return;
+
+    const hasGeneratingPages = story.pages?.some(
+      (page) => page.isGenerating
+    ) ?? false;
+
+    if (hasGeneratingPages) {
+      toast({
+        title: "Please Wait",
+        description:
+          "Please wait until all illustrations are generated before downloading your book.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    setExportType("epub");
+
+    const progressToast = toast({
+      title: "Preparing your book for download...",
+      description: "This may take a moment. Please wait...",
+      duration: Infinity,
+    });
+
+    try {
+      await exportToEPUB(story, (progress: EPUBExportProgress) => {
+        const progressPercent = progress.progress;
+        let description = progress.message;
+
+        if (progress.current && progress.total) {
+          description = `${progress.message} (${progress.current}/${progress.total})`;
+        }
+
+        progressToast.update({
+          id: progressToast.id,
+          title:
+            progress.stage === "complete"
+              ? "Download starting..."
+              : "Exporting EPUB...",
+          description: (
+            <div className="space-y-2 w-full" style={{ width: '100%', display: 'block' }}>
+              <p className="break-words w-full">{description}</p>
+              {progress.stage !== "complete" && (
+                <div className="bg-secondary rounded-full h-2 overflow-hidden w-full" style={{ width: '100%', display: 'block' }}>
+                  <div
+                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ),
+        });
+      });
+
+      progressToast.dismiss();
+      toast({
+        title: "Success",
+        description: "Your book has been exported as an EPUB!",
+      });
+    } catch (error) {
+      console.error("EPUB export failed:", error);
+      progressToast.dismiss();
+      toast({
+        title: "Export Failed",
+        description:
+          "There was an error exporting your book. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
     }
   };
 
@@ -491,16 +572,35 @@ export default function Home() {
                       disabled={
                         !story || story.pages.length === 0 || isExporting
                       }
-                      data-testid="button-export"
+                      data-testid="button-export-pdf"
                       className="text-xs sm:text-sm flex-1 sm:flex-initial"
                     >
-                      {isExporting ? (
+                      {isExporting && exportType === "pdf" ? (
                         <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
                       ) : (
                         <Download size={14} className="mr-1" />
                       )}
                       <span className="hidden sm:inline">
-                        {isExporting ? "Exporting..." : "Export PDF"}
+                        {isExporting && exportType === "pdf" ? "Exporting..." : "Export PDF"}
+                      </span>
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleExportEPUB}
+                      disabled={
+                        !story || story.pages.length === 0 || isExporting
+                      }
+                      data-testid="button-export-epub"
+                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                    >
+                      {isExporting && exportType === "epub" ? (
+                        <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
+                      ) : (
+                        <BookOpen size={14} className="mr-1" />
+                      )}
+                      <span className="hidden sm:inline">
+                        {isExporting && exportType === "epub" ? "Exporting..." : "Export EPUB"}
                       </span>
                     </Button>
                   </div>

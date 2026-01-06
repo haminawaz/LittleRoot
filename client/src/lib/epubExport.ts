@@ -1,0 +1,263 @@
+import JSZip from "jszip";
+import type { StoryWithPages } from "@shared/schema";
+
+export interface EPUBExportProgress {
+  stage:
+    | "initializing"
+    | "processing-images"
+    | "generating-content"
+    | "finalizing"
+    | "complete";
+  current?: number;
+  total?: number;
+  message: string;
+  progress: number;
+}
+
+async function fetchImageAsBlob(url: string): Promise<Blob> {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`Failed to fetch image: ${url}`);
+  return await response.blob();
+}
+
+export async function exportToEPUB(
+  story: StoryWithPages,
+  onProgress?: (progress: EPUBExportProgress) => void
+): Promise<void> {
+  onProgress?.({
+    stage: "initializing",
+    message: "Initializing EPUB generation...",
+    progress: 0,
+  });
+
+  const zip = new JSZip();
+
+  zip.file("mimetype", "application/epub+zip", { compression: "STORE" });
+
+  zip.file(
+    "META-INF/container.xml",
+    `<?xml version="1.0"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+  <rootfiles>
+    <rootfile full-path="OEBPS/content.opf" media-type="application/oebps-package+xml"/>
+  </rootfiles>
+</container>`
+  );
+
+  const totalPages = story.pages.length;
+  const hasCover = !!(story as any).coverImageUrl;
+  const imageItems: {
+    id: string;
+    href: string;
+    mediaType: string;
+    blob: Blob;
+  }[] = [];
+
+  onProgress?.({
+    stage: "processing-images",
+    message: "Processing images...",
+    progress: 10,
+  });
+
+  if (hasCover) {
+    try {
+      const blob = await fetchImageAsBlob((story as any).coverImageUrl);
+      imageItems.push({
+        id: "cover-image",
+        href: "images/cover.jpg",
+        mediaType: blob.type || "image/jpeg",
+        blob,
+      });
+    } catch (err) {
+      console.warn("Failed to include cover image in EPUB", err);
+    }
+  }
+
+  for (let i = 0; i < story.pages.length; i++) {
+    const page = story.pages[i];
+    if (page.imageUrl) {
+      try {
+        onProgress?.({
+          stage: "processing-images",
+          current: i + 1,
+          total: totalPages,
+          message: `Processing image for page ${i + 1}...`,
+          progress: 10 + Math.round((i / totalPages) * 40),
+        });
+        const blob = await fetchImageAsBlob(page.imageUrl);
+        imageItems.push({
+          id: `page-image-${i}`,
+          href: `images/page-${i}.jpg`,
+          mediaType: blob.type || "image/jpeg",
+          blob,
+        });
+      } catch (err) {
+        console.warn(`Failed to include image for page ${i + 1} in EPUB`, err);
+      }
+    }
+  }
+
+  imageItems.forEach((item) => {
+    zip.file(`OEBPS/${item.href}`, item.blob);
+  });
+
+  onProgress?.({
+    stage: "generating-content",
+    message: "Generating book content...",
+    progress: 60,
+  });
+
+  zip.file(
+    "OEBPS/style.css",
+    `body { font-family: sans-serif; margin: 0; padding: 0; text-align: center; }
+.page { page-break-after: always; padding: 20px; }
+.page-image { max-width: 100%; height: auto; margin-bottom: 20px; }
+.page-text { font-size: 1.2em; line-height: 1.5; text-align: left; }
+.cover { text-align: center; }
+.cover-image { max-width: 100%; height: auto; }
+h1 { font-family: serif; }`
+  );
+
+  const pageItems: { id: string; href: string; title: string }[] = [];
+
+  if (hasCover) {
+    const coverHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Cover</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+  <div class="cover">
+    <img src="images/cover.jpg" class="cover-image" alt="Cover"/>
+    <h1>${story.title}</h1>
+  </div>
+</body>
+</html>`;
+    zip.file("OEBPS/cover.xhtml", coverHtml);
+    pageItems.push({ id: "cover", href: "cover.xhtml", title: "Cover" });
+  }
+
+  story.pages.forEach((page, i) => {
+    const pageId = `page-${i}`;
+    const pageHref = `page-${i}.xhtml`;
+    const imageHref = page.imageUrl ? `images/page-${i}.jpg` : null;
+
+    const pageHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>Page ${i + 1}</title>
+  <link rel="stylesheet" type="text/css" href="style.css"/>
+</head>
+<body>
+  <div class="page">
+    ${
+      imageHref
+        ? `<img src="${imageHref}" class="page-image" alt="Page ${i + 1}"/>`
+        : ""
+    }
+    <div class="page-text">
+      ${page.text
+        .split("\n")
+        .map((p) => `<p>${p}</p>`)
+        .join("")}
+    </div>
+  </div>
+</body>
+</html>`;
+    zip.file(`OEBPS/${pageHref}`, pageHtml);
+    pageItems.push({ id: pageId, href: pageHref, title: `Page ${i + 1}` });
+  });
+
+  const tocNcx = `<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head>
+    <meta name="dtb:uid" content="urn:uuid:${story.id}"/>
+    <meta name="dtb:depth" content="1"/>
+    <meta name="dtb:totalPageCount" content="0"/>
+    <meta name="dtb:maxPageNumber" content="0"/>
+  </head>
+  <docTitle>
+    <text>${story.title}</text>
+  </docTitle>
+  <navMap>
+    ${pageItems
+      .map(
+        (page, i) => `
+    <navPoint id="navPoint-${i + 1}" playOrder="${i + 1}">
+      <navLabel><text>${page.title}</text></navLabel>
+      <content src="${page.href}"/>
+    </navPoint>`
+      )
+      .join("")}
+  </navMap>
+</ncx>`;
+  zip.file("OEBPS/toc.ncx", tocNcx);
+
+  const contentOpf = `<?xml version="1.0" encoding="UTF-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" unique-identifier="BookId" version="2.0">
+  <metadata xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:opf="http://www.idpf.org/2007/opf">
+    <dc:title>${story.title}</dc:title>
+    <dc:language>en</dc:language>
+    <dc:identifier id="BookId">urn:uuid:${story.id}</dc:identifier>
+    <dc:creator>LittleRoot</dc:creator>
+    ${hasCover ? '<meta name="cover" content="cover-image"/>' : ""}
+  </metadata>
+  <manifest>
+    <item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>
+    <item id="style" href="style.css" media-type="text/css"/>
+    ${pageItems
+      .map(
+        (page) =>
+          `<item id="${page.id}" href="${page.href}" media-type="application/xhtml+xml"/>`
+      )
+      .join("\n    ")}
+    ${imageItems
+      .map(
+        (img) =>
+          `<item id="${img.id}" href="${img.href}" media-type="${img.mediaType}"/>`
+      )
+      .join("\n    ")}
+  </manifest>
+  <spine toc="ncx">
+    ${pageItems.map((page) => `<itemref idref="${page.id}"/>`).join("\n    ")}
+  </spine>
+  <guide>
+    ${
+      hasCover
+        ? '<reference type="cover" title="Cover" href="cover.xhtml"/>'
+        : ""
+    }
+  </guide>
+</package>`;
+  zip.file("OEBPS/content.opf", contentOpf);
+
+  onProgress?.({
+    stage: "finalizing",
+    message: "Finalizing EPUB file...",
+    progress: 90,
+  });
+
+  const blob = await zip.generateAsync({ type: "blob" });
+
+  const fileName = `${story.title.replace(
+    /[^a-zA-Z0-9]/g,
+    "_"
+  )}_${Date.now()}.epub`;
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+
+  onProgress?.({
+    stage: "complete",
+    message: "Download complete!",
+    progress: 100,
+  });
+}

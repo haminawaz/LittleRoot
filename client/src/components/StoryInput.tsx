@@ -42,8 +42,11 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
       return response.json() as Promise<Story>;
     },
     onSuccess: (story) => {
-      onStoryCreated(story.id);
-      generateBookMutation.mutate(story.id);
+      generateBookMutation.mutate(story.id, {
+        onSuccess: () => {
+          onStoryCreated(story.id);
+        }
+      });
     },
     onError: (error: any) => {
       let title = "Error";

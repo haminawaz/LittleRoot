@@ -103,6 +103,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Object storage routes for private file serving
   app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
+      const objectPath = req.params.objectPath;
+      
+      // Try local filesystem first (for local dev fallback)
+      const localPath = path.join(process.cwd(), "uploads", objectPath.replace(/^uploads\//, ""));
+      if (fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
+        return res.sendFile(localPath);
+      }
+
       const objectFile = await objectStorageService.getObjectEntityFile(req.path);
       objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
@@ -126,7 +134,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get content type and filename from headers
       const contentType = req.headers['content-type'] || 'image/png';
-      const originalName = req.headers['x-file-name'] || 'character-image';
       
       // Determine file extension from content type
       let extension = 'png';
@@ -140,38 +147,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique filename with proper extension
       const fileName = `character-${Date.now()}-${Math.random().toString(36).substring(7)}.${extension}`;
-      const privateDir = objectStorageService.getPrivateObjectDir();
-      const objectPath = `${privateDir}/uploads/${fileName}`;
       
-      // Parse object path manually since parseObjectPath is not exported
-      let path = objectPath;
-      if (!path.startsWith("/")) {
-        path = `/${path}`;
-      }
-      const parts = path.slice(1).split("/");
-      const bucketName = parts[0];
-      const objectName = parts.slice(1).join("/");
+      // Determine if we should use object storage (only on Replit)
+      const useObjectStorage = !!process.env.REPL_ID;
+      
+      if (useObjectStorage) {
+        try {
+          const privateDir = objectStorageService.getPrivateObjectDir();
+          const objectPath = `${privateDir}/uploads/${fileName}`;
+          
+          // Parse object path manually
+          let objPath = objectPath;
+          if (!objPath.startsWith("/")) {
+            objPath = `/${objPath}`;
+          }
+          const parts = objPath.slice(1).split("/");
+          const bucketName = parts[0];
+          const objectName = parts.slice(1).join("/");
 
-      // Upload to object storage
-      const { objectStorageClient } = await import("./objectStorage");
-      const bucket = objectStorageClient.bucket(bucketName);
-      const file = bucket.file(objectName);
-      
-      const stream = file.createWriteStream({
-        metadata: {
-          contentType: contentType
+          const { objectStorageClient } = await import("./objectStorage");
+          const bucket = objectStorageClient.bucket(bucketName);
+          const file = bucket.file(objectName);
+          
+          const stream = file.createWriteStream({
+            metadata: {
+              contentType: contentType
+            },
+            resumable: false // Disable resumable uploads for better error handling/speed
+          });
+
+          await new Promise((resolve, reject) => {
+            stream.on('error', (err) => {
+              console.warn("Object storage stream error:", err.message);
+              reject(err);
+            });
+            stream.on('finish', resolve);
+            stream.end(imageBuffer);
+          });
+
+          const imageUrl = `/objects/uploads/${fileName}`;
+          console.log(`Successfully uploaded character image to object storage: ${fileName} (${contentType})`);
+          return res.json({ url: imageUrl, path: `uploads/${fileName}` });
+        } catch (storageError) {
+          console.warn("Object storage failed, falling back to local storage:", storageError instanceof Error ? storageError.message : String(storageError));
+          // Fall through to local storage logic below
         }
-      });
+      }
 
-      await new Promise((resolve, reject) => {
-        stream.on('error', reject);
-        stream.on('finish', resolve);
-        stream.end(imageBuffer);
-      });
-
+      // Fallback to local storage or used when not on Replit
+      const uploadsDir = path.join(process.cwd(), "uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      
+      const filePath = path.join(uploadsDir, fileName);
+      fs.writeFileSync(filePath, imageBuffer);
+      
       const imageUrl = `/objects/uploads/${fileName}`;
-      console.log(`Successfully uploaded character image: ${fileName} (${contentType})`);
-      res.json({ url: imageUrl, path: `uploads/${fileName}` });
+      console.log(`Successfully uploaded character image locally: ${fileName} (${contentType})`);
+      return res.json({ url: imageUrl, path: `uploads/${fileName}` });
     } catch (error) {
       console.error("Error uploading character image:", error);
       res.status(500).json({ error: "Failed to upload image" });
@@ -2224,6 +2258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate images in background (don't await)
       const characterDescription = story.characterDescription || undefined;
+      const characterImageUrl = story.characterImageUrl || undefined;
       console.log(`Starting background image generation for "${story.title}" with ${pageTexts.length} pages`);
       
       // Get user info to check if we need to track illustrations for paid users
@@ -2246,6 +2281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             story.artStyle,
             story.content,
             characterDescription,
+            characterImageUrl,
             coverPath,
             story.pdfFormat,  // Pass format for proper orientation in AI prompts
             dimensions.width,
@@ -2263,6 +2299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             artStyle: story.artStyle,
             pageTexts: pageTexts,
             characterDescription,
+            characterImageUrl,
             pdfFormat: story.pdfFormat,  // Pass format for proper orientation in AI prompts
             width: dimensions.width,
             height: dimensions.height
@@ -2360,6 +2397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const characterDescription = story.characterDescription || undefined;
+      const characterImageUrl = story.characterImageUrl || undefined;
       
       (async () => {
         try {
@@ -2375,6 +2413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             story.artStyle,
             story.content,
             characterDescription,
+            characterImageUrl,
             coverPath,
             story.pdfFormat,  // Pass format for proper orientation in AI prompts
             dimensions.width,
@@ -2560,6 +2599,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempImagePath = path.join(imagesDir, `temp_${pageId}.webp`);
       const finalImagePath = path.join(imagesDir, `${pageId}.webp`);
       const characterDescription = story.characterDescription || undefined;
+      const characterImageUrl = story.characterImageUrl || undefined;
       
       // Get image dimensions based on PDF format
       const dimensions = getImageDimensionsForFormat(story.pdfFormat);
@@ -2568,6 +2608,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await generateIllustration({
         prompt: prompt,
         characterDescription,
+        characterImageUrl,
         artStyle: story.artStyle,
         pdfFormat: story.pdfFormat,  // Pass format for proper orientation in AI prompts
         width: dimensions.width,

@@ -161,8 +161,18 @@ export default function PageGrid({ story }: PageGridProps) {
       const response = await apiRequest("PUT", `/api/stories/${story.id}`, updates);
       return response.json() as Promise<Story>;
     },
-    onSuccess: () => {
+    onSuccess: (updatedStory) => {
+      queryClient.setQueryData(["/api/stories", story.id], (oldData: StoryWithPages | undefined) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          ...updatedStory
+        };
+      });
+
       queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      setTextEditorOpen(false);
+      setEditingOverlayType(null);
       toast({
         title: "Saved",
         description: "Story updated successfully!",
@@ -182,8 +192,19 @@ export default function PageGrid({ story }: PageGridProps) {
       const response = await apiRequest("PUT", `/api/pages/${pageId}`, { textOverlay });
       return response.json() as Promise<Page>;
     },
-    onSuccess: () => {
+    onSuccess: (updatedPage) => {
+      queryClient.setQueryData(["/api/stories", story.id], (oldData: StoryWithPages | undefined) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          pages: oldData.pages.map(p => p.id === updatedPage.id ? updatedPage : p)
+        };
+      });
+      
       queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      setTextEditorOpen(false);
+      setEditingOverlayType(null);
+      setEditingOverlayPageId(null);
       toast({
         title: "Saved",
         description: "Text overlay saved!",
@@ -501,9 +522,8 @@ export default function PageGrid({ story }: PageGridProps) {
                   }}
                   onSave={(newOverlay) => {
                     updateStoryMutation.mutate({ coverTextOverlay: newOverlay } as any);
-                    setTextEditorOpen(false);
-                    setEditingOverlayType(null);
                   }}
+                  isSaving={updateStoryMutation.isPending}
                 />
               )}
 
@@ -622,10 +642,8 @@ export default function PageGrid({ story }: PageGridProps) {
                           pageId: page.id,
                           textOverlay: newOverlay,
                         });
-                        setTextEditorOpen(false);
-                        setEditingOverlayType(null);
-                        setEditingOverlayPageId(null);
                       }}
+                      isSaving={updatePageOverlayMutation.isPending}
                     />
                   )}
                 </>
@@ -798,7 +816,7 @@ export default function PageGrid({ story }: PageGridProps) {
                     rows={3}
                     data-testid={`textarea-page-${page.pageNumber}`}
                   />
-                  <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center pt-2 space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="default"
                       size="sm"

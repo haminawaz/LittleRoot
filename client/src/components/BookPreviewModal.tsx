@@ -16,9 +16,15 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { exportToPDF, validateStoryForExport } from "@/lib/pdfExport";
+import { exportToEPUB } from "@/lib/epubExport";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { StoryWithPages } from "@shared/schema";
+import { 
+  FileText, 
+  Book as BookIcon,
+  Loader2
+} from "lucide-react";
 
 interface BookPreviewModalProps {
   story: StoryWithPages;
@@ -34,6 +40,7 @@ export default function BookPreviewModal({
     (story as any).coverImageUrl ? -1 : 0
   );
   const [isExporting, setIsExporting] = useState(false);
+  const [exportType, setExportType] = useState<"pdf" | "epub" | null>(null);
   const [coverRegenerating, setCoverRegenerating] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
   const { toast } = useToast();
@@ -102,6 +109,7 @@ export default function BookPreviewModal({
 
   const handleExportPDF = async () => {
     setIsExporting(true);
+    setExportType("pdf");
     try {
       const pdfUrl = (story as any).pdfUrl;
 
@@ -160,6 +168,29 @@ export default function BookPreviewModal({
       });
     } finally {
       setIsExporting(false);
+      setExportType(null);
+    }
+  };
+
+  const handleExportEPUB = async () => {
+    setIsExporting(true);
+    setExportType("epub");
+    try {
+      await exportToEPUB(story);
+      toast({
+        title: "Success",
+        description: "EPUB exported successfully! Ready for your e-reader.",
+      });
+    } catch (error) {
+      console.error("EPUB export error:", error);
+      toast({
+        title: "Export Failed",
+        description: "Failed to export EPUB. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+      setExportType(null);
     }
   };
 
@@ -498,26 +529,43 @@ export default function BookPreviewModal({
             </Button>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportPDF}
-            disabled={isExporting}
-            data-testid="button-export-pdf"
-            className="w-full sm:w-auto"
-          >
-            {isExporting ? (
-              <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1.5"></div>
-            ) : (
-              <Download size={16} className="mr-1.5" />
-            )}
-            <span className="hidden sm:inline">
-              {isExporting ? "Exporting..." : "Export PDF"}
-            </span>
-            <span className="sm:hidden">
-              {isExporting ? "Exporting..." : "Export"}
-            </span>
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+              disabled={isExporting}
+              data-testid="button-export-pdf"
+              className="flex-1 sm:flex-initial"
+            >
+              {isExporting && exportType === "pdf" ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              ) : (
+                <FileText size={16} className="mr-1.5" />
+              )}
+              <span>
+                {isExporting && exportType === "pdf" ? "Exporting..." : "Export PDF"}
+              </span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportEPUB}
+              disabled={isExporting}
+              data-testid="button-export-epub"
+              className="flex-1 sm:flex-initial"
+            >
+              {isExporting && exportType === "epub" ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+              ) : (
+                <BookIcon size={16} className="mr-1.5" />
+              )}
+              <span>
+                {isExporting && exportType === "epub" ? "Exporting..." : "Export EPUB"}
+              </span>
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

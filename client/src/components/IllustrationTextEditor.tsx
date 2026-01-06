@@ -11,6 +11,7 @@ import {
   X,
   Plus,
   Minus,
+  Loader2,
 } from "lucide-react";
 import {
   Select,
@@ -40,6 +41,7 @@ interface IllustrationTextEditorProps {
   onCancel: () => void;
   imageUrl: string;
   defaultText: string;
+  isSaving?: boolean;
 }
 
 const DEFAULT_OVERLAY: TextOverlay = {
@@ -72,6 +74,7 @@ export default function IllustrationTextEditor({
   onCancel,
   imageUrl,
   defaultText,
+  isSaving = false,
 }: IllustrationTextEditorProps) {
   const [currentOverlay, setCurrentOverlay] = useState<TextOverlay>(
     overlay || { ...DEFAULT_OVERLAY, text: defaultText }
@@ -120,6 +123,7 @@ export default function IllustrationTextEditor({
           variant={editMode === "move" ? "secondary" : "ghost"}
           size="sm"
           onClick={() => setEditMode("move")}
+          disabled={isSaving}
           className="h-9 w-9 p-0">
           <MousePointer2 size={18} />
         </Button>
@@ -127,6 +131,7 @@ export default function IllustrationTextEditor({
           variant={editMode === "format" ? "secondary" : "ghost"}
           size="sm"
           onClick={() => setEditMode("format")}
+          disabled={isSaving}
           className="h-9 w-9 p-0">
           <Type size={18} />
         </Button>
@@ -134,6 +139,7 @@ export default function IllustrationTextEditor({
           variant={editMode === "color" ? "secondary" : "ghost"}
           size="sm"
           onClick={() => setEditMode("color")}
+          disabled={isSaving}
           className="h-9 w-9 p-0">
           <Paintbrush size={18} />
         </Button>
@@ -144,13 +150,22 @@ export default function IllustrationTextEditor({
           variant="default"
           size="sm"
           onClick={handleDone}
+          disabled={isSaving}
           className="bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg px-4">
-          Done
+          {isSaving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving
+            </>
+          ) : (
+            "Done"
+          )}
         </Button>
         <Button
           variant="ghost"
           size="sm"
           onClick={onCancel}
+          disabled={isSaving}
           className="h-9 w-9 p-0 text-red-500 hover:text-red-600 hover:bg-red-50">
           <X size={18} />
         </Button>

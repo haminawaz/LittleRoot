@@ -28,7 +28,9 @@ import type {
   SupportTicket,
   SupportTicketWithMessages,
   SupportMessage,
+  UserWithSubscriptionInfo,
 } from "@shared/schema";
+import UpgradeUser from "@/components/UpgradeUser";
 
 type MessageWithPending = SupportMessage & { isPending?: boolean };
 type SupportTicketWithUnseenCount = SupportTicket & { unseenCount?: number };
@@ -44,12 +46,19 @@ export default function Support() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
+  const { data: userWithSubscription } = useQuery<UserWithSubscriptionInfo>({
+    queryKey: ["/api/auth/user"],
+  });
+
+  const isGuest = userWithSubscription?.subscriptionPlan === 'guest';
+
   const { data: tickets = [], isLoading } = useQuery<
     SupportTicketWithUnseenCount[]
   >({
     queryKey: ["/api/support/tickets"],
     refetchOnMount: true,
     staleTime: 0,
+    enabled: !isGuest,
   });
 
   const {
@@ -58,7 +67,7 @@ export default function Support() {
     isLoading: isLoadingSelectedTicket,
   } = useQuery<SupportTicketWithMessages>({
     queryKey: ["/api/support/tickets", selectedTicketId],
-    enabled: !!selectedTicketId,
+    enabled: !!selectedTicketId && !isGuest,
     refetchOnMount: true,
     staleTime: 0,
   });
@@ -288,6 +297,10 @@ export default function Support() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <UpgradeUser 
+        show={isGuest}
+        message="Get dedicated support! Sign up to access our support team."
+      />
 
       <div className="border-b border-border">
         <div className="max-w-7xl mx-auto px-6 py-4">

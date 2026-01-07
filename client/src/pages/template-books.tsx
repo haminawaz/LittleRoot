@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import UpgradeUser from "@/components/UpgradeUser";
 
 export default function TemplateBooks() {
   const [location, setLocation] = useLocation();
@@ -44,6 +45,7 @@ export default function TemplateBooks() {
   // Query to get user-created templates
   const { data: userTemplates, isLoading: templatesLoading } = useQuery<Template[]>({
     queryKey: ["/api/templates"],
+    enabled: userWithSubscription?.subscriptionPlan !== 'guest',
   });
 
   // Delete template mutation
@@ -136,6 +138,10 @@ export default function TemplateBooks() {
   return (
     <div className="min-h-screen bg-white">
       <Header />
+      <UpgradeUser 
+        show={userWithSubscription?.subscriptionPlan === 'guest'}
+        message="Templates are available for registered users. Sign up to save and reuse your favorite stories!"
+      />
 
       <div className="bg-white text-black border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">

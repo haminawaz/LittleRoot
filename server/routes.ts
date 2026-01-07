@@ -181,6 +181,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
+
+      if (userId.startsWith('guest_')) {
+        const guestUser = {
+          id: userId,
+          email: req.user.claims.email,
+          firstName: "Guest",
+          lastName: "User",
+          subscriptionPlan: "guest",
+          subscriptionStatus: "active",
+          booksLimitPerMonth: 2,
+          booksUsedThisMonth: 0,
+          illustrationsLimitPerMonth: 24,
+          illustrationsUsedThisMonth: 0,
+          templateBooksLimit: 0,
+          templateBooksRemaining: 0,
+          bonusVariationsLimit: 0,
+          bonusVariationsRemaining: 0,
+          bonusVariationsUsed: 0,
+          emailVerified: true,
+          canCreateNewBook: true,
+          subscriptionStatusText: "Guest Account - Sign up to save your work!",
+          hasCommercialRights: false,
+          hasResellRights: false,
+          daysLeftInTrial: null,
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+          cancelAtPeriodEnd: false,
+        };
+        return res.json(guestUser);
+      }
+      
+      // Regular user - fetch from database
       const user = await storage.getUserWithSubscriptionInfo(userId);
       res.json(user);
     } catch (error) {
@@ -380,6 +412,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json({ success: true, user });
       });
     })(req, res, next);
+  });
+
+  app.post('/api/auth/guest-login', async (req, res) => {
+    try {
+      console.log("Attempting guest login...");
+      const guestId = `guest_${randomBytes(8).toString('hex')}`;
+      const guestEmail = `guest_${randomBytes(8).toString('hex')}@guest.local`;
+
+      const user = {
+        id: guestId,
+        email: guestEmail,
+        passwordHash: null,
+        firstName: "Guest",
+        lastName: "User",
+        subscriptionPlan: "guest",
+        subscriptionStatus: "active",
+        booksLimitPerMonth: 2,
+        booksUsedThisMonth: 0,
+        illustrationsLimitPerMonth: 24,
+        illustrationsUsedThisMonth: 0,
+        templateBooksLimit: 0,
+        bonusVariationsLimit: 0,
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      console.log("Guest user created (no DB):", user.id);
+
+      req.login({
+        claims: { sub: user.id, email: user.email },
+        subscriptionPlan: 'guest'
+      }, (err) => {
+        if (err) {
+          console.error("req.login error:", err);
+          return res.status(500).json({ message: "Guest login failed" });
+        }
+        console.log("Guest login successful, session active for:", user.id);
+        res.json({ success: true, user });
+      });
+    } catch (error) {
+       console.error("Guest login error:", error);
+       res.status(500).json({ message: "Guest login failed" });
+    }
   });
 
   app.post('/api/user/auth/google-login', async (req, res) => {
@@ -814,6 +890,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Update profile (first name, last name)
   app.post('/api/auth/update-profile', isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ message: "Guest users cannot update profile. Please sign up for a full account." });
+    }
     try {
       const userId = req.user.claims.sub;
       const { firstName, lastName } = req.body;
@@ -836,6 +915,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Change password
   app.post('/api/auth/change-password', isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ message: "Guest users cannot change password." });
+    }
     try {
       const userId = req.user.claims.sub;
       const { currentPassword, newPassword } = req.body;
@@ -994,6 +1076,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete account
   app.post('/api/auth/delete-account', isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ message: "Guest users cannot delete account." });
+    }
     try {
       const userId = req.user.claims.sub;
 
@@ -1087,6 +1172,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/subscription/cancel', isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ message: "Guest users do not have a subscription." });
+    }
     try {
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
@@ -1430,6 +1518,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/payment/create-order", async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ error: "Guest users cannot purchase subscriptions." });
+    }
     try {
       const { paymentMethod, planId, amount, isUpgrade } = req.body;
 
@@ -2069,6 +2160,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get user's stories
   app.get("/api/stories", isAuthenticated, async (req: any, res) => {
     try {
+      if (req.user?.subscriptionPlan === 'guest') {
+         // Guest user: don't show stories list (don't save for later)
+         return res.json([]);
+      }
       const userId = req.user.claims.sub;
       const stories = await storage.getStoriesByUserId(userId);
       res.json(stories);
@@ -2325,6 +2420,186 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/guest/stories", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const storyData = insertStorySchema.parse(req.body);
+      const story = {
+        id: `guest_story_${randomBytes(8).toString('hex')}`,
+        userId: userId,
+        title: storyData.title,
+        content: storyData.content,
+        artStyle: storyData.artStyle,
+        pagesCount: Math.min(storyData.pagesCount || 12, 12),
+        pdfFormat: storyData.pdfFormat || "8x10",
+        characterDescription: storyData.characterDescription || null,
+        characterImageUrl: storyData.characterImageUrl || null,
+        status: "draft" as const,
+        coverImageUrl: null,
+        pdfUrl: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      console.log(`Guest story created (no DB): ${story.id}`);
+      res.json(story);
+    } catch (error) {
+      console.error("Error creating guest story:", error);
+      res.status(400).json({ error: "Invalid story data" });
+    }
+  });
+
+  app.post("/api/guest/stories/:id/generate", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const storyId = req.params.id;
+      
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const { story } = req.body;      
+      if (!story) {
+        return res.status(400).json({ error: "Story data required for guest users" });
+      }
+
+      const maxPages = 12;
+      if (story.pagesCount > maxPages) {
+        return res.status(403).json({ 
+          error: "Page limit exceeded",
+          message: `Guest users can create up to ${maxPages} pages per book. Sign up for more!`,
+          requiresUpgrade: true
+        });
+      }
+
+      const pageTexts = splitStoryIntoPages(story.content, story.pagesCount);
+      
+      const pages = pageTexts.map((text, index) => ({
+        id: `guest_page_${randomBytes(8).toString('hex')}`,
+        storyId: storyId,
+        pageNumber: index + 1,
+        text: text,
+        imageUrl: null,
+        isGenerating: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      res.json({ 
+        message: "Pages created. Illustrations will generate in background.",
+        pages: pages
+      });
+
+      const imagesDir = path.join(process.cwd(), "generated-images");
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
+      const characterDescription = story.characterDescription || undefined;
+      const characterImageUrl = story.characterImageUrl || undefined;
+      
+      const dimensions = getImageDimensionsForFormat(story.pdfFormat);
+
+      (async () => {
+        try {
+          console.log(`Generating illustrations for guest story: ${story.title}`);
+          
+          const coverFileName = `${storyId}_cover.webp`;
+          const coverPath = path.join(imagesDir, coverFileName);
+          
+          await generateCoverIllustration(
+            story.title,
+            story.artStyle,
+            story.content,
+            characterDescription,
+            characterImageUrl,
+            coverPath,
+            story.pdfFormat,
+            dimensions.width,
+            dimensions.height,
+            true // isGuest
+          );
+          
+          const coverUrl = `/generated-images/${coverFileName}?t=${Date.now()}`;
+          console.log(`✓ Guest cover generated: ${coverUrl}`);
+          
+          await generateBookIllustrations({
+            title: story.title,
+            content: story.content,
+            artStyle: story.artStyle,
+            pageTexts: pageTexts,
+            characterDescription,
+            characterImageUrl,
+            pdfFormat: story.pdfFormat,
+            width: dimensions.width,
+            height: dimensions.height,
+            isGuest: true
+          }, imagesDir, storyId, async (pageIndex: number, imageUrl: string) => {
+            console.log(`✓ Guest page ${pageIndex + 1} generated: ${imageUrl}`);
+          });
+
+          console.log(`✓ Guest story illustrations complete: ${story.title}`);
+        } catch (error) {
+          console.error(`Error generating guest illustrations:`, error);
+        }
+      })().catch(err => {
+        console.error("Uncaught error in guest illustration generation:", err);
+      });
+    } catch (error) {
+      console.error("Error generating guest book:", error);
+      res.status(500).json({ error: "Failed to generate book" });
+    }
+  });
+
+  app.get("/api/guest/stories/:id/status", isAuthenticated, async (req: any, res) => {
+    try {
+      const storyId = req.params.id;
+
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const imagesDir = path.join(process.cwd(), "generated-images");
+      const coverPath = path.join(imagesDir, `${storyId}_cover.webp`);
+      
+      const coverExists = fs.existsSync(coverPath);
+      
+      let pageCount = 0;
+      if (fs.existsSync(imagesDir)) {
+        console.log(`Checking images dir: ${imagesDir} for story: ${storyId}`);
+        const files = fs.readdirSync(imagesDir);
+        
+        for (let i = 1; i <= 24; i++) {
+          const expectedFile = `${storyId}_page_${i}.webp`;
+          if (files.includes(expectedFile)) {
+            pageCount++;
+          } else {
+            console.log(`Stopped at page ${i}, file not found: ${expectedFile}`);
+            break;
+          }
+        }
+      } else {
+        console.log(`Images directory not found: ${imagesDir}`);
+      }
+
+      res.json({
+        coverReady: coverExists,
+        pagesReady: pageCount,
+        coverUrl: coverExists ? `/generated-images/${storyId}_cover.webp?t=${Date.now()}` : null,
+        pageUrls: Array.from({ length: pageCount }, (_, i) => 
+          `/generated-images/${storyId}_page_${i + 1}.webp?t=${Date.now()}`
+        )
+      });
+    } catch (error) {
+      console.error("Error checking guest story status:", error);
+      res.status(500).json({ error: "Failed to check story status" });
+    }
+  });
+
   // Regenerate cover image for a story
   app.post("/api/stories/:id/regenerate-cover", isAuthenticated, async (req: any, res) => {
     try {
@@ -2391,6 +2666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Save story as template
   app.post("/api/stories/:id/save-as-template", isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ error: "Guest users cannot save templates." });
+    }
     try {
       const storyId = req.params.id;
       const userId = req.user.claims.sub;
@@ -2452,6 +2730,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get all templates (both user-created and system templates)
   app.get("/api/templates", isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ error: "Guest users cannot access templates." });
+    }
     try {
       const userId = req.user.claims.sub;
 
@@ -2467,6 +2748,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Delete a template
   app.delete("/api/templates/:id", isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ error: "Guest users cannot delete templates." });
+    }
     try {
       const templateId = req.params.id;
       const userId = req.user.claims.sub;
@@ -2889,6 +3173,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Create a new support ticket
   app.post("/api/support/tickets", isAuthenticated, async (req: any, res) => {
+    if (req.user?.subscriptionPlan === 'guest') {
+      return res.status(403).json({ error: "Guest users cannot create support tickets." });
+    }
     try {
       const userId = req.user.claims.sub;
       const ticketData = insertSupportTicketSchema.parse({

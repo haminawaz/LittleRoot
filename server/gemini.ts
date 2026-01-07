@@ -11,14 +11,36 @@ async function compressImage(
   buffer: Buffer, 
   outputPath: string, 
   width: number, 
-  height: number
+  height: number,
+  isGuest: boolean = false
 ): Promise<void> {
-  await sharp(buffer)
+  let pipeline = sharp(buffer)
     .resize(width, height, {
       fit: 'cover',
       position: 'center',
       withoutEnlargement: false
-    })
+    });
+
+  if (isGuest) {
+    try {
+      const watermarkPath = path.join(process.cwd(), "client", "public", "logo-icon.svg");
+      if (fs.existsSync(watermarkPath)) {
+        const watermarkWidth = Math.round(width * 0.15);
+        const watermarkBuffer = await sharp(watermarkPath)
+          .resize({ width: watermarkWidth })
+          .toBuffer();
+        pipeline = pipeline.composite([{
+             input: watermarkBuffer,
+             gravity: 'southeast',
+             blend: 'over'
+          }]);
+      }
+    } catch (error) {
+      console.error("Error applying watermark:", error);
+    }
+  }
+
+  await pipeline
     .webp({ quality: 78, effort: 6 })
     .toFile(outputPath);
 }
@@ -31,6 +53,7 @@ export interface GenerateImageOptions {
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
   height?: number; // Image height in pixels (300 DPI)
+  isGuest?: boolean;
 }
 
 export interface GenerateBookImagesOptions {
@@ -43,6 +66,7 @@ export interface GenerateBookImagesOptions {
   pdfFormat?: string; // PDF format for orientation guidance (e.g., "8x8", "8.25x6")
   width?: number;  // Image width in pixels (300 DPI)
   height?: number; // Image height in pixels (300 DPI)
+  isGuest?: boolean;
 }
 
 export async function generateIllustration(
@@ -187,7 +211,7 @@ ${compositionGuidance}`;
         // Use provided dimensions or default to 8x10 format (2400x3000)
         const imgWidth = options.width || 2400;
         const imgHeight = options.height || 3000;
-        await compressImage(buffer, webpPath, imgWidth, imgHeight);
+        await compressImage(buffer, webpPath, imgWidth, imgHeight, options.isGuest);
         
         const compressedSize = fs.statSync(webpPath).size;
         const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
@@ -322,7 +346,7 @@ export async function generateBookIllustrations(
   storyId: string,
   onPageComplete?: (pageIndex: number, imageUrl: string) => Promise<void>
 ): Promise<string[]> {
-  const { pageTexts, title, content, artStyle, characterDescription, characterImageUrl, pdfFormat = '8x8' } = options;
+  const { pageTexts, title, content, artStyle, characterDescription, characterImageUrl, pdfFormat = '8x8', isGuest = false } = options;
   
   console.log(`Generating ${pageTexts.length} illustrations for "${title}" using sequential generation with Gemini 2.5 Flash Image (Nano Banana)...`);
   
@@ -446,7 +470,7 @@ export async function generateBookIllustrations(
               // Use provided dimensions or default to 8x8 format (2400x2400)
               const imgWidth = options.width || 2400;
               const imgHeight = options.height || 2400;
-              await compressImage(buffer, tempImagePath, imgWidth, imgHeight);
+              await compressImage(buffer, tempImagePath, imgWidth, imgHeight, isGuest);
               
               fs.renameSync(tempImagePath, finalImagePath);
               
@@ -522,7 +546,8 @@ export async function generateCoverIllustration(
   outputPath: string,
   pdfFormat?: string,  // PDF format for orientation guidance
   width?: number,  // Image width in pixels (300 DPI)
-  height?: number  // Image height in pixels (300 DPI)
+  height?: number,  // Image height in pixels (300 DPI)
+  isGuest: boolean = false
 ): Promise<void> {
   const parts = [];
   
@@ -662,7 +687,7 @@ CRITICAL INSTRUCTION:
         // Use provided dimensions or default to 8x10 format (2400x3000)
         const imgWidth = width || 2400;
         const imgHeight = height || 3000;
-        await compressImage(buffer, outputPath, imgWidth, imgHeight);
+        await compressImage(buffer, outputPath, imgWidth, imgHeight, isGuest);
         const compressedSize = fs.statSync(outputPath).size;
         const savings = ((1 - compressedSize / originalSize) * 100).toFixed(1);
         

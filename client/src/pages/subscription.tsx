@@ -40,6 +40,7 @@ import { motion } from "framer-motion";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import UpgradeUser from "@/components/UpgradeUser";
 
 export default function Subscription() {
   const [, setLocation] = useLocation();
@@ -75,6 +76,7 @@ export default function Subscription() {
     } | null;
   }>({
     queryKey: ["/api/subscription/plans"],
+    enabled: user?.subscriptionPlan !== 'guest',
   });
 
   const plans = subscriptionData?.plans ?? [];
@@ -190,6 +192,10 @@ export default function Subscription() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <UpgradeUser 
+        show={user?.subscriptionPlan === 'guest'}
+        message="Manage your subscription by signing up for a full account!"
+      />
 
       <div className="border-b border-border">
         <div className="max-w-6xl mx-auto px-6 py-4">

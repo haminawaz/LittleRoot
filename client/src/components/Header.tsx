@@ -112,6 +112,8 @@ export default function Header({
     }
   };
 
+  const isGuest = userWithSubscription?.subscriptionPlan === 'guest';
+
   return (
     <header className="backdrop-blur-lg border-b border-border sticky top-0 z-50">
       <div className="max-w-screen-2xl mx-auto">
@@ -196,18 +198,18 @@ export default function Header({
               </button>
             )}
 
-            <Link href="/dashboard/template-books">
-              <button
-                className={`text-sm font-medium transition-colors ${
-                  isActive("/dashboard/template-books")
-                    ? "text-primary font-semibold"
-                    : "text-foreground hover:text-primary"
-                }`}
-                data-testid="button-templates"
-              >
-                Templates
-              </button>
-            </Link>
+                          <Link href="/dashboard/template-books">
+                <button
+                  className={`text-sm font-medium transition-colors ${
+                    isActive("/dashboard/template-books")
+                      ? "text-primary font-semibold"
+                      : "text-foreground hover:text-primary"
+                  }`}
+                  data-testid="button-templates"
+                >
+                  Templates
+                </button>
+              </Link>
 
             <Link href="/help">
               <button
@@ -236,7 +238,7 @@ export default function Header({
               <span className="sr-only">Open menu</span>
             </Button>
 
-            {unseenCount > 0 && (
+            {!isGuest && unseenCount > 0 && (
               <Link href="/support">
                 <Button
                   variant="ghost"
@@ -332,6 +334,8 @@ export default function Header({
                         <span className="text-xs text-muted-foreground">
                           {userLoading ? (
                             <div className="h-3 bg-muted rounded animate-pulse w-20" />
+                          ) : userWithSubscription?.subscriptionPlan === 'guest' ? (
+                            "Guest"
                           ) : userWithSubscription?.subscriptionPlan ? (
                             subscriptionPlans?.plans?.find(
                               (p) => p.id === userWithSubscription.subscriptionPlan,
@@ -344,31 +348,31 @@ export default function Header({
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => setLocation("/subscription")}
-                    className="cursor-pointer"
-                    data-testid="link-manage-subscription"
-                  >
-                    <CreditCard className="mr-2 h-4 w-4" />
-                    Manage Subscription
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setLocation("/settings")}
-                    className="cursor-pointer"
-                    data-testid="link-settings"
-                  >
-                    <SettingsIcon className="mr-2 h-4 w-4" />
-                    Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => setLocation("/support")}
-                    className="cursor-pointer"
-                    data-testid="link-support"
-                  >
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Support
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setLocation("/subscription")}
+                        className="cursor-pointer"
+                        data-testid="link-manage-subscription"
+                      >
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        Manage Subscription
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setLocation("/settings")}
+                        className="cursor-pointer"
+                        data-testid="link-settings"
+                      >
+                        <SettingsIcon className="mr-2 h-4 w-4" />
+                        Settings
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setLocation("/support")}
+                        className="cursor-pointer"
+                        data-testid="link-support"
+                      >
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        Support
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => logoutMutation.mutate()}
                     className="cursor-pointer"
@@ -453,19 +457,19 @@ export default function Header({
               </button>
             )}
 
-            <Link href="/dashboard/template-books">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
-                  isActive("/dashboard/template-books")
-                    ? "text-primary font-semibold bg-primary/10"
-                    : "text-foreground hover:text-primary hover:bg-accent"
-                }`}
-                data-testid="button-templates-mobile"
-              >
-                Templates
-              </button>
-            </Link>
+              <Link href="/dashboard/template-books">
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                    isActive("/dashboard/template-books")
+                      ? "text-primary font-semibold bg-primary/10"
+                      : "text-foreground hover:text-primary hover:bg-accent"
+                  }`}
+                  data-testid="button-templates-mobile"
+                >
+                  Templates
+                </button>
+              </Link>
 
             <Link href="/help">
               <button
@@ -481,19 +485,19 @@ export default function Header({
               </button>
             </Link>
 
-            <Link href="/support">
-              <button
-                onClick={() => setSidebarOpen(false)}
-                className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
-                  isActive("/support")
-                    ? "text-primary font-semibold bg-primary/10"
-                    : "text-foreground hover:text-primary hover:bg-accent"
-                }`}
-                data-testid="button-support-mobile"
-              >
-                Support
-              </button>
-            </Link>
+              <Link href="/support">
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className={`text-left text-base font-medium transition-colors py-2 px-4 rounded-md w-full ${
+                    isActive("/support")
+                      ? "text-primary font-semibold bg-primary/10"
+                      : "text-foreground hover:text-primary hover:bg-accent"
+                  }`}
+                  data-testid="button-support-mobile"
+                >
+                  Support
+                </button>
+              </Link>
           </nav>
         </SheetContent>
       </Sheet>

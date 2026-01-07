@@ -360,3 +360,10 @@ export interface GenerateBookRequest {
   pagesCount: number;
   pdfFormat?: string;
 }
+
+export interface GuestStoryStatus {
+  coverReady: boolean;
+  pagesReady: number;
+  coverUrl: string | null;
+  pageUrls: string[];
+}

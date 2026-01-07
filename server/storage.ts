@@ -191,6 +191,9 @@ export class DatabaseStorage implements IStorage {
       } else {
         subscriptionStatusText = "Trial expired - upgrade to continue";
       }
+    } else if (user.subscriptionPlan === "guest") {
+      isPlanActive = true;
+      subscriptionStatusText = "Guest Access";
     } else {
       // Paid plans: Check if subscription period is still valid
       const periodActive =

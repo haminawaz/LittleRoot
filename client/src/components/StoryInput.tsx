@@ -10,9 +10,10 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { Story, GenerateBookRequest, UserWithSubscriptionInfo } from "@shared/schema";
+import { canGuestCreateBook, setGuestBooksCreated, getGuestBooksCreated } from "@/lib/guestCookies";
 
 interface StoryInputProps {
-  onStoryCreated: (storyId: string) => void;
+  onStoryCreated: (storyId: string, story?: Story) => void;
 }
 
 export default function StoryInput({ onStoryCreated }: StoryInputProps) {
@@ -33,18 +34,27 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
     queryKey: ["/api/auth/user"],
   });
 
+  const isGuest = user?.subscriptionPlan === 'guest';
+
   // Check if user has reached book creation limit
   const bookLimitReached = user ? !user.canCreateNewBook : false;
 
   const createStoryMutation = useMutation({
     mutationFn: async (data: GenerateBookRequest) => {
-      const response = await apiRequest("POST", "/api/stories", data);
+      const endpoint = isGuest ? "/api/guest/stories" : "/api/stories";
+      const response = await apiRequest("POST", endpoint, data);
       return response.json() as Promise<Story>;
     },
     onSuccess: (story) => {
-      generateBookMutation.mutate(story.id, {
-        onSuccess: () => {
-          onStoryCreated(story.id);
+      if (isGuest) {
+        const currentCount = getGuestBooksCreated();
+        setGuestBooksCreated(currentCount + 1);
+      }
+      
+      generateBookMutation.mutate({ storyId: story.id, story }, {
+        onSuccess: (data: any) => {
+          const fullStory = { ...story, pages: data.pages || [] };
+          onStoryCreated(story.id, fullStory);
         }
       });
     },
@@ -87,8 +97,11 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   });
 
   const generateBookMutation = useMutation({
-    mutationFn: async (storyId: string) => {
-      const response = await apiRequest("POST", `/api/stories/${storyId}/generate`);
+    mutationFn: async ({ storyId, story }: { storyId: string; story?: any }) => {
+      const endpoint = isGuest ? `/api/guest/stories/${storyId}/generate` : `/api/stories/${storyId}/generate`;
+      const body = isGuest ? { story } : undefined;
+      
+      const response = await apiRequest("POST", endpoint, body);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const error = new Error(errorData.message || 'Generation failed');
@@ -179,6 +192,26 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
     }
 
     const targetPages = parseInt(pagesCount, 10);
+    if (isGuest) {
+      const bookCheck = canGuestCreateBook();
+      if (!bookCheck.allowed) {
+        toast({
+          title: "Guest Limit Reached",
+          description: bookCheck.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (targetPages > 12) {
+        toast({
+          title: "Page Limit Exceeded",
+          description: "Guest users can create up to 12 pages per book. Sign up for more!",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
 
     try {
       let characterImageUrl: string | undefined;
@@ -356,7 +389,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
                   <SelectValue placeholder="Select number of pages" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {Array.from({ length: 17 }, (_, i) => i + 8).map(num => (
+                  {Array.from({ length: isGuest ? 5 : 17 }, (_, i) => i + (isGuest ? 8 : 8)).map(num => (
                     <SelectItem key={num} value={String(num)}>
                       {num} {num === 1 ? 'page' : 'pages'}
                     </SelectItem>

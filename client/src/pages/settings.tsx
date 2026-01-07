@@ -21,6 +21,7 @@ import { ArrowLeft, Save, Eye, EyeOff, Trash2 } from "lucide-react";
 import { useLocation } from "wouter";
 import type { UserWithSubscriptionInfo } from "@shared/schema";
 import Header from "@/components/Header";
+import UpgradeUser from "@/components/UpgradeUser";
 
 export default function Settings() {
   const [, setLocation] = useLocation();
@@ -166,6 +167,10 @@ export default function Settings() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
+      <UpgradeUser 
+        show={user?.subscriptionPlan === 'guest'}
+        message="Update your profile and settings by creating an account!"
+      />
 
       <div className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-4">

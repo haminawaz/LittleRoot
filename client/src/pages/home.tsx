@@ -16,8 +16,12 @@ import type {
   StoryWithPages,
   UserWithSubscriptionInfo,
   Template,
+  GuestStoryStatus,
 } from "@shared/schema";
 import Header from "@/components/Header";
+import UpgradeUser from "@/components/UpgradeUser";
+
+import { useLocalStorage } from "@/hooks/use-local-storage";
 
 export default function Home() {
   const [location, setLocation] = useLocation();
@@ -28,6 +32,7 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"create" | "my-books">("create");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [guestStories, setGuestStories] = useLocalStorage<Record<string, StoryWithPages>>("guest_stories", {});
 
   useEffect(() => {
     const images = ["/no-books-icon.svg", "/ready-to-create.svg"];
@@ -127,7 +132,7 @@ export default function Home() {
     isFetching,
   } = useQuery<StoryWithPages>({
     queryKey: ["/api/stories", currentStoryId],
-    enabled: !!currentStoryId,
+    enabled: !!currentStoryId && !currentStoryId?.startsWith('guest_'),
     refetchInterval: (query) => {
       const storyData = query.state.data;
       const hasGeneratingPages = storyData?.pages?.some(
@@ -140,6 +145,52 @@ export default function Home() {
     refetchOnWindowFocus: false,
     refetchOnMount: false,
   });
+
+  const currentGuestStory = currentStoryId && currentStoryId.startsWith('guest_') ? guestStories[currentStoryId] : null;
+
+  const {
+    data: guestStoryStatus,
+    isLoading: isLoadingGuestStory,
+  } = useQuery<GuestStoryStatus>({
+    queryKey: ["/api/guest/stories", currentStoryId, "status"],
+    enabled: !!currentStoryId && currentStoryId?.startsWith('guest_'),
+    refetchInterval: (query) => {
+      const storyData = query.state.data;
+      if (!storyData) return 2000;
+      
+      const totalPages = currentGuestStory?.pages?.length || 0;
+      const readyPages = storyData.pagesReady || 0;
+      
+      if (readyPages < totalPages || !storyData.coverReady) {
+        return 2000;
+      }
+      return false;
+    },
+    gcTime: Infinity,
+    staleTime: 0,
+    refetchOnMount: 'always', 
+    refetchOnWindowFocus: true,
+  });
+
+  const displayedGuestStory = currentGuestStory ? {
+    ...currentGuestStory,
+    coverImageUrl: guestStoryStatus?.coverReady ? guestStoryStatus.coverUrl : currentGuestStory.coverImageUrl,
+    pages: currentGuestStory.pages.map((page, index) => {
+      if (guestStoryStatus?.pageUrls && guestStoryStatus.pageUrls[index]) {
+        return {
+          ...page,
+          imageUrl: guestStoryStatus.pageUrls[index],
+          isGenerating: false
+        };
+      }
+      return {
+        ...page,
+        isGenerating: true
+      };
+    })
+  } : null;
+
+  const activeStory = story || displayedGuestStory;
 
   const {
     data: userWithSubscription,
@@ -165,10 +216,10 @@ export default function Home() {
     queryKey: ["/api/templates"],
   });
 
-  const isAlreadySavedAsTemplate = story
+  const isAlreadySavedAsTemplate = activeStory
     ? userTemplates.some(
         (template) =>
-          template.title === story.title && template.content === story.content
+          template.title === activeStory.title && template.content === activeStory.content
       )
     : false;
 
@@ -177,34 +228,34 @@ export default function Home() {
     : false;
 
   const getStepStatus = (step: number) => {
-    if (!story) return "step-pending";
+    if (!activeStory) return "step-pending";
 
     switch (step) {
       case 1:
-        return story.content ? "step-completed" : "step-pending";
+        return activeStory.content ? "step-completed" : "step-pending";
       case 2:
-        return story.pages && story.pages.length > 0
+        return activeStory.pages && activeStory.pages.length > 0
           ? "step-completed"
           : "step-pending";
       case 3:
-        return story.status === "completed"
+        return activeStory.status === "completed"
           ? "step-completed"
-          : story.status === "generating"
+          : activeStory.status === "generating"
           ? "step-active"
-          : story.status === "error"
+          : activeStory.status === "error"
           ? "step-error"
           : "step-pending";
       case 4:
-        return story.status === "completed" ? "step-active" : "step-pending";
+        return activeStory.status === "completed" ? "step-active" : "step-pending";
       default:
         return "step-pending";
     }
   };
 
   const handleExportPDF = async () => {
-    if (!story) return;
+    if (!activeStory) return;
 
-    const hasGeneratingPages = story.pages?.some(
+    const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
     ) ?? false;
 
@@ -228,7 +279,7 @@ export default function Home() {
     });
 
     try {
-      await exportToPDF(story, undefined, (progress: PDFExportProgress) => {
+      await exportToPDF(activeStory, undefined, (progress: PDFExportProgress) => {
         const progressPercent = progress.progress;
         let description = progress.message;
 
@@ -291,9 +342,9 @@ export default function Home() {
   };
 
   const handleExportEPUB = async () => {
-    if (!story) return;
+    if (!activeStory) return;
 
-    const hasGeneratingPages = story.pages?.some(
+    const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
     ) ?? false;
 
@@ -317,7 +368,7 @@ export default function Home() {
     });
 
     try {
-      await exportToEPUB(story, (progress: EPUBExportProgress) => {
+      await exportToEPUB(activeStory, (progress: EPUBExportProgress) => {
         const progressPercent = progress.progress;
         let description = progress.message;
 
@@ -464,7 +515,10 @@ export default function Home() {
             </div>
 
             <StoryInput
-              onStoryCreated={(storyId) => {
+              onStoryCreated={(storyId, story) => {
+                if (story && storyId.startsWith('guest_')) {
+                  setGuestStories(prev => ({ ...prev, [storyId]: story as StoryWithPages }));
+                }
                 window.history.pushState({}, "", `/dashboard?story=${storyId}`);
                 setCurrentStoryId(storyId);
               }}
@@ -482,30 +536,30 @@ export default function Home() {
                       className="text-base sm:text-lg font-serif font-semibold truncate"
                       data-testid="text-story-title"
                     >
-                      {story?.title || "Your Story Title"}
+                      {activeStory?.title || "Your Story Title"}
                     </h2>
                     <p className="flex flex-wrap items-center text-xs sm:text-sm text-muted-foreground gap-1.5 sm:gap-2">
                       <span data-testid="text-page-count">
-                        {story?.pages?.length || 0} pages
+                        {activeStory?.pages?.length || 0} pages
                       </span>
                       <span>•</span>
                       <span data-testid="text-word-count">
-                        {story?.content?.split(" ").length || 0} words
+                        {activeStory?.content?.split(" ").length || 0} words
                       </span>
                       <span>•</span>
                       <span
                         className={`${
-                          story?.status === "error"
+                          activeStory?.status === "error"
                             ? "text-destructive"
                             : "text-chart-2"
                         }`}
                         data-testid="text-story-status"
                       >
-                        {story?.status === "completed"
+                        {activeStory?.status === "completed"
                           ? "Ready for illustration"
-                          : story?.status === "generating"
+                          : activeStory?.status === "generating"
                           ? "Generating..."
-                          : story?.status === "error"
+                          : activeStory?.status === "error"
                           ? "Generation Failed"
                           : "Draft"}
                       </span>
@@ -516,7 +570,7 @@ export default function Home() {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowPreview(true)}
-                      disabled={!story || story.pages.length === 0}
+                      disabled={!activeStory || activeStory.pages.length === 0}
                       data-testid="button-preview"
                       className="text-xs sm:text-sm flex-1 sm:flex-initial"
                     >
@@ -529,13 +583,13 @@ export default function Home() {
                       onClick={() => {
                         if (templateQuotaFull) {
                           setLocation("/subscription");
-                        } else if (story) {
-                          saveAsTemplateMutation.mutate(story.id);
+                        } else if (activeStory) {
+                          saveAsTemplateMutation.mutate(activeStory.id);
                         }
                       }}
                       disabled={
-                        !story ||
-                        story.pages.length === 0 ||
+                        !activeStory ||
+                        activeStory.pages.length === 0 ||
                         saveAsTemplateMutation.isPending ||
                         (isAlreadySavedAsTemplate && !templateQuotaFull)
                       }
@@ -570,7 +624,7 @@ export default function Home() {
                       size="sm"
                       onClick={handleExportPDF}
                       disabled={
-                        !story || story.pages.length === 0 || isExporting
+                        !activeStory || activeStory.pages.length === 0 || isExporting
                       }
                       data-testid="button-export-pdf"
                       className="text-xs sm:text-sm flex-1 sm:flex-initial"
@@ -589,7 +643,7 @@ export default function Home() {
                       variant="outline"
                       onClick={handleExportEPUB}
                       disabled={
-                        !story || story.pages.length === 0 || isExporting
+                        !activeStory || activeStory.pages.length === 0 || isExporting
                       }
                       data-testid="button-export-epub"
                       className="text-xs sm:text-sm flex-1 sm:flex-initial"
@@ -607,7 +661,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {story?.status === "error" && (
+              {activeStory?.status === "error" && (
                 <div className="bg-destructive/10 border-l-4 border-destructive px-3 sm:px-4 py-2 sm:py-3 mx-3 sm:mx-6 mt-3 sm:mt-4 rounded-r-md">
                   <div className="flex items-start">
                     <div className="flex-shrink-0">
@@ -666,8 +720,66 @@ export default function Home() {
                       </p>
                     </div>
                   </div>
-                ) : story ? (
-                  <PageGrid story={story} />
+                ) : activeStory ? (
+                  <PageGrid story={activeStory} />
+                ) : guestStoryStatus && currentStoryId?.startsWith('guest_') ? (
+                  <div className="p-6">
+                    <h2 className="text-2xl font-bold mb-4">Your Story is Generating!</h2>
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-3">
+                        {guestStoryStatus.coverReady ? (
+                          <>
+                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+                              ✓
+                            </div>
+                            <div>
+                              <p className="font-medium">Cover Image Ready</p>
+                              {guestStoryStatus.coverUrl && (
+                                <img src={guestStoryStatus.coverUrl} alt="Cover" className="mt-2 w-32 h-32 object-cover rounded" />
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white animate-spin">
+                              ⟳
+                            </div>
+                            <p className="font-medium">Generating cover...</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {guestStoryStatus.pagesReady > 0 ? (
+                          <>
+                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
+                              {guestStoryStatus.pagesReady}
+                            </div>
+                            <div>
+                              <p className="font-medium">{guestStoryStatus.pagesReady} Pages Generated</p>
+                              <div className="flex gap-2 mt-2 flex-wrap">
+                                {guestStoryStatus.pageUrls?.slice(0, 4).map((url: string, idx: number) => (
+                                  <img key={idx} src={url} alt={`Page ${idx + 1}`} className="w-20 h-20 object-cover rounded" />
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white animate-spin">
+                              ⟳
+                            </div>
+                            <p className="font-medium">Generating pages...</p>
+                          </>
+                        )}
+                      </div>
+                      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-sm text-yellow-800">
+                          <strong>Note:</strong> Guest stories are not saved. Sign up to save your work and access all features!
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-center px-4">
                     <motion.div
@@ -696,6 +808,10 @@ export default function Home() {
 
           {viewMode === "my-books" && (
             <>
+              <UpgradeUser 
+                show={userWithSubscription?.subscriptionPlan === 'guest'}
+                message="Save your stories! Sign up to access your book library."
+              />
               <div className="border-b border-border p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                   <div className="text-black">

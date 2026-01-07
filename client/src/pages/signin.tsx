@@ -26,6 +26,7 @@ export default function Signin() {
     password: "",
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [isDisabled, setIsDisabled] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +77,43 @@ export default function Signin() {
         variant: "destructive",
       });
       setIsLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setIsDisabled(true);
+    try {
+      const response = await fetch("/api/auth/guest-login", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Guest login failed");
+      }
+
+      toast({
+        title: "Welcome Guest!",
+        description: "You have been logged in as a guest.",
+      });
+
+      await queryClient.fetchQuery({
+        queryKey: ["/api/auth/user"],
+        staleTime: 0,
+      });
+
+      const userState = queryClient.getQueryData(["/api/auth/user"]);
+      if (userState) {
+        setLocation("/dashboard");
+      } else {
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      toast({
+        title: "Login failed",
+        description: "Could not sign in as guest. Please try again.",
+        variant: "destructive",
+      });
+      setIsDisabled(false);
     }
   };
 
@@ -152,9 +190,18 @@ export default function Signin() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || isDisabled}
               data-testid="button-signin-submit">
               {isLoading ? "Signing in..." : "Sign In"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="secondary"
+              className="w-full"
+              onClick={handleGuestLogin}
+              disabled={isLoading || isDisabled}>
+              Continue as Guest
             </Button>
 
             <div className="relative my-6">

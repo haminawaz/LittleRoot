@@ -15,9 +15,10 @@ import IllustrationTextEditor, { type TextOverlay } from "@/components/Illustrat
 
 interface PageGridProps {
   story: StoryWithPages;
+  onShowGuestLimit?: (action: string) => void;
 }
 
-export default function PageGrid({ story }: PageGridProps) {
+export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [splitMode, setSplitMode] = useState<string | null>(null);
@@ -53,6 +54,16 @@ export default function PageGrid({ story }: PageGridProps) {
     });
     setPageTexts(updatedTexts);
   }, [story.pages.length, story.pages.map(p => p.id).join(',')]);
+
+  const isGuest = story.id.startsWith("guest_");
+
+  const checkGuestLimit = (action: string) => {
+     if (isGuest && onShowGuestLimit) {
+        onShowGuestLimit(action);
+        return true;
+     }
+     return false;
+  };
 
   const generateImageMutation = useMutation({
     mutationFn: async ({ pageId, text, prompt }: { pageId: string; text: string; prompt?: string }) => {
@@ -213,12 +224,14 @@ export default function PageGrid({ story }: PageGridProps) {
   });
 
   const handleGenerateImage = (pageId: string) => {
+    if (checkGuestLimit("Regenerating illustration")) return;
     // Use the current text from local state (live textarea value)
     const currentText = pageTexts[pageId] || "";
     generateImageMutation.mutate({ pageId, text: currentText });
   };
 
   const handleEditIllustration = (pageId: string) => {
+    if (checkGuestLimit("Editing illustration prompt")) return;
     const page = story.pages.find(p => p.id === pageId);
     if (page) {
       setEditingPageId(pageId);
@@ -382,6 +395,7 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleSaveText = (pageId: string) => {
+    if (checkGuestLimit("Saving text changes")) return;
     const currentText = pageTexts[pageId];
     if (currentText !== undefined) {
       updatePageMutation.mutate({ pageId, text: currentText });
@@ -395,6 +409,7 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleAddPage = () => {
+    if (checkGuestLimit("Adding new page")) return;
     setAddPageModalOpen(true);
   };
 
@@ -417,6 +432,7 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleDeletePage = (pageId: string) => {
+    if (checkGuestLimit("Deleting page")) return;
     setPageToDelete(pageId);
     setDeleteModalOpen(true);
   };
@@ -435,6 +451,7 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleSplitPage = (pageId: string) => {
+    if (checkGuestLimit("Splitting page")) return;
     if (splitMode === pageId) {
       // Ensure we have a valid split index
       const validSplitIndex = splitIndex > 0 ? splitIndex : Math.floor((story.pages.find(p => p.id === pageId)?.text.length || 0) / 2);
@@ -456,6 +473,7 @@ export default function PageGrid({ story }: PageGridProps) {
   };
 
   const handleReorderPage = (pageId: string, direction: "up" | "down") => {
+    if (checkGuestLimit("Reordering pages")) return;
     const currentIndex = story.pages.findIndex(p => p.id === pageId);
     if (currentIndex === -1) return;
     
@@ -534,6 +552,7 @@ export default function PageGrid({ story }: PageGridProps) {
                     variant="secondary"
                     size="sm"
                     onClick={() => {
+                      if (checkGuestLimit("Editing cover text")) return;
                       setEditingOverlayType("cover");
                       setTextEditorOpen(true);
                     }}
@@ -729,6 +748,7 @@ export default function PageGrid({ story }: PageGridProps) {
                         variant="secondary"
                         size="sm"
                         onClick={() => {
+                          if (checkGuestLimit("Editing text overlay")) return;
                           setEditingOverlayType("page");
                           setEditingOverlayPageId(page.id);
                           setTextEditorOpen(true);

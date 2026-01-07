@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import type { Story, GenerateBookRequest, UserWithSubscriptionInfo } from "@shared/schema";
 import { canGuestCreateBook, setGuestBooksCreated, getGuestBooksCreated } from "@/lib/guestCookies";
+import GuestActionLimitModal from "@/components/GuestActionLimitModal";
 
 interface StoryInputProps {
   onStoryCreated: (storyId: string, story?: Story) => void;
@@ -24,6 +25,8 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
+  const [showGuestLimit, setShowGuestLimit] = useState(false);
+  const [guestLimitMessage, setGuestLimitMessage] = useState("");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -195,20 +198,14 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
     if (isGuest) {
       const bookCheck = canGuestCreateBook();
       if (!bookCheck.allowed) {
-        toast({
-          title: "Guest Limit Reached",
-          description: bookCheck.message,
-          variant: "destructive",
-        });
+        setGuestLimitMessage(bookCheck.message || "Guest limit reached");
+        setShowGuestLimit(true);
         return;
       }
 
       if (targetPages > 12) {
-        toast({
-          title: "Page Limit Exceeded",
-          description: "Guest users can create up to 12 pages per book. Sign up for more!",
-          variant: "destructive",
-        });
+        setGuestLimitMessage("Guest users can create up to 12 pages per book. Sign up for more!");
+        setShowGuestLimit(true);
         return;
       }
     }
@@ -440,6 +437,11 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
           )}
         </Button>
       </div>
+      <GuestActionLimitModal 
+        open={showGuestLimit} 
+        onClose={() => setShowGuestLimit(false)} 
+        message={guestLimitMessage}
+      />
     </div>
   );
 }

@@ -20,6 +20,7 @@ import type {
 } from "@shared/schema";
 import Header from "@/components/Header";
 import UpgradeUser from "@/components/UpgradeUser";
+import GuestActionLimitModal from "@/components/GuestActionLimitModal";
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
@@ -33,6 +34,13 @@ export default function Home() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [guestStories, setGuestStories] = useLocalStorage<Record<string, StoryWithPages>>("guest_stories", {});
+  const [showGuestLimit, setShowGuestLimit] = useState(false);
+  const [guestLimitAction, setGuestLimitAction] = useState("");
+
+  const handleShowGuestLimit = (action: string) => {
+    setGuestLimitAction(action);
+    setShowGuestLimit(true);
+  };
 
   useEffect(() => {
     const images = ["/no-books-icon.svg", "/ready-to-create.svg"];
@@ -255,6 +263,11 @@ export default function Home() {
   const handleExportPDF = async () => {
     if (!activeStory) return;
 
+    if (activeStory.id.startsWith("guest_")) {
+      handleShowGuestLimit("Exporting PDF");
+      return;
+    }
+
     const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
     ) ?? false;
@@ -343,6 +356,11 @@ export default function Home() {
 
   const handleExportEPUB = async () => {
     if (!activeStory) return;
+
+    if (activeStory.id.startsWith("guest_")) {
+      handleShowGuestLimit("Exporting EPUB");
+      return;
+    }
 
     const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
@@ -721,7 +739,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : activeStory ? (
-                  <PageGrid story={activeStory} />
+                  <PageGrid story={activeStory} onShowGuestLimit={handleShowGuestLimit} />
                 ) : guestStoryStatus && currentStoryId?.startsWith('guest_') ? (
                   <div className="p-6">
                     <h2 className="text-2xl font-bold mb-4">Your Story is Generating!</h2>
@@ -943,9 +961,18 @@ export default function Home() {
         </main>
       </div>
 
-      {showPreview && story && (
-        <BookPreviewModal story={story} onClose={() => setShowPreview(false)} />
+      {showPreview && activeStory && (
+        <BookPreviewModal
+          story={activeStory}
+          onClose={() => setShowPreview(false)}
+          onShowGuestLimit={handleShowGuestLimit}
+        />
       )}
+      <GuestActionLimitModal
+        open={showGuestLimit}
+        onClose={() => setShowGuestLimit(false)}
+        action={guestLimitAction}
+      />
     </div>
   );
 }

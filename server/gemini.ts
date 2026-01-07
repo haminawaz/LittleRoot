@@ -26,12 +26,19 @@ async function compressImage(
       const watermarkPath = path.join(process.cwd(), "client", "public", "logo-icon.svg");
       if (fs.existsSync(watermarkPath)) {
         const watermarkWidth = Math.round(width * 0.15);
-        const watermarkBuffer = await sharp(watermarkPath)
+        const padding = Math.round(width * 0.03);
+        
+        const { data: watermarkBuffer, info: watermarkInfo } = await sharp(watermarkPath)
           .resize({ width: watermarkWidth })
-          .toBuffer();
+          .toBuffer({ resolveWithObject: true });
+          
+        const top = Math.max(0, height - watermarkInfo.height - padding);
+        const left = Math.max(0, width - watermarkWidth - padding);
+
         pipeline = pipeline.composite([{
              input: watermarkBuffer,
-             gravity: 'southeast',
+             top: top,
+             left: left,
              blend: 'over'
           }]);
       }

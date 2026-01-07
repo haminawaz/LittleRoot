@@ -29,11 +29,13 @@ import {
 interface BookPreviewModalProps {
   story: StoryWithPages;
   onClose: () => void;
+  onShowGuestLimit?: (action: string) => void;
 }
 
 export default function BookPreviewModal({
   story,
   onClose,
+  onShowGuestLimit,
 }: BookPreviewModalProps) {
   // Start at -1 to show cover first, then 0-N for story pages
   const [currentPage, setCurrentPage] = useState(
@@ -70,6 +72,10 @@ export default function BookPreviewModal({
   // Regenerate cover mutation
   const regenerateCoverMutation = useMutation({
     mutationFn: async () => {
+      if (story.id.startsWith("guest_") && onShowGuestLimit) {
+        onShowGuestLimit("Regenerating cover");
+        throw new Error("Guest limit reached");
+      }
       setCoverRegenerating(true);
       const response = await apiRequest(
         "POST",
@@ -108,6 +114,10 @@ export default function BookPreviewModal({
   });
 
   const handleExportPDF = async () => {
+    if (story.id.startsWith("guest_") && onShowGuestLimit) {
+        onShowGuestLimit("Exporting PDF");
+        return;
+    }
     setIsExporting(true);
     setExportType("pdf");
     try {
@@ -173,6 +183,10 @@ export default function BookPreviewModal({
   };
 
   const handleExportEPUB = async () => {
+    if (story.id.startsWith("guest_") && onShowGuestLimit) {
+        onShowGuestLimit("Exporting EPUB");
+        return;
+    }
     setIsExporting(true);
     setExportType("epub");
     try {

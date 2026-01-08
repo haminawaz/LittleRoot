@@ -198,7 +198,7 @@ export default function Header({
               </button>
             )}
 
-                          <Link href="/dashboard/template-books">
+              <Link href="/dashboard/template-books">
                 <button
                   className={`text-sm font-medium transition-colors ${
                     isActive("/dashboard/template-books")

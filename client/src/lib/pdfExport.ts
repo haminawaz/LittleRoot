@@ -25,17 +25,34 @@ export interface PDFExportProgress {
   progress: number;
 }
 
-export interface TextOverlay {
+export interface TextBlock {
+  id?: string;
   text: string;
   fontSize: number;
   fontFamily: string;
   color: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
   x: number;
   y: number;
+  width: number;
+  height: number;
+  textAlign: "left" | "center" | "right";
+}
+
+export interface TextOverlay {
+  blocks?: TextBlock[];
+  isVisible: boolean;
+  // Legacy support
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  x?: number;
+  y?: number;
   width?: number;
   height?: number;
-  isVisible: boolean;
-  textAlign: "left" | "center" | "right";
+  textAlign?: "left" | "center" | "right";
 }
 
 const KDP_FORMATS = {
@@ -56,11 +73,12 @@ const PDF_FORMATS: Record<string, { width: number; height: number }> = {
   "8.25x6": { width: 8.25 * 72, height: 6 * 72 },
 };
 
-async function optimizeImageForPDF(
+async function optimizeImageWithOverlay(
   imageUrl: string,
   targetWidth: number,
   targetHeight: number,
-  quality: number = 0.85
+  overlay: TextOverlay | null = null,
+  quality: number = 0.95
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -86,10 +104,16 @@ async function optimizeImageForPDF(
           srcY = (img.height - srcH) / 2;
         }
 
-        const maxDimension = Math.max(targetWidth, targetHeight);
-        const scaleFactor = maxDimension > 2500 ? 2500 / maxDimension : 1;
-        const canvasWidth = Math.round(targetWidth * scaleFactor);
-        const canvasHeight = Math.round(targetHeight * scaleFactor);
+        const DPI_SCALE = 300 / 72;
+        let canvasWidth = Math.round(targetWidth * DPI_SCALE);
+        let canvasHeight = Math.round(targetHeight * DPI_SCALE);
+        const maxAllowed = 4096;
+
+        if (canvasWidth > maxAllowed || canvasHeight > maxAllowed) {
+            const ratio = maxAllowed / Math.max(canvasWidth, canvasHeight);
+            canvasWidth = Math.round(canvasWidth * ratio);
+            canvasHeight = Math.round(canvasHeight * ratio);
+        }
 
         const canvas = document.createElement("canvas");
         canvas.width = canvasWidth;
@@ -104,7 +128,6 @@ async function optimizeImageForPDF(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = "high";
 
-        // Draw with cropping (srcX, srcY, srcW, srcH) to fill the target (0, 0, canvasWidth, canvasHeight)
         ctx.drawImage(
           img,
           srcX,
@@ -117,8 +140,112 @@ async function optimizeImageForPDF(
           canvasHeight
         );
 
-        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        // Render Text Overlay onto Canvas if visible
+        if (overlay && overlay.isVisible) {
+          const blocks: TextBlock[] = overlay.blocks || [
+            {
+              text: overlay.text || "",
+              fontSize: overlay.fontSize || 48,
+              fontFamily: overlay.fontFamily || "Arial",
+              color: overlay.color || "#ffffff",
+              backgroundColor: "#000000",
+              backgroundOpacity: 0.2,
+              x: overlay.x || 50,
+              y: overlay.y || 50,
+              width: overlay.width || 80,
+              height: overlay.height || 20,
+              textAlign: overlay.textAlign || "center",
+            }
+          ];
 
+          for (const block of blocks) {
+            if (!block.text) continue;
+
+            const fontSize = (block.fontSize * canvasWidth) / 1260;
+            const padding = (1.9 * canvasWidth) / 100;
+
+            // Render background
+            if (block.backgroundColor && block.backgroundOpacity && block.backgroundOpacity > 0) {
+              const rb = parseInt(block.backgroundColor.slice(1, 3), 16) || 0;
+              const gb = parseInt(block.backgroundColor.slice(3, 5), 16) || 0;
+              const bb = parseInt(block.backgroundColor.slice(5, 7), 16) || 0;
+
+              const rectW = (block.width / 100) * canvasWidth;
+              const rectH = (block.height / 100) * canvasHeight;
+              const rectX = (block.x / 100) * canvasWidth - rectW / 2;
+              const rectY = (block.y / 100) * canvasHeight - rectH / 2;
+
+              ctx.save();
+              ctx.globalAlpha = block.backgroundOpacity;
+              ctx.fillStyle = `rgb(${rb},${gb},${bb})`;
+              ctx.fillRect(rectX, rectY, rectW, rectH);
+              ctx.restore();
+            }
+
+            const fontMap: Record<string, string> = {
+              "Inter": "Inter, system-ui, sans-serif",
+              "Geist": "Geist, system-ui, sans-serif",
+              "Lora": "Lora, Georgia, serif",
+              "Open Sans": "'Open Sans', sans-serif",
+              "Space Grotesk": "'Space Grotesk', sans-serif",
+              "Arial": "Arial, Helvetica, sans-serif",
+              "Georgia": "Georgia, serif",
+              "Verdana": "Verdana, Geneva, sans-serif",
+              "Times New Roman": "'Times New Roman', Times, serif",
+              "Courier New": "'Courier New', Courier, monospace",
+              "Comic Sans MS": "'Comic Sans MS', cursive",
+              "Trebuchet MS": "'Trebuchet MS', Helvetica, sans-serif",
+              "Impact": "Impact, Charcoal, sans-serif",
+              "Tahoma": "Tahoma, Geneva, sans-serif",
+              "Palatino": "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+              "Garamond": "Garamond, Baskerville, 'Baskerville Old Face', 'Hoefler Text', 'Times New Roman', serif",
+            };
+
+            const fontStack = fontMap[block.fontFamily] || `"${block.fontFamily}", Arial, sans-serif`;
+            ctx.font = `bold ${fontSize}px ${fontStack}`;
+            ctx.fillStyle = block.color;
+            ctx.textAlign = block.textAlign;
+            ctx.textBaseline = "middle";
+
+            const centerX = (block.x / 100) * canvasWidth;
+            const centerY = (block.y / 100) * canvasHeight;
+            const boxWidth = (block.width / 100) * canvasWidth;
+
+            let drawX = centerX;
+            if (block.textAlign === "left") {
+              drawX = centerX - boxWidth / 2 + padding;
+            } else if (block.textAlign === "right") {
+              drawX = centerX + boxWidth / 2 - padding;
+            }
+
+            const wrapWidth = boxWidth - (padding * 2);
+            const words = block.text.split(" ");
+            const lines: string[] = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+              const word = words[i];
+              const metrics = ctx.measureText(currentLine + " " + word);
+              if (metrics.width < wrapWidth) {
+                currentLine += " " + word;
+              } else {
+                lines.push(currentLine);
+                currentLine = word;
+              }
+            }
+            lines.push(currentLine);
+
+            const lineHeight = fontSize * 1.2;
+            const totalHeight = lines.length * lineHeight;
+            const startY = centerY - totalHeight / 2 + lineHeight / 2;
+
+            lines.forEach((line, i) => {
+              ctx.fillText(line, drawX, startY + i * lineHeight);
+            });
+          }
+        }
+
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
         resolve(dataUrl);
       } catch (error) {
         reject(error);
@@ -130,75 +257,8 @@ async function optimizeImageForPDF(
   });
 }
 
-function renderTextOverlay(
-  pdf: jsPDF,
-  overlay: TextOverlay,
-  pageWidth: number,
-  pageHeight: number
-) {
-  try {
-    if (!overlay || !overlay.isVisible || !overlay.text) return;
-
-    // Map web fonts to jsPDF standard fonts
-    const fontMap: Record<string, string> = {
-      "Arial": "helvetica",
-      "Georgia": "times",
-      "Verdana": "helvetica",
-      "Times New Roman": "times",
-      "Courier New": "courier",
-      "Comic Sans MS": "helvetica",
-      "Trebuchet MS": "helvetica",
-    };
-
-    const pdfFont = fontMap[overlay.fontFamily] || "helvetica";
-    pdf.setFont(pdfFont, "bold");
-    
-    // Font size scaling: The UI uses fontSize/3 for display.
-    // Use 420px as the reference width where coordinates and sizes are defined.
-    // This matches the typical dashboard container size.
-    const referenceWidth = 420;
-    const scaleFactor = pageWidth / referenceWidth; 
-    pdf.setFontSize((overlay.fontSize / 3) * scaleFactor);
-
-    // Set color
-    let r = 255, g = 255, b = 255;
-    if (overlay.color && overlay.color.startsWith("#")) {
-      const hex = overlay.color;
-      r = parseInt(hex.slice(1, 3), 16) || 0;
-      g = parseInt(hex.slice(3, 5), 16) || 0;
-      b = parseInt(hex.slice(5, 7), 16) || 0;
-    }
-    pdf.setTextColor(r, g, b);
-
-    // Position (percentage based)
-    const centerX = (overlay.x / 100) * pageWidth;
-    const centerY = (overlay.y / 100) * pageHeight;
-    const boxWidth = (overlay.width || 80) / 100 * pageWidth;
-
-    // Align and Adjust X/Y (to match UI's centered-box model)
-    const align = overlay.textAlign || "center";
-    let drawX = centerX;
-    
-    // UI box model: div is centered at centerX.
-    if (align === "left") {
-      drawX = centerX - (boxWidth / 2);
-    } else if (align === "right") {
-      drawX = centerX + (boxWidth / 2);
-    }
-    
-    // Split text into lines
-    const lines = pdf.splitTextToSize(overlay.text, boxWidth);
-    
-    // Calculate vertical offset to center the text block
-    const lineHeight = pdf.getLineHeight();
-    const totalHeight = lines.length * lineHeight;
-    const adjustedY = centerY - (totalHeight / 2) + (lineHeight * 0.75);
-
-    pdf.text(lines, drawX, adjustedY, { align: align });
-  } catch (err) {
-    console.error("Error rendering text overlay:", err);
-  }
-}
+// Old rendering function removed in favor of canvas-based rendering for better font support
+// This section previously contained renderTextOverlay function
 
 export async function exportToPDF(
   story: StoryWithPages,
@@ -248,11 +308,12 @@ export async function exportToPDF(
         progress: Math.round((currentStep / totalSteps) * 100),
       });
 
-        const optimizedCover = await optimizeImageForPDF(
+        const optimizedCover = await optimizeImageWithOverlay(
           (story as any).coverImageUrl,
           format.width,
           format.height,
-          0.88
+          (story as any).coverTextOverlay,
+          1.0
         );
 
       pdf.addImage(
@@ -263,22 +324,12 @@ export async function exportToPDF(
         format.width,
         format.height,
         undefined,
-        "FAST"
+        "SLOW"
       );
-
-      // Render cover text overlay
-      if ((story as any).coverTextOverlay) {
-        renderTextOverlay(
-          pdf,
-          (story as any).coverTextOverlay,
-          format.width,
-          format.height
-        );
-      }
 
       isFirstPage = false;
       currentStep++;
-      console.log("✓ Added illustrated cover to PDF");
+      console.log("✓ Added illustrated cover with text to PDF");
     } catch (error) {
       console.warn("Failed to load cover image:", error);
     }
@@ -303,11 +354,12 @@ export async function exportToPDF(
           progress: Math.round((currentStep / totalSteps) * 100),
         });
 
-          const optimizedImage = await optimizeImageForPDF(
+          const optimizedImage = await optimizeImageWithOverlay(
             page.imageUrl,
             format.width,
             format.height,
-            0.82 
+            (page as any).textOverlay,
+            0.95
           );
 
         pdf.addImage(
@@ -318,18 +370,8 @@ export async function exportToPDF(
           format.width,
           format.height,
           undefined,
-          "FAST"
+          "SLOW"
         );
-
-        // Render page text overlay
-        if ((page as any).textOverlay) {
-          renderTextOverlay(
-            pdf,
-            (page as any).textOverlay,
-            format.width,
-            format.height
-          );
-        }
 
         currentStep++;
       } catch (error) {

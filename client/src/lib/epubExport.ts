@@ -14,16 +14,34 @@ export interface EPUBExportProgress {
   progress: number;
 }
 
-interface TextOverlay {
+export interface TextBlock {
+  id?: string;
   text: string;
   fontSize: number;
   fontFamily: string;
   color: string;
+  backgroundColor?: string;
+  backgroundOpacity?: number;
   x: number;
   y: number;
-  width?: number;
-  isVisible: boolean;
+  width: number;
+  height: number;
   textAlign: "left" | "center" | "right";
+}
+
+export interface TextOverlay {
+  blocks?: TextBlock[];
+  isVisible: boolean;
+  // Legacy support
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  color?: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  textAlign?: "left" | "center" | "right";
 }
 
 async function processImageWithOverlay(
@@ -45,50 +63,108 @@ async function processImageWithOverlay(
           throw new Error("Failed to get canvas context");
         }
         ctx.drawImage(img, 0, 0);
-        if (overlay && overlay.isVisible && overlay.text) {
-          const referenceWidth = 420;
-          const scaleFactor = img.width / referenceWidth;
-
-          const fontSize = (overlay.fontSize / 3) * scaleFactor;
-          ctx.font = `bold ${fontSize}px ${overlay.fontFamily}, sans-serif`;
-          ctx.fillStyle = overlay.color;
-          ctx.textAlign = overlay.textAlign;
-          ctx.textBaseline = "middle";
-
-          const centerX = (overlay.x / 100) * img.width;
-          const centerY = (overlay.y / 100) * img.height;
-          const boxWidth = ((overlay.width || 80) / 100) * img.width;
-
-          let drawX = centerX;
-          if (overlay.textAlign === "left") {
-            drawX = centerX - boxWidth / 2;
-          } else if (overlay.textAlign === "right") {
-            drawX = centerX + boxWidth / 2;
-          }
-
-          const words = overlay.text.split(" ");
-          const lines: string[] = [];
-          let currentLine = words[0];
-
-          for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const width = ctx.measureText(currentLine + " " + word).width;
-            if (width < boxWidth) {
-              currentLine += " " + word;
-            } else {
-              lines.push(currentLine);
-              currentLine = word;
+        if (overlay && overlay.isVisible) {
+          const blocks: TextBlock[] = overlay.blocks || [
+            {
+              text: overlay.text || "",
+              fontSize: overlay.fontSize || 48,
+              fontFamily: overlay.fontFamily || "Arial",
+              color: overlay.color || "#ffffff",
+              backgroundColor: "#000000",
+              backgroundOpacity: 0.2,
+              x: overlay.x || 50,
+              y: overlay.y || 50,
+              width: overlay.width || 80,
+              height: overlay.height || 20,
+              textAlign: overlay.textAlign || "center",
             }
+          ];
+
+          for (const block of blocks) {
+            if (!block.text) continue;
+
+            const fontSize = (block.fontSize * img.width) / 1260;
+            const padding = (1.9 * img.width) / 100;
+            
+            // Render background
+            if (block.backgroundColor && block.backgroundOpacity && block.backgroundOpacity > 0) {
+              const rb = parseInt(block.backgroundColor.slice(1, 3), 16) || 0;
+              const gb = parseInt(block.backgroundColor.slice(3, 5), 16) || 0;
+              const bb = parseInt(block.backgroundColor.slice(5, 7), 16) || 0;
+              
+              const rectW = (block.width / 100) * img.width;
+              const rectH = (block.height / 100) * img.height;
+              const rectX = (block.x / 100) * img.width - rectW / 2;
+              const rectY = (block.y / 100) * img.height - rectH / 2;
+              
+              ctx.save();
+              ctx.globalAlpha = block.backgroundOpacity;
+              ctx.fillStyle = `rgb(${rb},${gb},${bb})`;
+              ctx.fillRect(rectX, rectY, rectW, rectH);
+              ctx.restore();
+            }
+
+            // Robust font string with standard fallbacks
+            const fontMap: Record<string, string> = {
+              "Inter": "Inter, system-ui, sans-serif",
+              "Geist": "Geist, system-ui, sans-serif",
+              "Lora": "Lora, Georgia, serif",
+              "Open Sans": "'Open Sans', sans-serif",
+              "Space Grotesk": "'Space Grotesk', sans-serif",
+              "Arial": "Arial, Helvetica, sans-serif",
+              "Georgia": "Georgia, serif",
+              "Verdana": "Verdana, Geneva, sans-serif",
+              "Times New Roman": "'Times New Roman', Times, serif",
+              "Courier New": "'Courier New', Courier, monospace",
+              "Comic Sans MS": "'Comic Sans MS', cursive",
+              "Trebuchet MS": "'Trebuchet MS', Helvetica, sans-serif",
+              "Impact": "Impact, Charcoal, sans-serif",
+              "Tahoma": "Tahoma, Geneva, sans-serif",
+              "Palatino": "'Palatino Linotype', 'Book Antiqua', Palatino, serif",
+              "Garamond": "Garamond, Baskerville, 'Baskerville Old Face', 'Hoefler Text', 'Times New Roman', serif",
+            };
+            const fontStack = fontMap[block.fontFamily] || `"${block.fontFamily}", Arial, sans-serif`;
+            ctx.font = `bold ${fontSize}px ${fontStack}`;
+            ctx.fillStyle = block.color;
+            ctx.textAlign = block.textAlign;
+            ctx.textBaseline = "middle";
+
+            const centerX = (block.x / 100) * img.width;
+            const centerY = (block.y / 100) * img.height;
+            const boxWidth = (block.width / 100) * img.width;
+
+            let drawX = centerX;
+            if (block.textAlign === "left") {
+              drawX = centerX - boxWidth / 2 + padding;
+            } else if (block.textAlign === "right") {
+              drawX = centerX + boxWidth / 2 - padding;
+            }
+
+            const wrapWidth = boxWidth - (padding * 2);
+            const words = block.text.split(" ");
+            const lines: string[] = [];
+            let currentLine = words[0];
+
+            for (let i = 1; i < words.length; i++) {
+              const word = words[i];
+              const width = ctx.measureText(currentLine + " " + word).width;
+              if (width < wrapWidth) {
+                currentLine += " " + word;
+              } else {
+                lines.push(currentLine);
+                currentLine = word;
+              }
+            }
+            lines.push(currentLine);
+
+            const lineHeight = fontSize * 1.2;
+            const totalHeight = lines.length * lineHeight;
+            const startY = centerY - totalHeight / 2 + lineHeight / 2;
+
+            lines.forEach((line, i) => {
+              ctx.fillText(line, drawX, startY + i * lineHeight);
+            });
           }
-          lines.push(currentLine);
-
-          const lineHeight = fontSize * 1.2;
-          const totalHeight = lines.length * lineHeight;
-          const startY = centerY - totalHeight / 2 + lineHeight / 2;
-
-          lines.forEach((line, i) => {
-            ctx.fillText(line, drawX, startY + i * lineHeight);
-          });
         }
 
         canvas.toBlob(
@@ -96,8 +172,7 @@ async function processImageWithOverlay(
             if (blob) resolve(blob);
             else reject(new Error("Failed to create blob from canvas"));
           },
-          "image/jpeg",
-          0.9
+          "image/png"
         );
       } catch (err) {
         reject(err);
@@ -253,12 +328,16 @@ h1 { font-family: serif; }`
         ? `<img src="${imageHref}" class="page-image" alt="Page ${i + 1}"/>`
         : ""
     }
-    <div class="page-text">
-      ${page.text
-        .split("\n")
-        .map((p) => `<p>${p}</p>`)
-        .join("")}
-    </div>
+    ${
+      !imageHref || !(page as any).textOverlay?.isVisible
+        ? `<div class="page-text">
+            ${page.text
+              .split("\n")
+              .map((p) => `<p>${p}</p>`)
+              .join("")}
+          </div>`
+        : ""
+    }
   </div>
 </body>
 </html>`;

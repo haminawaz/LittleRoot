@@ -183,11 +183,14 @@ export default function IllustrationTextEditor({
 
   return (
     <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
-      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border-none shadow-2xl">
+      <DialogContent className="max-w-4xl w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden bg-background border-none shadow-2xl [&>button]:hidden">
         <DialogHeader className="p-4 border-b bg-muted/30">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-xl font-serif">Edit Text Overlays</DialogTitle>
             <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={onCancel} disabled={isSaving}>
+                Cancel
+              </Button>
               <Button variant="outline" size="sm" onClick={handleAddBlock}>
                 <Plus size={16} className="mr-1" /> Add Text
               </Button>

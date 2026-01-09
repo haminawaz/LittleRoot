@@ -504,28 +504,58 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
               )}
             </div>
 
-            <div className={`aspect-[3/4] bg-gradient-to-br from-purple-50 to-pink-50 relative ${(!textEditorOpen || editingOverlayType !== "cover") ? "overflow-hidden" : "overflow-visible"}`}>
+            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size' }}>
               <img
-                src={coverImageUrl}
-                alt="Book cover"
-                className="w-full h-full object-cover"
+                src={(story as any).coverImageUrl}
+                alt="Story cover"
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 data-testid="img-cover"
               />
               {(story as any).coverTextOverlay?.isVisible && (!textEditorOpen || editingOverlayType !== "cover") && (
-                <div
-                  className="absolute pointer-events-none font-bold"
-                  style={{
-                    left: `${(story as any).coverTextOverlay.x}%`,
-                    top: `${(story as any).coverTextOverlay.y}%`,
-                    width: `${(story as any).coverTextOverlay.width || 80}%`,
-                    transform: "translate(-50%, -50%)",
-                    fontSize: `${(story as any).coverTextOverlay.fontSize / 3}px`,
-                    fontFamily: (story as any).coverTextOverlay.fontFamily,
-                    color: (story as any).coverTextOverlay.color,
-                    textAlign: (story as any).coverTextOverlay.textAlign as any,
-                  }}
-                >
-                  {(story as any).coverTextOverlay.text}
+                <div className="absolute inset-0 pointer-events-none">
+                  {(story as any).coverTextOverlay.blocks ? (
+                    (story as any).coverTextOverlay.blocks.map((block: any) => (
+                      <div
+                        key={block.id}
+                        className="absolute font-bold overflow-hidden"
+                        style={{
+                          left: `${block.x}%`,
+                          top: `${block.y}%`,
+                          width: `${block.width}%`,
+                          height: `${block.height}%`,
+                          transform: "translate(-50%, -50%)",
+                          fontSize: `${block.fontSize / 12.6}cqw`,
+                          fontFamily: block.fontFamily,
+                          color: block.color,
+                          textAlign: block.textAlign as any,
+                          backgroundColor: block.backgroundColor ? `${block.backgroundColor}${Math.round((block.backgroundOpacity || 0) * 255).toString(16).padStart(2, '0')}` : 'transparent',
+                          padding: '0.5cqw',
+                          borderRadius: '0.5cqw',
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {block.text}
+                      </div>
+                    ))
+                  ) : (
+                    /* Fallback for old format */
+                    <div
+                      className="absolute font-bold"
+                      style={{
+                        left: `${(story as any).coverTextOverlay.x}%`,
+                        top: `${(story as any).coverTextOverlay.y}%`,
+                        width: `${(story as any).coverTextOverlay.width || 80}%`,
+                        transform: "translate(-50%, -50%)",
+                        fontSize: `${(story as any).coverTextOverlay.fontSize / 12.6}cqw`,
+                        fontFamily: (story as any).coverTextOverlay.fontFamily,
+                        color: (story as any).coverTextOverlay.color,
+                        textAlign: (story as any).coverTextOverlay.textAlign as any,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {(story as any).coverTextOverlay.text}
+                    </div>
+                  )}
                 </div>
               )}
               {/* Inline Cover Editor */}
@@ -616,32 +646,61 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
             )}
           </div>
 
-            <div className={`aspect-[3/4] bg-gradient-to-br from-blue-50 to-green-50 relative ${(!textEditorOpen || editingOverlayPageId !== page.id) ? "overflow-hidden" : "overflow-visible"}`}>
+            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size' }}>
               {page.imageUrl && !page.isGenerating ? (
                 <>
                   <img
-                    key={page.imageUrl}
                     src={page.imageUrl}
-                    alt={`Page ${page.pageNumber} illustration`}
-                    className="w-full h-full object-cover"
+                    alt={`Page ${page.pageNumber}`}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     data-testid={`img-page-${page.pageNumber}`}
                   />
                   {/* Dynamic Page Overlay */}
                   {(page as any).textOverlay?.isVisible && (!textEditorOpen || editingOverlayPageId !== page.id) && (
-                    <div
-                      className="absolute pointer-events-none font-bold"
-                      style={{
-                        left: `${(page as any).textOverlay.x}%`,
-                        top: `${(page as any).textOverlay.y}%`,
-                        width: `${(page as any).textOverlay.width || 80}%`,
-                        transform: "translate(-50%, -50%)",
-                        fontSize: `${(page as any).textOverlay.fontSize / 3}px`,
-                        fontFamily: (page as any).textOverlay.fontFamily,
-                        color: (page as any).textOverlay.color,
-                        textAlign: (page as any).textOverlay.textAlign as any,
-                      }}
-                    >
-                      {(page as any).textOverlay.text}
+                    <div className="absolute inset-0 pointer-events-none">
+                      {(page as any).textOverlay.blocks ? (
+                        (page as any).textOverlay.blocks.map((block: any) => (
+                          <div
+                            key={block.id}
+                            className="absolute font-bold overflow-hidden"
+                            style={{
+                              left: `${block.x}%`,
+                              top: `${block.y}%`,
+                              width: `${block.width}%`,
+                              height: `${block.height}%`,
+                              transform: "translate(-50%, -50%)",
+                              fontSize: `${block.fontSize / 12.6}cqw`,
+                              fontFamily: block.fontFamily,
+                              color: block.color,
+                              textAlign: block.textAlign as any,
+                              backgroundColor: block.backgroundColor ? `${block.backgroundColor}${Math.round((block.backgroundOpacity || 0) * 255).toString(16).padStart(2, '0')}` : 'transparent',
+                              padding: '0.5cqw',
+                              borderRadius: '0.5cqw',
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {block.text}
+                          </div>
+                        ))
+                      ) : (
+                        /* Fallback for old format */
+                        <div
+                          className="absolute font-bold"
+                          style={{
+                            left: `${(page as any).textOverlay.x}%`,
+                            top: `${(page as any).textOverlay.y}%`,
+                            width: `${(page as any).textOverlay.width || 80}%`,
+                            transform: "translate(-50%, -50%)",
+                            fontSize: `${(page as any).textOverlay.fontSize / 12.6}cqw`,
+                            fontFamily: (page as any).textOverlay.fontFamily,
+                            color: (page as any).textOverlay.color,
+                            textAlign: (page as any).textOverlay.textAlign as any,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {(page as any).textOverlay.text}
+                        </div>
+                      )}
                     </div>
                   )}
 

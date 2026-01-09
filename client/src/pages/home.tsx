@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Download, Eye, BookmarkPlus, Lock } from "lucide-react";
+import { BookOpen, Download, Eye, BookmarkPlus, Lock, ChevronDown, Trash2, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import StoryInput from "@/components/StoryInput";
 import PageGrid from "@/components/PageGrid";
@@ -21,6 +21,22 @@ import type {
 import Header from "@/components/Header";
 import UpgradeUser from "@/components/UpgradeUser";
 import GuestActionLimitModal from "@/components/GuestActionLimitModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
@@ -36,6 +52,7 @@ export default function Home() {
   const [guestStories, setGuestStories] = useLocalStorage<Record<string, StoryWithPages>>("guest_stories", {});
   const [showGuestLimit, setShowGuestLimit] = useState(false);
   const [guestLimitAction, setGuestLimitAction] = useState("");
+  const [storyToDelete, setStoryToDelete] = useState<string | null>(null);
 
   const handleShowGuestLimit = (action: string) => {
     setGuestLimitAction(action);
@@ -131,6 +148,36 @@ export default function Home() {
           variant: "destructive",
         });
       }
+    },
+  });
+
+  const deleteStoryMutation = useMutation({
+    mutationFn: async (storyId: string) => {
+      const response = await apiRequest("DELETE", `/api/stories/${storyId}`);
+      if (!response.ok) {
+        throw new Error("Failed to delete story");
+      }
+      return response.json();
+    },
+    onSuccess: (_, storyId) => {
+      queryClient.setQueryData<Story[]>(["/api/stories"], (old) => {
+        if (!old) return [];
+        return old.filter((s) => s.id !== storyId);
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["/api/stories"] });
+      setStoryToDelete(null);
+      toast({
+        title: "Success",
+        description: "Story deleted successfully!",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete story. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -638,43 +685,38 @@ export default function Home() {
                           : "Save as Template"}
                       </span>
                     </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleExportPDF}
-                      disabled={
-                        !activeStory || activeStory.pages.length === 0 || isExporting
-                      }
-                      data-testid="button-export-pdf"
-                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                    >
-                      {isExporting && exportType === "pdf" ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
-                      ) : (
-                        <Download size={14} className="mr-1" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {isExporting && exportType === "pdf" ? "Exporting..." : "Export PDF"}
-                      </span>
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleExportEPUB}
-                      disabled={
-                        !activeStory || activeStory.pages.length === 0 || isExporting
-                      }
-                      data-testid="button-export-epub"
-                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
-                    >
-                      {isExporting && exportType === "epub" ? (
-                        <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
-                      ) : (
-                        <BookOpen size={14} className="mr-1" />
-                      )}
-                      <span className="hidden sm:inline">
-                        {isExporting && exportType === "epub" ? "Exporting..." : "Export EPUB"}
-                      </span>
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          size="sm"
+                          disabled={
+                            !activeStory || activeStory.pages.length === 0 || isExporting
+                          }
+                          data-testid="button-export-dropdown"
+                          className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                        >
+                          {isExporting ? (
+                            <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
+                          ) : (
+                            <Download size={14} className="mr-1" />
+                          )}
+                          <span className="hidden sm:inline">
+                            {isExporting ? "Exporting..." : "Export"}
+                          </span>
+                          <ChevronDown size={14} className="ml-1" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
+                          <Download size={14} className="mr-2" />
+                          <span>Export as PDF</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={handleExportEPUB} className="cursor-pointer">
+                          <BookOpen size={14} className="mr-2" />
+                          <span>Export as EPUB</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </div>
@@ -898,11 +940,24 @@ export default function Home() {
                             )}
                           </div>
 
-                          <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0 text-black">
+                          <div className="p-3 sm:p-4 flex flex-col flex-1 min-h-0 text-black relative">
                             <div className="flex items-start justify-between mb-2">
-                              <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-2">
+                              <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate flex-1 min-w-0 pr-8">
                                 {savedStory.title}
-                              </h3>
+                               </h3>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 rounded-full text-destructive hover:bg-destructive/10 absolute top-3 sm:top-4 right-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setStoryToDelete(savedStory.id);
+                                }}
+                                data-testid={`button-delete-story-${savedStory.id}`}
+                                title="Delete story"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                             <p className="text-xs sm:text-sm mb-2 sm:mb-3 line-clamp-2 flex-shrink-0">
                               {savedStory.content.substring(0, 100)}...
@@ -973,6 +1028,42 @@ export default function Home() {
         onClose={() => setShowGuestLimit(false)}
         action={guestLimitAction}
       />
+      <AlertDialog open={!!storyToDelete} onOpenChange={(open) => {
+        if (!deleteStoryMutation.isPending) {
+          if (!open) setStoryToDelete(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete your story and all its illustrations.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteStoryMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[80px]"
+              disabled={deleteStoryMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (storyToDelete) {
+                  deleteStoryMutation.mutate(storyToDelete);
+                }
+              }}
+            >
+              {deleteStoryMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

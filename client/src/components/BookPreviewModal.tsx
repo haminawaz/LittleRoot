@@ -23,8 +23,15 @@ import type { StoryWithPages } from "@shared/schema";
 import { 
   FileText, 
   Book as BookIcon,
-  Loader2
+  Loader2,
+  ChevronDown
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
 
 interface BookPreviewModalProps {
   story: StoryWithPages;
@@ -246,7 +253,7 @@ export default function BookPreviewModal({
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-muted/20">
                   {(story as any).coverImageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden">
+                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size' }}>
                         <img
                           src={(story as any).coverImageUrl}
                           alt="Book cover"
@@ -254,20 +261,50 @@ export default function BookPreviewModal({
                           data-testid="img-preview-cover"
                         />
                         {(story as any).coverTextOverlay?.isVisible && (
-                          <div
-                            className="absolute pointer-events-none font-bold"
-                            style={{
-                              left: `${(story as any).coverTextOverlay.x}%`,
-                              top: `${(story as any).coverTextOverlay.y}%`,
-                              width: `${(story as any).coverTextOverlay.width || 80}%`,
-                              transform: "translate(-50%, -50%)",
-                              fontSize: `${(story as any).coverTextOverlay.fontSize / 3}px`,
-                              fontFamily: (story as any).coverTextOverlay.fontFamily,
-                              color: (story as any).coverTextOverlay.color,
-                              textAlign: (story as any).coverTextOverlay.textAlign as any,
-                            }}
-                          >
-                            {(story as any).coverTextOverlay.text}
+                          <div className="absolute inset-0 pointer-events-none">
+                            {(story as any).coverTextOverlay.blocks ? (
+                              (story as any).coverTextOverlay.blocks.map((block: any) => (
+                                <div
+                                  key={block.id}
+                                  className="absolute font-bold overflow-hidden"
+                                  style={{
+                                    left: `${block.x}%`,
+                                    top: `${block.y}%`,
+                                    width: `${block.width}%`,
+                                    height: `${block.height}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontSize: `${block.fontSize / 12.6}cqw`,
+                                    fontFamily: block.fontFamily,
+                                    color: block.color,
+                                    textAlign: block.textAlign as any,
+                                    backgroundColor: block.backgroundColor ? `${block.backgroundColor}${Math.round((block.backgroundOpacity || 0) * 255).toString(16).padStart(2, '0')}` : 'transparent',
+                                    padding: '0.5cqw',
+                                    borderRadius: '0.5cqw',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {block.text}
+                                </div>
+                              ))
+                            ) : (
+                              /* Fallback for old format */
+                              <div
+                                className="absolute pointer-events-none font-bold"
+                                style={{
+                                  left: `${(story as any).coverTextOverlay.x}%`,
+                                  top: `${(story as any).coverTextOverlay.y}%`,
+                                  width: `${(story as any).coverTextOverlay.width || 80}%`,
+                                  transform: "translate(-50%, -50%)",
+                                  fontSize: `${(story as any).coverTextOverlay.fontSize / 12.6}cqw`,
+                                  fontFamily: (story as any).coverTextOverlay.fontFamily,
+                                  color: (story as any).coverTextOverlay.color,
+                                  textAlign: (story as any).coverTextOverlay.textAlign as any,
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {(story as any).coverTextOverlay.text}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -321,7 +358,7 @@ export default function BookPreviewModal({
                     </div>
                   ) : currentPageData.imageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden">
+                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size' }}>
                         <img
                           src={currentPageData.imageUrl}
                           alt={`Page ${currentPageData.pageNumber} illustration`}
@@ -329,20 +366,53 @@ export default function BookPreviewModal({
                           data-testid={`img-preview-page-${currentPageData.pageNumber}`}
                         />
                         {(currentPageData as any).textOverlay?.isVisible && (
-                          <div
-                            className="absolute pointer-events-none font-bold"
-                            style={{
-                              left: `${(currentPageData as any).textOverlay.x}%`,
-                              top: `${(currentPageData as any).textOverlay.y}%`,
-                              width: `${(currentPageData as any).textOverlay.width || 80}%`,
-                              transform: "translate(-50%, -50%)",
-                              fontSize: `${(currentPageData as any).textOverlay.fontSize / 3}px`,
-                              fontFamily: (currentPageData as any).textOverlay.fontFamily,
-                              color: (currentPageData as any).textOverlay.color,
-                              textAlign: (currentPageData as any).textOverlay.textAlign as any,
-                            }}
-                          >
-                            {(currentPageData as any).textOverlay.text}
+                          <div className="absolute inset-0 pointer-events-none">
+                            {(currentPageData as any).textOverlay.blocks ? (
+                              (currentPageData as any).textOverlay.blocks.map((block: any) => (
+                                <div
+                                  key={block.id}
+                                  className="absolute font-bold overflow-hidden"
+                                  style={{
+                                    left: `${block.x}%`,
+                                    top: `${block.y}%`,
+                                    width: `${block.width}%`,
+                                    height: `${block.height}%`,
+                                    transform: "translate(-50%, -50%)",
+                                    fontSize: `${block.fontSize / 12.6}cqw`,
+                                    fontFamily: block.fontFamily,
+                                    color: block.color,
+                                    textAlign: block.textAlign as any,
+                                    backgroundColor: block.backgroundColor ? `${block.backgroundColor}${Math.round((block.backgroundOpacity || 0) * 255).toString(16).padStart(2, '0')}` : 'transparent',
+                                    padding: '0.5cqw',
+                                    borderRadius: '0.5cqw',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {block.text}
+                                </div>
+                              ))
+                            ) : (
+                              /* Fallback for old format */
+                              <div
+                                className="absolute pointer-events-none font-bold"
+                                style={{
+                                  left: `${(currentPageData as any).textOverlay.x}%`,
+                                  top: `${(currentPageData as any).textOverlay.y}%`,
+                                  width: `${(currentPageData as any).textOverlay.width || 80}%`,
+                                  transform: "translate(-50%, -50%)",
+                                  fontSize: `${(currentPageData as any).textOverlay.fontSize / 12.6}cqw`,
+                                  fontFamily: (currentPageData as any).textOverlay.fontFamily,
+                                  color: (currentPageData as any).textOverlay.color,
+                                  textAlign: (currentPageData as any).textOverlay.textAlign as any,
+                                  backgroundColor: (currentPageData as any).textOverlay.backgroundColor ? `${(currentPageData as any).textOverlay.backgroundColor}${Math.round(((currentPageData as any).textOverlay.backgroundOpacity || 0) * 255).toString(16).padStart(2, '0')}` : 'transparent',
+                                  padding: '0.5cqw',
+                                  borderRadius: '0.5cqw',
+                                  lineHeight: 1.2,
+                                }}
+                              >
+                                {(currentPageData as any).textOverlay.text}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -544,41 +614,35 @@ export default function BookPreviewModal({
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportPDF}
-              disabled={isExporting}
-              data-testid="button-export-pdf"
-              className="flex-1 sm:flex-initial"
-            >
-              {isExporting && exportType === "pdf" ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-              ) : (
-                <FileText size={16} className="mr-1.5" />
-              )}
-              <span>
-                {isExporting && exportType === "pdf" ? "Exporting..." : "Export PDF"}
-              </span>
-            </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportEPUB}
-              disabled={isExporting}
-              data-testid="button-export-epub"
-              className="flex-1 sm:flex-initial"
-            >
-              {isExporting && exportType === "epub" ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
-              ) : (
-                <BookIcon size={16} className="mr-1.5" />
-              )}
-              <span>
-                {isExporting && exportType === "epub" ? "Exporting..." : "Export EPUB"}
-              </span>
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isExporting}
+                  data-testid="button-export-dropdown"
+                  className="flex-1 sm:flex-initial"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin mr-1.5" />
+                  ) : (
+                    <Download size={16} className="mr-1.5" />
+                  )}
+                  <span>{isExporting ? "Exporting..." : "Export"}</span>
+                  <ChevronDown size={14} className="ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportPDF} className="cursor-pointer">
+                  <FileText size={16} className="mr-2" />
+                  <span>Export as PDF</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportEPUB} className="cursor-pointer">
+                  <BookIcon size={16} className="mr-2" />
+                  <span>Export as EPUB</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </DialogContent>

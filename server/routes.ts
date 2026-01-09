@@ -2253,6 +2253,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/stories/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const storyId = req.params.id;
+
+      const story = await storage.getStoryWithPages(storyId);
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+      if (story.userId !== userId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+
+      const assetsToDelete: string[] = [];
+      if (story.coverImageUrl) assetsToDelete.push(story.coverImageUrl);
+      if (story.pdfUrl) assetsToDelete.push(story.pdfUrl);
+      story.pages.forEach(p => {
+        if (p.imageUrl) assetsToDelete.push(p.imageUrl);
+      });
+
+      // Delete physical files and cloud objects in parallel for speed
+      await Promise.all(assetsToDelete.map(async (assetUrl) => {
+        try {
+          const urlWithoutQuery = assetUrl.split('?')[0];
+          
+          if (urlWithoutQuery.startsWith('/generated-images/') || urlWithoutQuery.startsWith('/uploads/')) {
+            const fileName = path.basename(urlWithoutQuery);
+            const dirName = urlWithoutQuery.startsWith('/generated-images/') ? 'generated-images' : 'uploads';
+            const filePath = path.join(process.cwd(), dirName, fileName);
+            
+            if (fs.existsSync(filePath)) {
+              await fs.promises.unlink(filePath);
+            }
+          } else if (urlWithoutQuery.startsWith('/objects/')) {
+            try {
+              const objectFile = await objectStorageService.getObjectEntityFile(urlWithoutQuery);
+              await objectFile.delete();
+            } catch (objErr) {
+            }
+          }
+        } catch (fileErr) {
+          console.error(`Error deleting asset ${assetUrl}:`, fileErr);
+        }
+      }));
+      
+      await storage.deleteStory(storyId);
+      res.json({ success: true, message: "Story and all its assets deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting story:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Generate book pages from story
   app.post("/api/stories/:id/generate", isAuthenticated, async (req: any, res) => {
     try {
@@ -2389,9 +2442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 text: p.text
               }))
             });
-            
-            // Save PDF URL to story
-            await storage.updateStory(storyId, { pdfUrl });
+
+            await storage.updateStory(storyId, { pdfUrl, status: "completed" });
             console.log(`✓ PDF ready for instant download: ${pdfUrl}`);
           } catch (pdfError) {
             console.error(`Failed to generate PDF for "${story.title}":`, pdfError);

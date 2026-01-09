@@ -290,8 +290,10 @@ export async function exportToPDF(
     progress: 0,
   });
 
+  const orientation = format.width > format.height ? "landscape" : "portrait";
+
   const pdf = new jsPDF({
-    orientation: "portrait",
+    orientation: orientation,
     unit: "pt",
     format: [format.width, format.height],
     compress: true,
@@ -339,7 +341,7 @@ export async function exportToPDF(
     const page = story.pages[i];
 
     if (!isFirstPage) {
-      pdf.addPage([format.width, format.height], "portrait");
+      pdf.addPage([format.width, format.height], orientation);
     } else {
       isFirstPage = false;
     }

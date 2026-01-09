@@ -27,6 +27,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [characterImagePreview, setCharacterImagePreview] = useState<string | null>(null);
   const [showGuestLimit, setShowGuestLimit] = useState(false);
   const [guestLimitMessage, setGuestLimitMessage] = useState("");
+  const [bookOrientation, setBookOrientation] = useState<"portrait" | "landscape" | "square">("portrait");
 
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -38,6 +39,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   });
 
   const isGuest = user?.subscriptionPlan === 'guest';
+  const hasAdvancedFormats = user?.hasAllFormattingOptions || false;
 
   // Check if user has reached book creation limit
   const bookLimitReached = user ? !user.canCreateNewBook : false;
@@ -231,6 +233,12 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         characterImageUrl = uploadData.url;
       }
 
+      const formatMap = {
+        portrait: "8x10",
+        square: "8x8",
+        landscape: "8.25x6"
+      };
+
       createStoryMutation.mutate({
         title: title.trim(),
         content: content.trim(),
@@ -238,7 +246,7 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         characterImageUrl,
         artStyle,
         pagesCount: targetPages,
-        pdfFormat: "8x10",
+        pdfFormat: formatMap[bookOrientation],
       });
     } catch (error) {
       console.error('Error uploading character image:', error);
@@ -376,7 +384,33 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         {/* Generation Settings */}
         <div className="bg-accent/30 rounded-lg p-4">
           <h3 className="text-sm font-medium mb-3">Generation Settings</h3>
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <div>
+              <Label className="block text-xs text-muted-foreground mb-1">
+                Book Orientation
+              </Label>
+              <Select 
+                value={bookOrientation} 
+                onValueChange={(v: any) => setBookOrientation(v)} 
+                disabled={bookLimitReached}
+              >
+                <SelectTrigger className={`w-full ${bookLimitReached ? "cursor-not-allowed" : ""}`} data-testid="select-orientation">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="portrait">Portrait (8" x 10")</SelectItem>
+                  <SelectItem value="square">Square (8" x 8")</SelectItem>
+                  <SelectItem value="landscape">
+                    <div className="flex items-center justify-between w-full">
+                      <span>Landscape (8.25" x 6")</span>
+                      {!hasAdvancedFormats && !isGuest && (
+                        <Crown size={12} className="ml-2 text-amber-500 fill-amber-500" />
+                      )}
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <Label className="block text-xs text-muted-foreground mb-1">
                 Pages per story *

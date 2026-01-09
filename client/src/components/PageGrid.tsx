@@ -488,6 +488,22 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
 
   const coverImageUrl = (story as any).coverImageUrl;
 
+
+  const pdfFormat = (story as any).pdfFormat || "8x10";
+  const getAspectRatioStyle = (format: string) => {
+    switch (format) {
+      case "8x10": return { aspectRatio: "4/5" };
+      case "8x8": return { aspectRatio: "1/1" };
+      case "8.25x6": return { aspectRatio: "1.375/1" };
+      case "landscape": return { aspectRatio: "1.375/1" };
+      case "square": return { aspectRatio: "1/1" };
+      case "portrait": return { aspectRatio: "4/5" };
+      default: return { aspectRatio: "4/5" };
+    }
+  };
+
+  const aspectRatioStyle = getAspectRatioStyle(pdfFormat);
+
   return (
     <div>
       <div className={`grid grid-cols-1 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6 ${textEditorOpen ? "overflow-visible" : ""}`}>
@@ -504,7 +520,7 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
               )}
             </div>
 
-            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size' }}>
+            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
               <img
                 src={(story as any).coverImageUrl}
                 alt="Story cover"
@@ -646,7 +662,7 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
             )}
           </div>
 
-            <div className="relative aspect-[3/4] rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size' }}>
+            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
               {page.imageUrl && !page.isGenerating ? (
                 <>
                   <img

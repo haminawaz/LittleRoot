@@ -40,6 +40,18 @@ import {
 
 import { useLocalStorage } from "@/hooks/use-local-storage";
 
+const getAspectRatioStyle = (format: string) => {
+  switch (format) {
+    case "8x10": return { aspectRatio: "4/5" };
+    case "8x8": return { aspectRatio: "1/1" };
+    case "8.25x6": return { aspectRatio: "1.375/1" };
+    case "landscape": return { aspectRatio: "1.375/1" };
+    case "square": return { aspectRatio: "1/1" };
+    case "portrait": return { aspectRatio: "4/5" };
+    default: return { aspectRatio: "4/5" };
+  }
+};
+
 export default function Home() {
   const [location, setLocation] = useLocation();
   const [currentStoryId, setCurrentStoryId] = useState<string | null>(null);
@@ -907,6 +919,7 @@ export default function Home() {
                 ) : allStories?.length ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 sm:gap-6">
                     {allStories.map((savedStory) => {
+                      const aspectRatioStyle = getAspectRatioStyle(savedStory.pdfFormat || "8x10");
                       return (
                         <div
                           key={savedStory.id}
@@ -922,7 +935,10 @@ export default function Home() {
                           }}
                           data-testid={`card-story-${savedStory.id}`}
                         >
-                          <div className="aspect-[3/4] bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 relative overflow-hidden flex-shrink-0">
+                          <div
+                            className="bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/20 dark:to-pink-900/20 relative overflow-hidden flex-shrink-0"
+                            style={aspectRatioStyle}
+                          >
                             {savedStory.coverImageUrl ? (
                               <img
                                 src={savedStory.coverImageUrl}

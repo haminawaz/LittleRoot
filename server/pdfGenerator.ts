@@ -71,10 +71,11 @@ export async function generateAndUploadPDF(options: GeneratePDFOptions): Promise
   
   // Get format dimensions
   const format = PDF_FORMATS[pdfFormat] || PDF_FORMATS['8x8'];
+  const orientation = format.width > format.height ? 'landscape' : 'portrait';
   
   // Create PDF
   const pdf = new jsPDF({
-    orientation: 'portrait',
+    orientation: orientation,
     unit: 'pt',
     format: [format.width, format.height]
   });
@@ -108,7 +109,7 @@ export async function generateAndUploadPDF(options: GeneratePDFOptions): Promise
     const page = pages[i];
     
     if (!isFirstPage) {
-      pdf.addPage([format.width, format.height], 'portrait');
+      pdf.addPage([format.width, format.height], orientation);
     } else {
       isFirstPage = false;
     }

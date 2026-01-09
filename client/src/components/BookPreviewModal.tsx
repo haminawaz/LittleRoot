@@ -221,6 +221,21 @@ export default function BookPreviewModal({
   // Check if any pages are still generating
   const hasGeneratingPages = story.pages.some((page) => page.isGenerating);
 
+  const pdfFormat = (story as any).pdfFormat || "8x10";
+  const getAspectRatioStyle = (format: string) => {
+    switch (format) {
+      case "8x10": return { aspectRatio: "4/5" };
+      case "8x8": return { aspectRatio: "1/1" };
+      case "8.25x6": return { aspectRatio: "1.375/1" };
+      case "landscape": return { aspectRatio: "1.375/1" };
+      case "square": return { aspectRatio: "1/1" };
+      case "portrait": return { aspectRatio: "4/5" };
+      default: return { aspectRatio: "4/5" };
+    }
+  };
+
+  const aspectRatioStyle = getAspectRatioStyle(pdfFormat);
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl w-full max-h-[90vh] sm:max-h-[95vh] overflow-hidden p-0 h-[90vh] sm:h-auto flex flex-col">
@@ -253,7 +268,7 @@ export default function BookPreviewModal({
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-muted/20">
                   {(story as any).coverImageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size' }}>
+                      <div className="relative w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
                         <img
                           src={(story as any).coverImageUrl}
                           alt="Book cover"
@@ -358,7 +373,7 @@ export default function BookPreviewModal({
                     </div>
                   ) : currentPageData.imageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative aspect-[3/4] w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size' }}>
+                      <div className="relative w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
                         <img
                           src={currentPageData.imageUrl}
                           alt={`Page ${currentPageData.pageNumber} illustration`}

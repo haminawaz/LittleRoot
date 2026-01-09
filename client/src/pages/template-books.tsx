@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { BookOpen, Trash2, Star } from "lucide-react";
+import { BookOpen, Trash2, Star, Loader2 } from "lucide-react";
 import { useLocation, Link } from "wouter";
 import TemplatePreviewModal from "@/components/TemplatePreviewModal";
 import TemplateCustomizationModal from "@/components/TemplateCustomizationModal";
@@ -54,8 +54,17 @@ export default function TemplateBooks() {
       const response = await apiRequest("DELETE", `/api/templates/${templateId}`);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (_, templateId) => {
+      // Optimistically update the cache to remove the template immediately
+      queryClient.setQueryData<Template[]>(["/api/templates"], (old) => {
+        if (!old) return [];
+        return old.filter((t) => t.id !== templateId);
+      });
+      
+      // Still invalidate to ensure we are in sync with the server
       queryClient.invalidateQueries({ queryKey: ["/api/templates"] });
+      
+      setTemplateToDelete(null);
       toast({
         title: "Success",
         description: "Template deleted successfully!",
@@ -361,7 +370,11 @@ export default function TemplateBooks() {
         />
       )}
 
-      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => !open && setTemplateToDelete(null)}>
+      <AlertDialog open={!!templateToDelete} onOpenChange={(open) => {
+        if (!deleteTemplateMutation.isPending) {
+          if (!open) setTemplateToDelete(null);
+        }
+      }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -370,17 +383,25 @@ export default function TemplateBooks() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteTemplateMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 min-w-[80px]"
+              disabled={deleteTemplateMutation.isPending}
+              onClick={(e) => {
+                e.preventDefault();
                 if (templateToDelete) {
                   deleteTemplateMutation.mutate(templateToDelete);
-                  setTemplateToDelete(null);
                 }
               }}
             >
-              Delete
+              {deleteTemplateMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -3,9 +3,14 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { Loader2 } from "lucide-react";
 
 interface Plan {
   id: string;
@@ -131,31 +136,75 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
     return features;
   };
 
+    const [, setLocation] = useLocation();
 
-
-  const plans: Plan[] = dbPlans.map((plan) => {
-    const style = PLAN_STYLES[plan.id] || PLAN_STYLES["hobbyist"];
-
-    let displayPrice = plan.price;
-    if (promotion && promotion.planIds.includes(plan.id)) {
-      displayPrice = plan.price * (1 - promotion.discountPercent / 100);
+  const guestLoginMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/auth/guest-login");
+      return res.json();
+    },
+    onSuccess: () => {
+      window.location.href = "/dashboard";
+    },
+    onError: (error) => {
+      console.error("Guest login failed:", error);
     }
-
-    return {
-      id: plan.id,
-      name: plan.name,
-      price: displayPrice,
-      normalPrice:
-        promotion && promotion.planIds.includes(plan.id)
-          ? plan.price
-          : plan.price,
-      badge: style.badge || "",
-      features: generateFeatures(plan),
-      buttonText: style.buttonText,
-      colorTheme: style.colorTheme,
-    };
   });
 
+  const handlePlanSelect = (plan: Plan) => {
+    if (plan.id === "guest") {
+      guestLoginMutation.mutate();
+    } else {
+      localStorage.setItem("selectedPlan", JSON.stringify({
+        id: plan.id,
+        name: plan.name,
+        price: plan.price
+      }));
+      setLocation("/signup");
+    }
+  };
+
+  const guestPlan: Plan = {
+    id: "guest",
+    name: "Guest Demo",
+    price: 0,
+    badge: "No Sign-up Required",
+    features: [
+      "Create 2 FREE Books",
+      "No Account Needed",
+      "12 Pages Per Book",
+      "Instant Access",
+    ],
+    buttonText: "Start Demo",
+    colorTheme: PLAN_STYLES["trial"].colorTheme,
+  };
+
+  const paidPlans: Plan[] = dbPlans
+    .filter((plan) => plan.id !== "trial")
+    .map((plan) => {
+      const style = PLAN_STYLES[plan.id] || PLAN_STYLES["hobbyist"];
+
+      let displayPrice = plan.price;
+      if (promotion && promotion.planIds.includes(plan.id)) {
+        displayPrice = plan.price * (1 - promotion.discountPercent / 100);
+      }
+
+      return {
+        id: plan.id,
+        name: plan.name,
+        price: displayPrice,
+        normalPrice:
+          promotion && promotion.planIds.includes(plan.id)
+            ? plan.price
+            : plan.price,
+        badge: style.badge || "",
+        features: generateFeatures(plan),
+        buttonText: style.buttonText,
+        colorTheme: style.colorTheme,
+      };
+    });
+
+  const plans = [guestPlan, ...paidPlans];
   plans.sort((a, b) => a.price - b.price);
 
   return (
@@ -178,7 +227,7 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
               data-aos="fade-up"
               data-aos-delay={index * 100}>
               {plan.badge && (
-                <div className="absolute -top-3 md:-top-4 left-1/2 transform -translate-x-1/2 z-10">
+                <div className="absolute w-max -top-3 md:-top-4 left-1/2 transform -translate-x-1/2 z-10">
                   <span
                     className={`${plan.colorTheme.button} text-white px-3 md:px-4 py-2 md:py-3 rounded-full text-xs md:text-sm lg:text-md font-semibold`}>
                     {plan.badge}
@@ -212,7 +261,7 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
                   ${plan.price === 0 ? "0" : plan.price.toFixed(2)}
                 </div>
                 <CardDescription className="text-[#62748E] font-medium text-sm md:text-base">
-                  {plan.id === "trial" ? "7 days" : "per month"}
+                  {plan.id === "guest" ? "free forever" : "per month"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="flex-grow flex flex-col px-4 md:px-6 pb-4 md:pb-6">
@@ -226,11 +275,16 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
                     </li>
                   ))}
                 </ul>
-                <a
-                  href="#contact"
-                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-sm md:text-base lg:text-lg py-2 md:py-3 rounded-full text-center">
+                <button
+                  onClick={() => handlePlanSelect(plan)}
+                  disabled={plan.id === "guest" && guestLoginMutation.isPending}
+                  className="w-full bg-[#FFD230] hover:bg-[#FFD230]/90 text-black font-bold text-sm md:text-base lg:text-lg py-2 md:py-3 rounded-full text-center flex items-center justify-center gap-2"
+                >
+                  {plan.id === "guest" && guestLoginMutation.isPending && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
                   {plan.buttonText}
-                </a>
+                </button>
               </CardContent>
             </Card>
           ))}

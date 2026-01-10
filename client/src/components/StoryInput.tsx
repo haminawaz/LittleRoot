@@ -20,7 +20,7 @@ interface StoryInputProps {
 export default function StoryInput({ onStoryCreated }: StoryInputProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [artStyle, setArtStyle] = useState("watercolor");
+  const [artStyle, setArtStyle] = useState<string>("");
   const [pagesCount, setPagesCount] = useState("");
   const [characterDescription, setCharacterDescription] = useState("");
   const [characterImage, setCharacterImage] = useState<File | null>(null);
@@ -191,6 +191,15 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
       toast({
         title: "Pages Required",
         description: "Please select the number of pages for your story.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!artStyle) {
+      toast({
+        title: "Art Style Required",
+        description: "Please select an art style for your illustrations.",
         variant: "destructive",
       });
       return;
@@ -430,13 +439,13 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
             </div>
             <div>
               <Label className="block text-xs text-muted-foreground mb-1">
-                Art style
+                Art style *
               </Label>
               <Select value={artStyle} onValueChange={setArtStyle} disabled={bookLimitReached}>
                 <SelectTrigger className={`w-full ${bookLimitReached ? "cursor-not-allowed" : ""}`} data-testid="select-art-style">
-                  <SelectValue />
+                  <SelectValue placeholder="Select art style" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-[300px]">
                   <SelectItem value="watercolor">Watercolor illustration</SelectItem>
                   <SelectItem value="digital">Digital cartoon</SelectItem>
                   <SelectItem value="sketch">Hand-drawn sketch</SelectItem>

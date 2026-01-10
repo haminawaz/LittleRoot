@@ -161,7 +161,7 @@ export default function TemplateBooks() {
                 <p className="text-sm">
                   {canUseTemplates 
                     ? `Choose a template to get started quickly (${userWithSubscription?.templateBooksRemaining || 0}/${userWithSubscription?.templateBooksLimit || 0} remaining)`
-                    : "Upgrade your plan to access premium templates"}
+                    : "Upgrade your plan to access templates"}
                 </p>
               </div>
             </div>

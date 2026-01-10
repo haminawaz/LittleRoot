@@ -601,11 +601,14 @@ ${compositionGuidance}
 - The character should be instantly recognizable and consistent with all interior illustrations
 - Only show the character in a pose/action appropriate for the cover - appearance must match interior pages
 
-CRITICAL INSTRUCTION:
-- DO NOT add any text, words, letters, titles, or signatures to the image
-- NEVER include the title or author name in the artwork
-- Generate ONLY the clean artwork/illustration
-- Text will be added programmatically later for consistency
+CRITICAL INSTRUCTION FOR TITLE:
+- YOU MUST INCLUDE THE TITLE "${title}" IN THE IMAGE
+- Render the title "${title}" clearly and prominently near the top or center of the cover
+- The title should be artistic, legible, and large enough to be read easily
+- The font style should match the children's book aesthetic (playful, magical, or bold)
+- Make sure the text color contrasts well with the background
+- DO NOT add any other text (like author name or "Written by") - JUST THE TITLE
+- Integrate the title text beautifully into the illustration composition
 
   Create an enchanting, professional-quality children's book cover with a perfectly centered, prominent title.`;
 

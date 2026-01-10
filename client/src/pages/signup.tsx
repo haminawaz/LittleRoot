@@ -295,7 +295,7 @@ export default function Signup() {
             </span>{" "}
             plan
             {displayPlan.price > 0 && (
-              <span> - ${displayPlan.price}/month</span>
+              <span> - ${displayPlan.price.toFixed(2)}/month</span>
             )}
           </CardDescription>
         </CardHeader>

@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useLocation } from "wouter";
-import { Sparkles, Crown } from "lucide-react";
+import { Sparkles, Crown, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface UpgradeUserProps {
@@ -78,7 +78,7 @@ export default function UpgradeUser({ show, message }: UpgradeUserProps) {
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
-                <span>Access premium templates</span>
+                <span>Access templates</span>
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500" />
@@ -99,6 +99,14 @@ export default function UpgradeUser({ show, message }: UpgradeUserProps) {
             <p className="text-center text-xs text-muted-foreground">
               No credit card required • Start creating in seconds
             </p>
+
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/")}
+              className="w-full text-muted-foreground hover:text-primary">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Home
+            </Button>
           </div>
         </div>
       </motion.div>

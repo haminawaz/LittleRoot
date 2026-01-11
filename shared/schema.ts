@@ -159,6 +159,16 @@ export const earlyAccessSignups = pgTable("early_access_signups", {
   index("IDX_early_access_email").on(table.email),
 ]);
 
+export const guestUsers = pgTable("guest_users", {
+  ipAddress: varchar("ip_address").primaryKey(),
+  storiesData: jsonb("stories_data").notNull().default('[]'),
+  totalStoriesGenerated: integer("total_stories_generated").notNull().default(0),
+  lastAccessedAt: timestamp("last_accessed_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("IDX_guest_users_last_accessed").on(table.lastAccessedAt),
+]);
+
 export const subscriptionPlans = pgTable("subscription_plans", {
   id: varchar("id").primaryKey(),
   name: text("name").notNull(),
@@ -297,6 +307,11 @@ export const insertEarlyAccessSignupSchema = createInsertSchema(earlyAccessSignu
   createdAt: true,
 });
 
+export const insertGuestUserSchema = createInsertSchema(guestUsers).omit({
+  createdAt: true,
+  lastAccessedAt: true,
+});
+
 export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
   id: true,
 });
@@ -326,6 +341,8 @@ export type InsertSocialAccount = z.infer<typeof insertSocialAccountSchema>;
 export type SocialAccount = typeof socialAccounts.$inferSelect;
 export type InsertEarlyAccessSignup = z.infer<typeof insertEarlyAccessSignupSchema>;
 export type EarlyAccessSignup = typeof earlyAccessSignups.$inferSelect;
+export type InsertGuestUser = z.infer<typeof insertGuestUserSchema>;
+export type GuestUser = typeof guestUsers.$inferSelect;
 export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
 export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
 export type SubscriptionPlanId = SubscriptionPlan["id"];
@@ -349,6 +366,7 @@ export interface UserWithSubscriptionInfo extends User {
   bonusVariationsRemaining: number;
   daysLeftInTrial?: number;
   subscriptionStatusText: string;
+  pagesPerBook: number;
 }
 
 export interface GenerateBookRequest {
@@ -366,4 +384,29 @@ export interface GuestStoryStatus {
   pagesReady: number;
   coverUrl: string | null;
   pageUrls: string[];
+}
+
+export interface GuestStoryData {
+  id: string;
+  title: string;
+  content: string;
+  artStyle: string;
+  pagesCount: number;
+  pdfFormat: string;
+  characterDescription?: string | null;
+  characterImageUrl?: string | null;
+  coverImageUrl?: string | null;
+  status: "draft" | "generating" | "completed" | "error";
+  coverTextOverlay?: any;
+  pages: Array<{
+    id: string;
+    pageNumber: number;
+    text: string;
+    imageUrl?: string | null;
+    imagePrompt?: string | null;
+    isGenerating: boolean;
+    textOverlay?: any;
+  }>;
+  createdAt: string;
+  updatedAt: string;
 }

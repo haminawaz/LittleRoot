@@ -36,13 +36,11 @@ import {
 interface BookPreviewModalProps {
   story: StoryWithPages;
   onClose: () => void;
-  onShowGuestLimit?: (action: string) => void;
 }
 
 export default function BookPreviewModal({
   story,
   onClose,
-  onShowGuestLimit,
 }: BookPreviewModalProps) {
   // Start at -1 to show cover first, then 0-N for story pages
   const [currentPage, setCurrentPage] = useState(
@@ -79,22 +77,52 @@ export default function BookPreviewModal({
   // Regenerate cover mutation
   const regenerateCoverMutation = useMutation({
     mutationFn: async () => {
-      if (story.id.startsWith("guest_") && onShowGuestLimit) {
-        onShowGuestLimit("Regenerating cover");
-        throw new Error("Guest limit reached");
-      }
       setCoverRegenerating(true);
+
+      if (story.id.startsWith("guest_")) {
+         const response = await apiRequest(
+           "POST",
+           `/api/guest/regenerate-cover`,
+           {
+              storyId: story.id,
+              title: story.title,
+              artStyle: story.artStyle,
+              content: (story as any).content || "",
+              characterDescription: (story as any).characterDescription,
+              characterImageUrl: (story as any).characterImageUrl,
+              pdfFormat: (story as any).pdfFormat
+           }
+         );
+         return response.json();
+      }
+
       const response = await apiRequest(
         "POST",
         `/api/stories/${story.id}/regenerate-cover`
       );
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      const isGuest = story.id.startsWith("guest_");
+      const queryKey = isGuest 
+        ? ["/api/guest/stories", story.id] 
+        : ["/api/stories", story.id];
+
+      if (isGuest && data.coverImageUrl) {
+          queryClient.invalidateQueries({ queryKey });
+          queryClient.refetchQueries({ queryKey });
+          setCoverRegenerating(false);
+          toast({
+             title: "Success",
+             description: "Cover regenerated!",
+          });
+          return;
+      }
+
       // Start polling for updated cover
       const pollInterval = setInterval(async () => {
         await queryClient.refetchQueries({
-          queryKey: ["/api/stories", story.id],
+          queryKey,
         });
       }, 2000);
 
@@ -121,10 +149,6 @@ export default function BookPreviewModal({
   });
 
   const handleExportPDF = async () => {
-    if (story.id.startsWith("guest_") && onShowGuestLimit) {
-        onShowGuestLimit("Exporting PDF");
-        return;
-    }
     setIsExporting(true);
     setExportType("pdf");
     try {
@@ -190,10 +214,6 @@ export default function BookPreviewModal({
   };
 
   const handleExportEPUB = async () => {
-    if (story.id.startsWith("guest_") && onShowGuestLimit) {
-        onShowGuestLimit("Exporting EPUB");
-        return;
-    }
     setIsExporting(true);
     setExportType("epub");
     try {
@@ -268,11 +288,15 @@ export default function BookPreviewModal({
                 <div className="flex-1 flex items-center justify-center relative overflow-hidden bg-muted/20">
                   {(story as any).coverImageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
+                      <div className="relative h-full w-auto bg-white shadow-lg overflow-hidden" 
+                           style={{ 
+                             containerType: 'inline-size', 
+                             ...aspectRatioStyle 
+                           }}>
                         <img
                           src={(story as any).coverImageUrl}
                           alt="Book cover"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover block"
                           data-testid="img-preview-cover"
                         />
                         {(story as any).coverTextOverlay?.isVisible && (
@@ -373,11 +397,15 @@ export default function BookPreviewModal({
                     </div>
                   ) : currentPageData.imageUrl ? (
                     <div className="relative w-full h-full flex items-center justify-center p-4">
-                      <div className="relative w-full max-h-full bg-white shadow-lg overflow-hidden" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
+                      <div className="relative h-full w-auto bg-white shadow-lg overflow-hidden" 
+                           style={{ 
+                             containerType: 'inline-size', 
+                             ...aspectRatioStyle 
+                           }}>
                         <img
                           src={currentPageData.imageUrl}
                           alt={`Page ${currentPageData.pageNumber} illustration`}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover block"
                           data-testid={`img-preview-page-${currentPageData.pageNumber}`}
                         />
                         {(currentPageData as any).textOverlay?.isVisible && (

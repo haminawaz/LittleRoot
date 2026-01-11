@@ -397,7 +397,7 @@ export default function AdminPlans() {
                                   >
                                     <Edit2 className="h-4 w-4" />
                                   </Button>
-                                  {plan.id !== "trial" && (
+                                  {plan.id !== "guest" && (
                                     <Button
                                       variant="outline"
                                       size="icon"

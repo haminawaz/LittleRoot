@@ -37,9 +37,9 @@ const PLAN_STYLES: Record<
     colorTheme: Plan["colorTheme"];
   }
 > = {
-  trial: {
+  guest: {
     badge: "Start Here",
-    buttonText: "Start Free Trial",
+    buttonText: "Start Demo",
     colorTheme: {
       border: "border-[#00C950]",
       text: "text-[#00C950]",
@@ -117,23 +117,28 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
       commercialRightsText = "Full Commercial Rights (publishing)";
     }
 
-    const features: string[] = [
-      illustrations
+    const isGuest = plan.id?.toLowerCase() === "guest";
+    const features: (string | undefined)[] = [
+      isGuest
+        ? `Create ${plan.booksPerMonth} FREE Books`
+        : illustrations
         ? `${illustrations} Illustrations (${plan.booksPerMonth}+ Books)`
         : `${plan.booksPerMonth} Books per Month`,
-      `${plan.templateBooks ?? 0} Template Books`,
+      plan.templateBooks > 0 ? `${plan.templateBooks} Template Books` : undefined,
       `Up to ${plan.pagesPerBook ?? 24} Pages Each`,
-      "All Art Styles",
-      "Character Consistency",
-      `${plan.bonusVariations ?? 0} Bonus Illustration Variations`,
+      isGuest ? "No Account Needed" : "All Art Styles",
+      isGuest ? "Instant Access" : "Character Consistency",
+      plan.bonusVariations > 0 ? `${plan.bonusVariations} Bonus Illustration Variations` : undefined,
     ];
 
-    if (plan.id?.toLowerCase() !== "trial") {
-      features.push(commercialRightsText);
-      features.push("PDF Export");
+    const filteredFeatures = features.filter((f): f is string => f !== undefined);
+
+    if (!isGuest) {
+      filteredFeatures.push(commercialRightsText);
+      filteredFeatures.push("PDF Export");
     }
 
-    return features;
+    return filteredFeatures;
   };
 
     const [, setLocation] = useLocation();
@@ -164,21 +169,6 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
     }
   };
 
-  const guestPlan: Plan = {
-    id: "guest",
-    name: "Guest Demo",
-    price: 0,
-    badge: "No Sign-up Required",
-    features: [
-      "Create 2 FREE Books",
-      "No Account Needed",
-      "12 Pages Per Book",
-      "Instant Access",
-    ],
-    buttonText: "Start Demo",
-    colorTheme: PLAN_STYLES["trial"].colorTheme,
-  };
-
   const paidPlans: Plan[] = dbPlans
     .filter((plan) => plan.id !== "trial")
     .map((plan) => {
@@ -204,7 +194,7 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
       };
     });
 
-  const plans = [guestPlan, ...paidPlans];
+  const plans = [...paidPlans];
   plans.sort((a, b) => a.price - b.price);
 
   return (
@@ -246,7 +236,7 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
                   {plan.name}
                 </CardTitle>
                 <div className="text-[#99A1AF] font-bold text-sm md:text-base">
-                  {plan.id !== "trial" && plan.normalPrice && promotion && (
+                  {plan.id !== "guest" && plan.normalPrice && promotion && (
                     <span className="line-through">
                       ${plan.normalPrice.toFixed(2)}
                     </span>

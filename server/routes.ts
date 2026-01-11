@@ -85,6 +85,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `EAO${Date.now().toString(36).toUpperCase().slice(-6)}`;
   };
 
+  // Ensure generated images directories exist
+  const generatedImagesDir = path.join(process.cwd(), "generated-images");
+  const guestImagesDir = path.join(process.cwd(), "guest-generated-images");
+  
+  if (!fs.existsSync(generatedImagesDir)) {
+    fs.mkdirSync(generatedImagesDir, { recursive: true });
+  }
+  if (!fs.existsSync(guestImagesDir)) {
+    fs.mkdirSync(guestImagesDir, { recursive: true });
+  }
+
+  // Serve generated images statically
+  app.use("/generated-images", express.static(generatedImagesDir));
+  app.use("/guest-generated-images", express.static(guestImagesDir));
+
   // Object storage routes for public file serving
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;
@@ -209,6 +224,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           stripeSubscriptionId: null,
           cancelAtPeriodEnd: false,
         };
+
+        const guestPlan = await storage.getSubscriptionPlanById("guest");
+        if (guestPlan) {
+          guestUser.booksLimitPerMonth = guestPlan.booksPerMonth;
+          guestUser.illustrationsLimitPerMonth = guestPlan.booksPerMonth * guestPlan.pagesPerBook;
+          guestUser.templateBooksLimit = guestPlan.templateBooks;
+          guestUser.templateBooksRemaining = guestPlan.templateBooks;
+          guestUser.bonusVariationsLimit = guestPlan.bonusVariations;
+          guestUser.bonusVariationsRemaining = guestPlan.bonusVariations;
+          (guestUser as any).pagesPerBook = guestPlan.pagesPerBook;
+        }
+
         return res.json(guestUser);
       }
       
@@ -414,11 +441,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  const getClientIp = (req: any): string => {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      return forwarded.split(',')[0].trim();
+    }
+    
+    const realIp = req.headers['x-real-ip'];
+    if (realIp) {
+      return realIp;
+    }
+    
+    return req.connection?.remoteAddress || req.socket?.remoteAddress || 'unknown';
+  };
+
   app.post('/api/auth/guest-login', async (req, res) => {
     try {
       console.log("Attempting guest login...");
-      const guestId = `guest_${randomBytes(8).toString('hex')}`;
-      const guestEmail = `guest_${randomBytes(8).toString('hex')}@guest.local`;
+
+      const ipAddress = getClientIp(req);
+      console.log("Guest login from IP:", ipAddress);
+
+      let guestUser = await storage.getGuestUser(ipAddress);
+      const isNewGuest = !guestUser;
+      
+      if (!guestUser) {
+        guestUser = await storage.upsertGuestUser({
+          ipAddress,
+          storiesData: [],
+          totalStoriesGenerated: 0,
+        });
+        console.log("New guest user created for IP:", ipAddress);
+      } else {
+        guestUser = await storage.upsertGuestUser({
+          ipAddress,
+          storiesData: guestUser.storiesData as any,
+          totalStoriesGenerated: guestUser.totalStoriesGenerated,
+        });
+        console.log("Existing guest user accessed:", ipAddress);
+      }
+      
+      const guestId = `guest_${ipAddress.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      const guestEmail = `${guestId}@guest.local`;
 
       const user = {
         id: guestId,
@@ -429,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subscriptionPlan: "guest",
         subscriptionStatus: "active",
         booksLimitPerMonth: 2,
-        booksUsedThisMonth: 0,
+        booksUsedThisMonth: (guestUser.storiesData as any)?.length || 0,
         illustrationsLimitPerMonth: 24,
         illustrationsUsedThisMonth: 0,
         templateBooksLimit: 0,
@@ -439,10 +503,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updatedAt: new Date(),
       };
 
-      console.log("Guest user created (no DB):", user.id);
+      const guestPlan = await storage.getSubscriptionPlanById("guest");
+      if (guestPlan) {
+        user.booksLimitPerMonth = guestPlan.booksPerMonth;
+        user.illustrationsLimitPerMonth = guestPlan.booksPerMonth * guestPlan.pagesPerBook;
+        user.templateBooksLimit = guestPlan.templateBooks;
+        user.bonusVariationsLimit = guestPlan.bonusVariations;
+      }
+
+      console.log("Guest user session created:", user.id);
 
       req.login({
-        claims: { sub: user.id, email: user.email },
+        claims: { sub: user.id, email: user.email, ipAddress },
         subscriptionPlan: 'guest'
       }, (err) => {
         if (err) {
@@ -2193,6 +2265,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const storyData = insertStorySchema.parse(req.body);
+      if (storyData.pagesCount && storyData.pagesCount > userWithSubscription.pagesPerBook) {
+        return res.status(403).json({ 
+          error: "Page limit exceeded",
+          message: `Your current plan allows up to ${userWithSubscription.pagesPerBook} pages per book.`,
+          requiresUpgrade: true
+        });
+      }
+
       const story = await storage.createStory({
         ...storyData,
         userId: userId
@@ -2472,42 +2552,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/guest/stories", isAuthenticated, async (req: any, res) => {
+  app.get("/api/guest/stories/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const storyId = req.params.id;
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
+
       if (req.user?.subscriptionPlan !== 'guest') {
         return res.status(403).json({ error: "This endpoint is for guest users only" });
       }
 
-      const storyData = insertStorySchema.parse(req.body);
-      const story = {
-        id: `guest_story_${randomBytes(8).toString('hex')}`,
-        userId: userId,
-        title: storyData.title,
-        content: storyData.content,
-        artStyle: storyData.artStyle,
-        pagesCount: Math.min(storyData.pagesCount || 12, 12),
-        pdfFormat: storyData.pdfFormat || "8x10",
-        characterDescription: storyData.characterDescription || null,
-        characterImageUrl: storyData.characterImageUrl || null,
-        status: "draft" as const,
-        coverImageUrl: null,
+      const guestStories = await storage.getGuestStories(ipAddress);
+      const story = guestStories.find(s => s.id === storyId);
+
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      const storyWithPages = {
+        ...story,
+        userId: req.user.claims.sub,
         pdfUrl: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        pages: story.pages || []
       };
 
-      console.log(`Guest story created (no DB): ${story.id}`);
-      res.json(story);
+      res.json(storyWithPages);
+    } catch (error) {
+      console.error("Error fetching guest story:", error);
+      res.status(500).json({ error: "Failed to fetch story" });
+    }
+  });
+
+  app.post("/api/guest/stories", isAuthenticated, async (req: any, res) => {
+    try {
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
+
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const guestPlan = await storage.getSubscriptionPlanById("guest");
+      const booksLimit = guestPlan?.booksPerMonth ?? 2;
+
+      const canCreate = await storage.canGuestCreateStory(ipAddress);
+      if (!canCreate) {
+        return res.status(403).json({ 
+          error: "Story limit reached",
+          message: `Guest users can create up to ${booksLimit} stories. Sign up to create unlimited stories!`,
+          requiresUpgrade: true
+        });
+      }
+
+      const storyData = insertStorySchema.parse(req.body);
+      const storyId = `guest_story_${randomBytes(8).toString('hex')}`;
+      
+      const guestStory: import("@shared/schema").GuestStoryData = {
+        id: storyId,
+        title: storyData.title,
+        content: storyData.content,
+        artStyle: storyData.artStyle as string,
+        pagesCount: Math.min(storyData.pagesCount || (guestPlan?.pagesPerBook ?? 12), (guestPlan?.pagesPerBook ?? 12)),
+        pdfFormat: (storyData.pdfFormat || "8x10") as string,
+        characterDescription: storyData.characterDescription || null,
+        characterImageUrl: storyData.characterImageUrl || null,
+        status: "draft",
+        coverImageUrl: null,
+        pages: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      await storage.saveGuestStory(ipAddress, guestStory);
+      console.log(`Guest story created in DB for IP ${ipAddress}: ${storyId}`);
+      
+      res.json(guestStory);
     } catch (error) {
       console.error("Error creating guest story:", error);
+      if (error instanceof Error && error.message.includes("limit")) {
+        return res.status(403).json({ error: error.message, requiresUpgrade: true });
+      }
       res.status(400).json({ error: "Invalid story data" });
     }
   });
 
   app.post("/api/guest/stories/:id/generate", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
       const storyId = req.params.id;
       
       if (req.user?.subscriptionPlan !== 'guest') {
@@ -2519,7 +2648,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Story data required for guest users" });
       }
 
-      const maxPages = 12;
+      const guestPlan = await storage.getSubscriptionPlanById("guest");
+      const maxPages = guestPlan?.pagesPerBook ?? 12;
       if (story.pagesCount > maxPages) {
         return res.status(403).json({ 
           error: "Page limit exceeded",
@@ -2532,21 +2662,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const pages = pageTexts.map((text, index) => ({
         id: `guest_page_${randomBytes(8).toString('hex')}`,
-        storyId: storyId,
         pageNumber: index + 1,
         text: text,
         imageUrl: null,
         isGenerating: true,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       }));
+
+      await storage.updateGuestStory(ipAddress, storyId, {
+        pages: pages as any,
+        status: "generating",
+      });
 
       res.json({ 
         message: "Pages created. Illustrations will generate in background.",
         pages: pages
       });
 
-      const imagesDir = path.join(process.cwd(), "generated-images");
+      const imagesDir = path.join(process.cwd(), "guest-generated-images");
       if (!fs.existsSync(imagesDir)) {
         fs.mkdirSync(imagesDir, { recursive: true });
       }
@@ -2573,11 +2705,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             story.pdfFormat,
             dimensions.width,
             dimensions.height,
-            true // isGuest
+            true
           );
           
-          const coverUrl = `/generated-images/${coverFileName}?t=${Date.now()}`;
+          const coverUrl = `/guest-generated-images/${coverFileName}?t=${Date.now()}`;
           console.log(`✓ Guest cover generated: ${coverUrl}`);
+          
+          await storage.updateGuestStory(ipAddress, storyId, {
+            coverImageUrl: coverUrl,
+          });
           
           await generateBookIllustrations({
             title: story.title,
@@ -2591,12 +2727,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
             height: dimensions.height,
             isGuest: true
           }, imagesDir, storyId, async (pageIndex: number, imageUrl: string) => {
-            console.log(`✓ Guest page ${pageIndex + 1} generated: ${imageUrl}`);
+            const relativePath = path.basename(imageUrl);
+            const publicUrl = `/guest-generated-images/${relativePath}?t=${Date.now()}`;
+            console.log(`✓ Guest page ${pageIndex + 1} generated: ${publicUrl}`);
+            
+            const guestStories = await storage.getGuestStories(ipAddress);
+            const currentStory = guestStories.find(s => s.id === storyId);
+            if (currentStory && currentStory.pages) {
+              const updatedPages = currentStory.pages.map((p, idx) => 
+                idx === pageIndex ? { ...p, imageUrl: publicUrl, isGenerating: false } : p
+              );
+              await storage.updateGuestStory(ipAddress, storyId, {
+                pages: updatedPages as any,
+              });
+            }
+          });
+
+          await storage.updateGuestStory(ipAddress, storyId, {
+            status: "completed",
           });
 
           console.log(`✓ Guest story illustrations complete: ${story.title}`);
         } catch (error) {
           console.error(`Error generating guest illustrations:`, error);
+          await storage.updateGuestStory(ipAddress, storyId, {
+            status: "error",
+          });
         }
       })().catch(err => {
         console.error("Uncaught error in guest illustration generation:", err);
@@ -2610,45 +2766,219 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/guest/stories/:id/status", isAuthenticated, async (req: any, res) => {
     try {
       const storyId = req.params.id;
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
 
       if (req.user?.subscriptionPlan !== 'guest') {
         return res.status(403).json({ error: "This endpoint is for guest users only" });
       }
 
-      const imagesDir = path.join(process.cwd(), "generated-images");
-      const coverPath = path.join(imagesDir, `${storyId}_cover.webp`);
-      
-      const coverExists = fs.existsSync(coverPath);
-      
-      let pageCount = 0;
-      if (fs.existsSync(imagesDir)) {
-        console.log(`Checking images dir: ${imagesDir} for story: ${storyId}`);
-        const files = fs.readdirSync(imagesDir);
-        
-        for (let i = 1; i <= 24; i++) {
-          const expectedFile = `${storyId}_page_${i}.webp`;
-          if (files.includes(expectedFile)) {
-            pageCount++;
-          } else {
-            console.log(`Stopped at page ${i}, file not found: ${expectedFile}`);
-            break;
-          }
-        }
-      } else {
-        console.log(`Images directory not found: ${imagesDir}`);
+      const guestStories = await storage.getGuestStories(ipAddress);
+      const story = guestStories.find(s => s.id === storyId);
+
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
       }
 
+      const coverReady = !!story.coverImageUrl;
+      const pagesReady = story.pages?.filter(p => p.imageUrl && !p.isGenerating).length || 0;
+
       res.json({
-        coverReady: coverExists,
-        pagesReady: pageCount,
-        coverUrl: coverExists ? `/generated-images/${storyId}_cover.webp?t=${Date.now()}` : null,
-        pageUrls: Array.from({ length: pageCount }, (_, i) => 
-          `/generated-images/${storyId}_page_${i + 1}.webp?t=${Date.now()}`
-        )
+        coverReady,
+        pagesReady,
+        coverUrl: story.coverImageUrl,
+        pageUrls: story.pages?.map(p => p.imageUrl).filter(Boolean) || []
       });
     } catch (error) {
       console.error("Error checking guest story status:", error);
       res.status(500).json({ error: "Failed to check story status" });
+    }
+  });
+
+  // Guest image generation endpoint
+  app.post("/api/guest/generate-image", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const { prompt, artStyle, characterDescription, characterImageUrl, pageId, pdfFormat, storyId, pageNumber } = req.body;
+      
+      if (!prompt || !artStyle) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const imagesDir = path.join(process.cwd(), "guest-generated-images");
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
+      // Enforce naming convention to overwrite existing file
+      let fileName;
+      if (storyId && pageNumber) {
+          fileName = `${storyId}_page_${pageNumber}.webp`;
+      } else {
+          // Fallback if we can't determine the standard name (shouldn't happen with correct client)
+          const targetPageId = pageId || `guest_page_${randomBytes(8).toString('hex')}`;
+          fileName = `${targetPageId}.webp`;
+      }
+
+      const finalImagePath = path.join(imagesDir, fileName);
+      
+      const dimensions = getImageDimensionsForFormat(pdfFormat || '8x10');
+
+      await generateIllustration({
+        prompt: prompt,
+        characterDescription,
+        characterImageUrl,
+        artStyle: artStyle,
+        pdfFormat: pdfFormat || '8x10',
+        width: dimensions.width,
+        height: dimensions.height,
+        isGuest: true // Ensure watermark is applied
+      }, finalImagePath);
+
+      const timestamp = Date.now();
+      const imageUrl = `/guest-generated-images/${fileName}?t=${timestamp}`;
+
+      if (storyId) {
+        const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
+        const guestStories = await storage.getGuestStories(ipAddress);
+        const story = guestStories.find(s => s.id === storyId);
+        
+        if (story) {
+           const updatedPages = story.pages.map(p => 
+             p.id === pageId 
+               ? { ...p, imageUrl: imageUrl, imagePrompt: prompt, isGenerating: false } 
+               : p
+           );
+           
+           await storage.updateGuestStory(ipAddress, storyId, {
+             pages: updatedPages as any
+           });
+           console.log(`Updated guest story ${storyId} page ${pageId} with new image URL: ${imageUrl}`);
+        }
+      }
+
+      res.json({
+        id: pageId, // Return the same pageId
+        imageUrl: imageUrl,
+        imagePrompt: prompt,
+        isGenerating: false
+      });
+
+    } catch (error) {
+      console.error("Error generating guest image:", error);
+      res.status(500).json({ error: "Failed to generate image" });
+    }
+  });
+
+  // Update guest story (metadata, cover overlays)
+  app.put("/api/guest/stories/:storyId", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const { storyId } = req.params;
+      const updates = req.body;
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
+
+      const updatedStory = await storage.updateGuestStory(ipAddress, storyId, updates);
+      if (!updatedStory) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      res.json(updatedStory);
+    } catch (error) {
+      console.error("Error updating guest story:", error);
+      res.status(500).json({ error: "Failed to update story" });
+    }
+  });
+
+  // Update guest page (text or overlay)
+  app.put("/api/guest/stories/:storyId/pages/:pageId", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const { storyId, pageId } = req.params;
+      const updates = req.body;
+      const ipAddress = req.user.claims.ipAddress || getClientIp(req) || 'unknown';
+
+      const guestStories = await storage.getGuestStories(ipAddress);
+      const story = guestStories.find(s => s.id === storyId);
+
+      if (!story) {
+        return res.status(404).json({ error: "Story not found" });
+      }
+
+      if (!story.pages) {
+        return res.status(404).json({ error: "Pages not found" });
+      }
+
+      const updatedPages = story.pages.map(p => 
+        p.id === pageId ? { ...p, ...updates } : p
+      );
+
+      await storage.updateGuestStory(ipAddress, storyId, {
+        pages: updatedPages as any
+      });
+
+      const updatedPage = updatedPages.find(p => p.id === pageId);
+      res.json(updatedPage);
+    } catch (error) {
+      console.error("Error updating guest page:", error);
+      res.status(500).json({ error: "Failed to update page" });
+    }
+  });
+
+  // Guest cover regeneration endpoint
+  app.post("/api/guest/regenerate-cover", isAuthenticated, async (req: any, res) => {
+    try {
+      if (req.user?.subscriptionPlan !== 'guest') {
+        return res.status(403).json({ error: "This endpoint is for guest users only" });
+      }
+
+      const { title, artStyle, content, characterDescription, characterImageUrl, storyId, pdfFormat } = req.body;
+      
+      if (!title || !artStyle || !storyId) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      const imagesDir = path.join(process.cwd(), "guest-generated-images");
+      if (!fs.existsSync(imagesDir)) {
+        fs.mkdirSync(imagesDir, { recursive: true });
+      }
+
+      const coverFileName = `${storyId}_cover.webp`;
+      const coverPath = path.join(imagesDir, coverFileName);
+      
+      const dimensions = getImageDimensionsForFormat(pdfFormat || '8x10');
+      
+      await generateCoverIllustration(
+        title,
+        artStyle,
+        content || "",
+        characterDescription,
+        characterImageUrl,
+        coverPath,
+        pdfFormat || '8x10',
+        dimensions.width,
+        dimensions.height,
+        true // isGuest = true for watermark
+      );
+
+      const coverUrl = `/guest-generated-images/${coverFileName}?t=${Date.now()}`;
+      
+      res.json({
+        success: true,
+        coverImageUrl: coverUrl
+      });
+
+    } catch (error) {
+      console.error("Error regenerating guest cover:", error);
+      res.status(500).json({ error: "Failed to regenerate cover" });
     }
   });
 

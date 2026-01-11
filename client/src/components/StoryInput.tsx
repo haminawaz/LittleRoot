@@ -206,6 +206,8 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
     }
 
     const targetPages = parseInt(pagesCount, 10);
+    const maxPages = user?.pagesPerBook || (isGuest ? 12 : 24);
+
     if (isGuest) {
       const bookCheck = canGuestCreateBook();
       if (!bookCheck.allowed) {
@@ -213,12 +215,20 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
         setShowGuestLimit(true);
         return;
       }
+    }
 
-      if (targetPages > 12) {
-        setGuestLimitMessage("Guest users can create up to 12 pages per book. Sign up for more!");
+    if (targetPages > maxPages) {
+      if (isGuest) {
+        setGuestLimitMessage(`Guest users can create up to ${maxPages} pages per book. Sign up for more!`);
         setShowGuestLimit(true);
-        return;
+      } else {
+        toast({
+          title: "Page Limit Exceeded",
+          description: `Your plan allows up to ${maxPages} pages per book. Please select a lower page count or upgrade your plan.`,
+          variant: "destructive",
+        });
       }
+      return;
     }
 
     try {
@@ -429,7 +439,10 @@ export default function StoryInput({ onStoryCreated }: StoryInputProps) {
                   <SelectValue placeholder="Select number of pages" />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {Array.from({ length: isGuest ? 5 : 17 }, (_, i) => i + (isGuest ? 8 : 8)).map(num => (
+                  {Array.from(
+                    { length: (user?.pagesPerBook || (isGuest ? 12 : 24)) - 8 + 1 }, 
+                    (_, i) => i + 8
+                  ).map(num => (
                     <SelectItem key={num} value={String(num)}>
                       {num} {num === 1 ? 'page' : 'pages'}
                     </SelectItem>

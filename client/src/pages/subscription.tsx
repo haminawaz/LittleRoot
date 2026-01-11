@@ -123,7 +123,7 @@ export default function Subscription() {
     return styles[planId] || styles.hobbyist;
   };
 
-  const availablePlans = plans?.filter((plan) => plan.id !== "trial") || [];
+  const availablePlans = plans?.filter((plan) => plan.id !== "guest") || [];
 
   // Cancel subscription mutation
   const cancelSubscriptionMutation = useMutation({
@@ -153,7 +153,7 @@ export default function Subscription() {
     if (!plans) return null;
     return (
       plans.find((p) => p.id === planId) ||
-      plans.find((p) => p.id === "trial") ||
+      plans.find((p) => p.id === "guest") ||
       null
     );
   };
@@ -161,7 +161,7 @@ export default function Subscription() {
   const currentPlan = user?.subscriptionPlan
     ? getPlanDetails(user.subscriptionPlan)
     : null;
-  const isTrial = user?.subscriptionPlan === "trial";
+  const isTrial = user?.subscriptionPlan === "guest";
 
   const handleChoosePlan = (planId: string) => {
     const plan = getPlanDetails(planId);

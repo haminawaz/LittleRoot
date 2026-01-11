@@ -15,10 +15,9 @@ import IllustrationTextEditor, { type TextOverlay } from "@/components/Illustrat
 
 interface PageGridProps {
   story: StoryWithPages;
-  onShowGuestLimit?: (action: string) => void;
 }
 
-export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
+export default function PageGrid({ story }: PageGridProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [splitMode, setSplitMode] = useState<string | null>(null);
@@ -55,26 +54,28 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
     setPageTexts(updatedTexts);
   }, [story.pages.length, story.pages.map(p => p.id).join(',')]);
 
-  const isGuest = story.id.startsWith("guest_");
-
-  const checkGuestLimit = (action: string) => {
-     if (isGuest && onShowGuestLimit) {
-        onShowGuestLimit(action);
-        return true;
-     }
-     return false;
-  };
-
   const generateImageMutation = useMutation({
     mutationFn: async ({ pageId, text, prompt }: { pageId: string; text: string; prompt?: string }) => {
+      if (story.id.startsWith("guest_")) {
+        // Use guest endpoint for image generation
+        const response = await apiRequest("POST", "/api/guest/generate-image", {
+          pageId,
+          prompt: prompt || text,
+          artStyle: story.artStyle,
+          characterDescription: (story as any).characterDescription,
+          characterImageUrl: (story as any).characterImageUrl,
+          pdfFormat: (story as any).pdfFormat,
+          storyId: story.id,
+          pageNumber: story.pages.find(p => p.id === pageId)?.pageNumber
+        });
+        return response.json() as Promise<Page>;
+      }
+      
       const response = await apiRequest("POST", `/api/pages/${pageId}/generate-image`, { text, prompt });
       return response.json() as Promise<Page>;
     },
     onMutate: async ({ pageId }: { pageId: string; text: string; prompt?: string }) => {
-      // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["/api/stories", story.id] });
-      
-      // Optimistically update to show generating state
       const previousStory = queryClient.getQueryData(["/api/stories", story.id]);
       
       queryClient.setQueryData(["/api/stories", story.id], (old: any) => {
@@ -90,9 +91,13 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
       return { previousStory };
     },
     onSuccess: async (updatedPage) => {
-      // Force a refetch to get the latest data
-      await queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
-      await queryClient.refetchQueries({ queryKey: ["/api/stories", story.id] });
+      if (!story.id.startsWith("guest_")) {
+          await queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+          await queryClient.refetchQueries({ queryKey: ["/api/stories", story.id] });
+      } else {
+        await queryClient.invalidateQueries({ queryKey: ["/api/guest/stories", story.id] });
+        await queryClient.refetchQueries({ queryKey: ["/api/guest/stories", story.id] });
+      }
 
       setEditImageModalOpen(false);
       setEditingPageId(null);
@@ -148,11 +153,19 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
 
   const updatePageMutation = useMutation({
     mutationFn: async ({ pageId, text }: { pageId: string; text: string }) => {
+      if (story.id.startsWith("guest_")) {
+          const response = await apiRequest("PUT", `/api/guest/stories/${story.id}/pages/${pageId}`, { text });
+          return response.json() as Promise<Page>;
+      }
       const response = await apiRequest("PUT", `/api/pages/${pageId}`, { text });
       return response.json() as Promise<Page>;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      if (!story.id.startsWith("guest_")) {
+          queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      } else {
+        queryClient.invalidateQueries({ queryKey: ["/api/guest/stories", story.id] });
+      }
       toast({
         title: "Saved",
         description: "Text saved successfully!",
@@ -169,11 +182,19 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
 
   const updateStoryMutation = useMutation({
     mutationFn: async (updates: Partial<Story>) => {
+      if (story.id.startsWith("guest_")) {
+          const response = await apiRequest("PUT", `/api/guest/stories/${story.id}`, updates);
+          return response.json() as Promise<Story>;
+      }
       const response = await apiRequest("PUT", `/api/stories/${story.id}`, updates);
       return response.json() as Promise<Story>;
     },
     onSuccess: (updatedStory) => {
-      queryClient.setQueryData(["/api/stories", story.id], (oldData: StoryWithPages | undefined) => {
+      const queryKey = story.id.startsWith("guest_") 
+        ? ["/api/guest/stories", story.id] 
+        : ["/api/stories", story.id];
+
+      queryClient.setQueryData(queryKey, (oldData: StoryWithPages | undefined) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
@@ -181,7 +202,7 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
         };
       });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      queryClient.invalidateQueries({ queryKey });
       setTextEditorOpen(false);
       setEditingOverlayType(null);
       toast({
@@ -200,19 +221,27 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
 
   const updatePageOverlayMutation = useMutation({
     mutationFn: async ({ pageId, textOverlay }: { pageId: string; textOverlay: TextOverlay }) => {
+      if (story.id.startsWith("guest_")) {
+          const response = await apiRequest("PUT", `/api/guest/stories/${story.id}/pages/${pageId}`, { textOverlay });
+          return response.json() as Promise<Page>;
+      }
       const response = await apiRequest("PUT", `/api/pages/${pageId}`, { textOverlay });
       return response.json() as Promise<Page>;
     },
     onSuccess: (updatedPage) => {
-      queryClient.setQueryData(["/api/stories", story.id], (oldData: StoryWithPages | undefined) => {
+      const queryKey = story.id.startsWith("guest_") 
+        ? ["/api/guest/stories", story.id] 
+        : ["/api/stories", story.id];
+
+      queryClient.setQueryData(queryKey, (oldData: StoryWithPages | undefined) => {
         if (!oldData) return oldData;
         return {
           ...oldData,
-          pages: oldData.pages.map(p => p.id === updatedPage.id ? updatedPage : p)
+          pages: oldData.pages.map(p => p.id === updatedPage.id ? { ...p, ...updatedPage } : p)
         };
       });
       
-      queryClient.invalidateQueries({ queryKey: ["/api/stories", story.id] });
+      queryClient.invalidateQueries({ queryKey });
       setTextEditorOpen(false);
       setEditingOverlayType(null);
       setEditingOverlayPageId(null);
@@ -224,14 +253,12 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   });
 
   const handleGenerateImage = (pageId: string) => {
-    if (checkGuestLimit("Regenerating illustration")) return;
     // Use the current text from local state (live textarea value)
     const currentText = pageTexts[pageId] || "";
     generateImageMutation.mutate({ pageId, text: currentText });
   };
 
   const handleEditIllustration = (pageId: string) => {
-    if (checkGuestLimit("Editing illustration prompt")) return;
     const page = story.pages.find(p => p.id === pageId);
     if (page) {
       setEditingPageId(pageId);
@@ -395,7 +422,7 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   };
 
   const handleSaveText = (pageId: string) => {
-    if (checkGuestLimit("Saving text changes")) return;
+    // Skip guest limit check for saving text    
     const currentText = pageTexts[pageId];
     if (currentText !== undefined) {
       updatePageMutation.mutate({ pageId, text: currentText });
@@ -409,7 +436,6 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   };
 
   const handleAddPage = () => {
-    if (checkGuestLimit("Adding new page")) return;
     setAddPageModalOpen(true);
   };
 
@@ -432,7 +458,6 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   };
 
   const handleDeletePage = (pageId: string) => {
-    if (checkGuestLimit("Deleting page")) return;
     setPageToDelete(pageId);
     setDeleteModalOpen(true);
   };
@@ -451,7 +476,6 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   };
 
   const handleSplitPage = (pageId: string) => {
-    if (checkGuestLimit("Splitting page")) return;
     if (splitMode === pageId) {
       // Ensure we have a valid split index
       const validSplitIndex = splitIndex > 0 ? splitIndex : Math.floor((story.pages.find(p => p.id === pageId)?.text.length || 0) / 2);
@@ -473,7 +497,6 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
   };
 
   const handleReorderPage = (pageId: string, direction: "up" | "down") => {
-    if (checkGuestLimit("Reordering pages")) return;
     const currentIndex = story.pages.findIndex(p => p.id === pageId);
     if (currentIndex === -1) return;
     
@@ -520,11 +543,11 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
               )}
             </div>
 
-            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
+            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group w-full h-auto" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
               <img
                 src={(story as any).coverImageUrl}
                 alt="Story cover"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                className="w-full h-auto object-contain transition-transform duration-500 group-hover:scale-105 block"
                 data-testid="img-cover"
               />
               {(story as any).coverTextOverlay?.isVisible && (!textEditorOpen || editingOverlayType !== "cover") && (
@@ -588,27 +611,9 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
                     updateStoryMutation.mutate({ coverTextOverlay: newOverlay } as any);
                   }}
                   isSaving={updateStoryMutation.isPending}
+                  aspectRatio={aspectRatioStyle.aspectRatio}
                 />
               )}
-
-              {/* Cover Edit Controls */}
-              {!textEditorOpen ? (
-                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      if (checkGuestLimit("Editing cover text")) return;
-                      setEditingOverlayType("cover");
-                      setTextEditorOpen(true);
-                    }}
-                    className="shadow-lg"
-                  >
-                    <Pencil size={14} className="mr-1" />
-                    Edit Text
-                  </Button>
-                </div>
-              ) : null}
             </div>
 
             <div className="p-4">
@@ -662,17 +667,18 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
             )}
           </div>
 
-            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
+            <div className="relative rounded-lg overflow-hidden border bg-muted/20 group w-full h-auto" style={{ containerType: 'inline-size', ...aspectRatioStyle }}>
               {page.imageUrl && !page.isGenerating ? (
                 <>
                   <img
+                    key={page.imageUrl} // Force re-render when URL changes to ensure cache busting works
                     src={page.imageUrl}
                     alt={`Page ${page.pageNumber}`}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     data-testid={`img-page-${page.pageNumber}`}
                   />
                   {/* Dynamic Page Overlay */}
-                  {(page as any).textOverlay?.isVisible && (!textEditorOpen || editingOverlayPageId !== page.id) && (
+                  {(page as any).textOverlay && (page as any).textOverlay.isVisible !== false && (!textEditorOpen || editingOverlayPageId !== page.id) && (
                     <div className="absolute inset-0 pointer-events-none">
                       {(page as any).textOverlay.blocks ? (
                         (page as any).textOverlay.blocks.map((block: any) => (
@@ -738,6 +744,7 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
                         });
                       }}
                       isSaving={updatePageOverlayMutation.isPending}
+                      aspectRatio={aspectRatioStyle.aspectRatio}
                     />
                   )}
                 </>
@@ -823,11 +830,11 @@ export default function PageGrid({ story, onShowGuestLimit }: PageGridProps) {
                         variant="secondary"
                         size="sm"
                         onClick={() => {
-                          if (checkGuestLimit("Editing text overlay")) return;
                           setEditingOverlayType("page");
                           setEditingOverlayPageId(page.id);
                           setTextEditorOpen(true);
                         }}
+                        disabled={generateImageMutation.isPending}
                         className="shadow-lg w-32"
                       >
                         <Pencil size={14} className="mr-1" />

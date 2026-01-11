@@ -255,14 +255,14 @@ async function setupPayPalProducts() {
       .from(subscriptionPlans)
       .where(
         and(
-          not(eq(subscriptionPlans.id, "trial")),
+          not(eq(subscriptionPlans.id, "guest")),
           eq(subscriptionPlans.isActive, true)
         )
       );
 
     if (!plans.length) {
       console.log(
-        "No active subscription plans found (excluding trial). Nothing to do."
+        "No active subscription plans found (excluding guest). Nothing to do."
       );
       return;
     }

@@ -722,9 +722,9 @@ export function registerAdminRoutes(app: Express) {
         if (!id) {
           return res.status(400).json({ message: "Plan id is required" });
         }
-        if (id === "trial") {
+        if (id === "guest") {
           return res.status(400).json({ 
-            message: "Trial plan cannot be deleted"
+            message: "Guest plan cannot be deleted"
           });
         }
 

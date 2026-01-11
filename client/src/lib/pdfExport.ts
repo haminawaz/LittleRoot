@@ -86,23 +86,12 @@ async function optimizeImageWithOverlay(
 
     img.onload = () => {
       try {
-        const targetAspectRatio = targetWidth / targetHeight;
-        const imgAspectRatio = img.width / img.height;
-
-        let srcX = 0,
-          srcY = 0,
-          srcW = img.width,
-          srcH = img.height;
-
-        if (imgAspectRatio > targetAspectRatio) {
-          // Image is wider than target: crop sides
-          srcW = img.height * targetAspectRatio;
-          srcX = (img.width - srcW) / 2;
-        } else {
-          // Image is taller than target: crop top/bottom
-          srcH = img.width / targetAspectRatio;
-          srcY = (img.height - srcH) / 2;
-        }
+        // Show full illustration: no cropping, just fill the canvas
+        // This ensures the entire art is visible as requested by the user
+        const srcX = 0;
+        const srcY = 0;
+        const srcW = img.width;
+        const srcH = img.height;
 
         const DPI_SCALE = 300 / 72;
         let canvasWidth = Math.round(targetWidth * DPI_SCALE);

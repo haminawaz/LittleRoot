@@ -51,6 +51,7 @@ interface IllustrationTextEditorProps {
   imageUrl: string;
   defaultText: string;
   isSaving?: boolean;
+  aspectRatio?: string;
 }
 
 const DEFAULT_BLOCK = (text: string, id: string): TextBlock => ({
@@ -107,6 +108,7 @@ export default function IllustrationTextEditor({
   imageUrl,
   defaultText,
   isSaving = false,
+  aspectRatio = "3/4", // Default to old stable aspect ratio
 }: IllustrationTextEditorProps) {
   // Migration logic for old overlay format
   const getInitialBlocks = (): TextBlock[] => {
@@ -417,14 +419,17 @@ export default function IllustrationTextEditor({
           <div className="flex-1 bg-muted/30 p-4 md:p-8 flex items-center justify-center overflow-auto relative">
             <div 
               ref={containerRef}
-              className="relative aspect-[3/4] bg-white shadow-2xl overflow-hidden max-h-full"
-              style={{ width: 'auto', height: '100%', containerType: 'inline-size' }}
+              className="relative bg-white shadow-2xl overflow-hidden h-full w-auto"
+              style={{ 
+                aspectRatio,
+                containerType: 'inline-size' 
+              }}
               onClick={() => setSelectedBlockId(null)}
             >
               <img
                 src={imageUrl}
                 alt="Illustration"
-                className="w-full h-full object-cover select-none pointer-events-none"
+                className="w-full h-full object-cover select-none pointer-events-none block"
               />
               
               {blocks.map((block) => (

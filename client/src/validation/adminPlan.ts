@@ -13,7 +13,7 @@ export const adminPlanSchema = z.object({
       invalid_type_error: "Books per month must be a number",
     })
     .int("Books per month must be an integer")
-    .min(0, "Books per month must be greater than or equal to 0"),
+    .min(1, "Books per month must be greater than 0"),
   templateBooks: z
     .number({
       invalid_type_error: "Template books must be a number",
@@ -31,7 +31,7 @@ export const adminPlanSchema = z.object({
       invalid_type_error: "Pages per book must be a number",
     })
     .int("Pages per book must be an integer")
-    .min(1, "Pages per book must be at least 1"),
+    .min(8, "Pages per book must be greater than or equal to 8"),
   sortOrder: z
     .number({
       invalid_type_error: "Sort order must be a number",

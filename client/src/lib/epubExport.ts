@@ -172,7 +172,8 @@ async function processImageWithOverlay(
             if (blob) resolve(blob);
             else reject(new Error("Failed to create blob from canvas"));
           },
-          "image/png"
+          "image/jpeg",
+          0.90
         );
       } catch (err) {
         reject(err);

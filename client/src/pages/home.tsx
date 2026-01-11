@@ -61,15 +61,9 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<"create" | "my-books">("create");
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [guestStories, setGuestStories] = useLocalStorage<Record<string, StoryWithPages>>("guest_stories", {});
   const [showGuestLimit, setShowGuestLimit] = useState(false);
   const [guestLimitAction, setGuestLimitAction] = useState("");
   const [storyToDelete, setStoryToDelete] = useState<string | null>(null);
-
-  const handleShowGuestLimit = (action: string) => {
-    setGuestLimitAction(action);
-    setShowGuestLimit(true);
-  };
 
   useEffect(() => {
     const images = ["/no-books-icon.svg", "/ready-to-create.svg"];
@@ -193,71 +187,33 @@ export default function Home() {
     },
   });
 
+  const isGuestStory = currentStoryId?.startsWith('guest_');
+
   const {
     data: story,
     isLoading,
     isFetching,
+    error: storyError
   } = useQuery<StoryWithPages>({
-    queryKey: ["/api/stories", currentStoryId],
-    enabled: !!currentStoryId && !currentStoryId?.startsWith('guest_'),
+    queryKey: isGuestStory 
+      ? ["/api/guest/stories", currentStoryId] 
+      : ["/api/stories", currentStoryId],
+    enabled: !!currentStoryId,
     refetchInterval: (query) => {
       const storyData = query.state.data;
+      if (query.state.error) return false;
       const hasGeneratingPages = storyData?.pages?.some(
         (page) => page.isGenerating
-      );
+      ) || storyData?.status === "generating";
       return hasGeneratingPages ? 2000 : false;
     },
     gcTime: Infinity,
     staleTime: 0,
     refetchOnWindowFocus: false,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 
-  const currentGuestStory = currentStoryId && currentStoryId.startsWith('guest_') ? guestStories[currentStoryId] : null;
-
-  const {
-    data: guestStoryStatus,
-    isLoading: isLoadingGuestStory,
-  } = useQuery<GuestStoryStatus>({
-    queryKey: ["/api/guest/stories", currentStoryId, "status"],
-    enabled: !!currentStoryId && currentStoryId?.startsWith('guest_'),
-    refetchInterval: (query) => {
-      const storyData = query.state.data;
-      if (!storyData) return 2000;
-      
-      const totalPages = currentGuestStory?.pages?.length || 0;
-      const readyPages = storyData.pagesReady || 0;
-      
-      if (readyPages < totalPages || !storyData.coverReady) {
-        return 2000;
-      }
-      return false;
-    },
-    gcTime: Infinity,
-    staleTime: 0,
-    refetchOnMount: 'always', 
-    refetchOnWindowFocus: true,
-  });
-
-  const displayedGuestStory = currentGuestStory ? {
-    ...currentGuestStory,
-    coverImageUrl: guestStoryStatus?.coverReady ? guestStoryStatus.coverUrl : currentGuestStory.coverImageUrl,
-    pages: currentGuestStory.pages.map((page, index) => {
-      if (guestStoryStatus?.pageUrls && guestStoryStatus.pageUrls[index]) {
-        return {
-          ...page,
-          imageUrl: guestStoryStatus.pageUrls[index],
-          isGenerating: false
-        };
-      }
-      return {
-        ...page,
-        isGenerating: true
-      };
-    })
-  } : null;
-
-  const activeStory = story || displayedGuestStory;
+  const activeStory = story;
 
   const {
     data: userWithSubscription,
@@ -321,11 +277,6 @@ export default function Home() {
 
   const handleExportPDF = async () => {
     if (!activeStory) return;
-
-    if (activeStory.id.startsWith("guest_")) {
-      handleShowGuestLimit("Exporting PDF");
-      return;
-    }
 
     const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
@@ -415,11 +366,6 @@ export default function Home() {
 
   const handleExportEPUB = async () => {
     if (!activeStory) return;
-
-    if (activeStory.id.startsWith("guest_")) {
-      handleShowGuestLimit("Exporting EPUB");
-      return;
-    }
 
     const hasGeneratingPages = activeStory.pages?.some(
       (page) => page.isGenerating
@@ -592,10 +538,7 @@ export default function Home() {
             </div>
 
             <StoryInput
-              onStoryCreated={(storyId, story) => {
-                if (story && storyId.startsWith('guest_')) {
-                  setGuestStories(prev => ({ ...prev, [storyId]: story as StoryWithPages }));
-                }
+              onStoryCreated={(storyId) => {
                 window.history.pushState({}, "", `/dashboard?story=${storyId}`);
                 setCurrentStoryId(storyId);
               }}
@@ -678,7 +621,7 @@ export default function Home() {
                           ? "This story is already saved as a template"
                           : "Save this story as a template"
                       }
-                      className="text-xs sm:text-sm flex-1 sm:flex-initial"
+                      className={`text-xs sm:text-sm flex-1 sm:flex-initial ${userWithSubscription?.subscriptionPlan === 'guest' ? "hidden" : ""}`}
                     >
                       {saveAsTemplateMutation.isPending ? (
                         <div className="animate-spin w-4 h-4 border-2 border-current border-t-transparent rounded-full mr-1"></div>
@@ -793,65 +736,7 @@ export default function Home() {
                     </div>
                   </div>
                 ) : activeStory ? (
-                  <PageGrid story={activeStory} onShowGuestLimit={handleShowGuestLimit} />
-                ) : guestStoryStatus && currentStoryId?.startsWith('guest_') ? (
-                  <div className="p-6">
-                    <h2 className="text-2xl font-bold mb-4">Your Story is Generating!</h2>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        {guestStoryStatus.coverReady ? (
-                          <>
-                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
-                              ✓
-                            </div>
-                            <div>
-                              <p className="font-medium">Cover Image Ready</p>
-                              {guestStoryStatus.coverUrl && (
-                                <img src={guestStoryStatus.coverUrl} alt="Cover" className="mt-2 w-32 h-32 object-cover rounded" />
-                              )}
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white animate-spin">
-                              ⟳
-                            </div>
-                            <p className="font-medium">Generating cover...</p>
-                          </>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {guestStoryStatus.pagesReady > 0 ? (
-                          <>
-                            <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center text-white">
-                              {guestStoryStatus.pagesReady}
-                            </div>
-                            <div>
-                              <p className="font-medium">{guestStoryStatus.pagesReady} Pages Generated</p>
-                              <div className="flex gap-2 mt-2 flex-wrap">
-                                {guestStoryStatus.pageUrls?.slice(0, 4).map((url: string, idx: number) => (
-                                  <img key={idx} src={url} alt={`Page ${idx + 1}`} className="w-20 h-20 object-cover rounded" />
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            <div className="w-12 h-12 rounded-full bg-blue-500 flex items-center justify-center text-white animate-spin">
-                              ⟳
-                            </div>
-                            <p className="font-medium">Generating pages...</p>
-                          </>
-                        )}
-                      </div>
-                      <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p className="text-sm text-yellow-800">
-                          <strong>Note:</strong> Guest stories are not saved. Sign up to save your work and access all features!
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
+                  <PageGrid story={activeStory} />
                 ) : (
                   <div className="flex h-full flex-col items-center justify-center text-center px-4">
                     <motion.div
@@ -1036,7 +921,6 @@ export default function Home() {
         <BookPreviewModal
           story={activeStory}
           onClose={() => setShowPreview(false)}
-          onShowGuestLimit={handleShowGuestLimit}
         />
       )}
       <GuestActionLimitModal

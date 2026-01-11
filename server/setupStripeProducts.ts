@@ -21,7 +21,7 @@ async function setupStripeProducts() {
     const plans = await db
       .select()
       .from(subscriptionPlans)
-      .where(not(eq(subscriptionPlans.id, "trial")));
+      .where(not(eq(subscriptionPlans.id, "guest")));
 
     console.log("📋 Creating the following plans:");
     for (const plan of plans) {

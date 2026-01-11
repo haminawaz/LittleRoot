@@ -21,6 +21,9 @@ import {
   type SubscriptionPlan,
   type Promotion,
   type InsertPromotion,
+  type GuestUser,
+  type InsertGuestUser,
+  type GuestStoryData,
   stories,
   pages,
   users,
@@ -31,6 +34,7 @@ import {
   earlyAccessSignups,
   subscriptionPlans,
   promotions,
+  guestUsers,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, desc, sql, inArray } from "drizzle-orm";
@@ -110,6 +114,14 @@ export interface IStorage {
   getPromotions(): Promise<Promotion[]>;
   updatePromotion(id: string, updates: Partial<Promotion>): Promise<Promotion | undefined>;
   deletePromotion(id: string): Promise<boolean>;
+
+  getGuestUser(ipAddress: string): Promise<GuestUser | undefined>;
+  upsertGuestUser(guestUser: InsertGuestUser): Promise<GuestUser>;
+  getGuestStories(ipAddress: string): Promise<GuestStoryData[]>;
+  saveGuestStory(ipAddress: string, story: GuestStoryData): Promise<GuestUser>;
+  updateGuestStory(ipAddress: string, storyId: string, updates: Partial<GuestStoryData>): Promise<GuestUser | undefined>;
+  deleteGuestStory(ipAddress: string, storyId: string): Promise<GuestUser | undefined>;
+  canGuestCreateStory(ipAddress: string): Promise<boolean>;
  
   getAllSupportTickets(): Promise<SupportTicket[]>;
   getUnseenMessagesCountForTicketAdmin(ticketId: string): Promise<number>;
@@ -234,7 +246,15 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // User can only create new books and use features if plan is active AND has quota remaining
+    // Fetch pagesPerBook from plan
+    let pagesPerBook = (user.subscriptionPlan === "guest") ? 12 : 24;
+    const planInfo = user.subscriptionPlan
+      ? await this.getSubscriptionPlanById(user.subscriptionPlan)
+      : undefined;
+    if (planInfo) {
+      pagesPerBook = planInfo.pagesPerBook;
+    }
+
     return {
       ...user,
       illustrationsLimitPerMonth: illustrationsLimit, // Include backfilled value
@@ -245,6 +265,7 @@ export class DatabaseStorage implements IStorage {
       bonusVariationsRemaining: isPlanActive ? Math.max(0, (user.bonusVariationsLimit || 0) - (user.bonusVariationsUsed || 0)) : 0,
       daysLeftInTrial,
       subscriptionStatusText,
+      pagesPerBook,
     };
   }
 
@@ -937,6 +958,124 @@ export class DatabaseStorage implements IStorage {
   async deletePromotion(id: string): Promise<boolean> {
     const result = await db.delete(promotions).where(eq(promotions.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async getGuestUser(ipAddress: string): Promise<GuestUser | undefined> {
+    const [guestUser] = await db
+      .select()
+      .from(guestUsers)
+      .where(eq(guestUsers.ipAddress, ipAddress));
+    return guestUser || undefined;
+  }
+
+  async upsertGuestUser(guestUserData: InsertGuestUser): Promise<GuestUser> {
+    const [guestUser] = await db
+      .insert(guestUsers)
+      .values({
+        ...guestUserData,
+        lastAccessedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: guestUsers.ipAddress,
+        set: {
+          ...guestUserData,
+          lastAccessedAt: new Date(),
+        },
+      })
+      .returning();
+    return guestUser;
+  }
+
+  async getGuestStories(ipAddress: string): Promise<GuestStoryData[]> {
+    const guestUser = await this.getGuestUser(ipAddress);
+    if (!guestUser) return [];
+    
+    // storiesData is stored as JSONB array
+    return (guestUser.storiesData as any) || [];
+  }
+
+  async saveGuestStory(ipAddress: string, story: GuestStoryData): Promise<GuestUser> {
+    const existingGuest = await this.getGuestUser(ipAddress);
+    const existingStories = existingGuest ? ((existingGuest.storiesData as any) || []) : [];
+    
+    const storyIndex = existingStories.findIndex((s: GuestStoryData) => s.id === story.id);
+    
+    let updatedStories;
+    if (storyIndex >= 0) {
+      updatedStories = [...existingStories];
+      updatedStories[storyIndex] = story;
+    } else {
+      const guestPlan = await this.getSubscriptionPlanById("guest");
+      const booksLimit = guestPlan?.booksPerMonth ?? 2;
+      
+      if (existingStories.length >= booksLimit) {
+        throw new Error(`Guest users can only create up to ${booksLimit} stories`);
+      }
+      updatedStories = [...existingStories, story];
+    }
+
+    const totalGenerated = existingGuest 
+      ? (storyIndex >= 0 ? existingGuest.totalStoriesGenerated : existingGuest.totalStoriesGenerated + 1)
+      : 1;
+
+    return await this.upsertGuestUser({
+      ipAddress,
+      storiesData: updatedStories as any,
+      totalStoriesGenerated: totalGenerated,
+    });
+  }
+
+  async updateGuestStory(
+    ipAddress: string, 
+    storyId: string, 
+    updates: Partial<GuestStoryData>
+  ): Promise<GuestUser | undefined> {
+    const existingGuest = await this.getGuestUser(ipAddress);
+    if (!existingGuest) return undefined;
+
+    const existingStories = (existingGuest.storiesData as any) || [];
+    const storyIndex = existingStories.findIndex((s: GuestStoryData) => s.id === storyId);
+    
+    if (storyIndex < 0) return undefined;
+
+    // Merge updates with existing story
+    const updatedStories = [...existingStories];
+    updatedStories[storyIndex] = {
+      ...updatedStories[storyIndex],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return await this.upsertGuestUser({
+      ipAddress,
+      storiesData: updatedStories as any,
+      totalStoriesGenerated: existingGuest.totalStoriesGenerated,
+    });
+  }
+
+  async deleteGuestStory(ipAddress: string, storyId: string): Promise<GuestUser | undefined> {
+    const existingGuest = await this.getGuestUser(ipAddress);
+    if (!existingGuest) return undefined;
+
+    const existingStories = (existingGuest.storiesData as any) || [];
+    const updatedStories = existingStories.filter((s: GuestStoryData) => s.id !== storyId);
+
+    return await this.upsertGuestUser({
+      ipAddress,
+      storiesData: updatedStories as any,
+      totalStoriesGenerated: existingGuest.totalStoriesGenerated,
+    });
+  }
+
+  async canGuestCreateStory(ipAddress: string): Promise<boolean> {
+    const guestUser = await this.getGuestUser(ipAddress);
+    if (!guestUser) return true; // New guest can create
+    
+    const stories = (guestUser.storiesData as any) || [];
+    const guestPlan = await this.getSubscriptionPlanById("guest");
+    const booksLimit = guestPlan?.booksPerMonth ?? 2;
+    
+    return stories.length < booksLimit;
   }
 }
 

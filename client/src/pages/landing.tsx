@@ -37,6 +37,7 @@ export default function Landing() {
       templateBooks: number;
       bonusVariations: number;
       pagesPerBook: number;
+      paypalPlanId?: string | null;
       commercialRights?: boolean;
       resellRights?: boolean;
     }[];

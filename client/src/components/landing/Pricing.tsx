@@ -18,6 +18,7 @@ interface Plan {
   price: number;
   badge: string;
   normalPrice?: number;
+  paypalPlanId?: string | null;
   features: string[];
   buttonText: string;
   colorTheme: {
@@ -92,6 +93,7 @@ interface PricingProps {
     templateBooks: number;
     bonusVariations: number;
     pagesPerBook: number;
+    paypalPlanId?: string | null;
     commercialRights?: boolean;
     resellRights?: boolean;
   }[];
@@ -163,7 +165,8 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
       localStorage.setItem("selectedPlan", JSON.stringify({
         id: plan.id,
         name: plan.name,
-        price: plan.price
+        price: plan.normalPrice || plan.price,
+        paypalPlanId: plan.paypalPlanId
       }));
       setLocation("/signup");
     }
@@ -191,6 +194,7 @@ const Pricing = ({ plans: dbPlans = [], promotion }: PricingProps) => {
         features: generateFeatures(plan),
         buttonText: style.buttonText,
         colorTheme: style.colorTheme,
+        paypalPlanId: plan.paypalPlanId,
       };
     });
 
